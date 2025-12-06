@@ -50,4 +50,3 @@ authRouter.get("/profile", authMiddleware, async (req, res) => {
 });
 
 module.exports = authRouter;
-

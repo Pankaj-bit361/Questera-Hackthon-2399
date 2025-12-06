@@ -4,7 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiMail, FiArrowRight, FiCheck, FiChevronLeft, FiZap } = FiIcons;
+const { FiMail, FiArrowRight, FiCheck, FiChevronLeft, FiZap, FiAlertCircle } = FiIcons;
+
+const API_BASE_URL = 'https://questera-backend.vercel.app/api/auth';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -13,6 +15,7 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState(new Array(6).fill('')); // 6 digits
   const [timer, setTimer] = useState(30);
+  const [error, setError] = useState('');
   const otpInputRefs = useRef([]);
 
   // OTP Timer countdown
@@ -24,16 +27,38 @@ const LoginPage = () => {
     return () => clearInterval(interval);
   }, [step, timer]);
 
-  const handleEmailSubmit = (e) => {
+  // Clear error when user types
+  useEffect(() => {
+    if (error) setError('');
+  }, [email, otp]);
+
+  const handleEmailSubmit = async (e) => {
     e.preventDefault();
     if (!email) return;
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    setError('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setStep('otp');
+        setTimer(30);
+      } else {
+        setError(data.error || 'Failed to send verification code.');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+      console.error(err);
+    } finally {
       setLoading(false);
-      setStep('otp');
-      setTimer(30);
-    }, 1500);
+    }
   };
 
   const handleOtpChange = (index, value) => {
@@ -68,18 +93,64 @@ const LoginPage = () => {
     }
   };
 
-  const handleVerify = (e) => {
+  const handleVerify = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
+    setError('');
+
+    const otpCode = otp.join('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp: otpCode }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Store auth data
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        navigate('/home');
+      } else {
+        setError(data.error || 'Invalid verification code.');
+      }
+    } catch (err) {
+      setError('Verification failed. Please try again.');
+      console.error(err);
+    } finally {
       setLoading(false);
-      navigate('/home');
-    }, 1500);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      
+      if (response.ok) {
+        setTimer(30);
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to resend code.');
+      }
+    } catch (err) {
+      setError('Network error.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="flex min-h-screen w-full bg-white font-sans">
-      {/* Left Section - Form (Unchanged functionality) */}
+      {/* Left Section - Form */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 sm:px-12 xl:px-24 bg-white relative z-10">
         <div className="w-full max-w-md space-y-8">
           {/* Logo & Header */}
@@ -107,6 +178,21 @@ const LoginPage = () => {
               </p>
             </motion.div>
           </div>
+
+          {/* Error Message */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2 border border-red-100"
+              >
+                <SafeIcon icon={FiAlertCircle} className="w-4 h-4 flex-shrink-0" />
+                {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Form Container */}
           <div className="space-y-6">
@@ -142,7 +228,7 @@ const LoginPage = () => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="btn-black flex items-center justify-center gap-2 group w-full py-4 text-lg"
+                    className="btn-black flex items-center justify-center gap-2 group w-full py-4 text-lg disabled:opacity-70"
                   >
                     {loading ? (
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -173,7 +259,7 @@ const LoginPage = () => {
                         value={digit}
                         onChange={(e) => handleOtpChange(i, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(i, e)}
-                        className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-black focus:bg-white transition-all outline-none caret-black"
+                        className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-black focus:bg-white transition-all outline-none caret-black selection:bg-black/20"
                       />
                     ))}
                   </div>
@@ -182,15 +268,21 @@ const LoginPage = () => {
                     <button
                       type="submit"
                       disabled={loading || otp.join('').length !== 6}
-                      className="btn-black py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn-black py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                     >
-                      {loading ? 'Verifying...' : 'Verify Access'}
+                      {loading ? (
+                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : 'Verify Access'}
                     </button>
                     
                     <div className="flex items-center justify-between text-sm">
                       <button
                         type="button"
-                        onClick={() => setStep('email')}
+                        onClick={() => {
+                          setStep('email');
+                          setOtp(new Array(6).fill(''));
+                          setError('');
+                        }}
                         className="text-gray-500 hover:text-black font-medium flex items-center gap-1 transition-colors"
                       >
                         <SafeIcon icon={FiChevronLeft} />
@@ -204,8 +296,9 @@ const LoginPage = () => {
                       ) : (
                         <button 
                           type="button" 
-                          onClick={() => setTimer(30)}
+                          onClick={handleResendCode}
                           className="font-semibold text-black hover:underline"
+                          disabled={loading}
                         >
                           Resend Code
                         </button>

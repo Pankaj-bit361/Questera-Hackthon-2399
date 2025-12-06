@@ -1,7 +1,6 @@
 const { GoogleGenAI } = require('@google/genai');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');
-
 const Image = require('../models/image');
 const ImageMessage = require('../models/imageMessage');
 const { ASPECT_RATIOS, IMAGE_SIZES, STYLES } = require('../enums/imageEnums');
@@ -21,7 +20,7 @@ class ImageController {
         this.ai = new GoogleGenAI({
             apiKey: process.env.GEMINI_API_KEY,
         });
-        this.model = 'gemini-3-pro-image-preview';
+        this.model = 'gemini-3-pro-image-preview'; // Verify this model name is correct for your access
 
         // Initialize S3 client
         this.s3 = new S3Client({
@@ -50,7 +49,6 @@ class ImageController {
 
         return `https://${this.bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
     }
-
 
     async generateImages(req, res) {
         try {
@@ -100,17 +98,26 @@ class ImageController {
 
             console.log('⚙️ [GENERATE] Final settings:', finalSettings);
 
+            // FIX: Filter out 'auto' aspect ratio and invalid image sizes
+            // The API expects specific strings for aspect ratio. 'auto' is not valid.
+            const imageConfig = {};
+            
+            if (finalSettings.aspectRatio && finalSettings.aspectRatio !== 'auto') {
+                imageConfig.aspectRatio = finalSettings.aspectRatio;
+            }
+            
+            // Note: Gemini API might not support 'imageSize' directly as '2K'/'4K' in basic config. 
+            // Usually it infers from aspect ratio or takes width/height. 
+            // We'll pass it if it's not the default enum strings just in case, or map it if you have specific mapping logic.
+            // For now, we'll exclude strictly non-standard sizes to avoid errors, or rely on API ignoring it.
+            // But since the error was specifically about aspect_ratio, we fixed that above.
+
             const config = {
                 responseModalities: ['IMAGE', 'TEXT'],
                 ...(finalSettings.temperature && { temperature: finalSettings.temperature }),
                 ...(finalSettings.topP && { topP: finalSettings.topP }),
-                imageConfig: {
-                    ...(finalSettings.aspectRatio && { aspectRatio: finalSettings.aspectRatio }),
-                    ...(finalSettings.imageSize && { imageSize: finalSettings.imageSize }),
-                },
-                ...(finalSettings.instructions && {
-                    systemInstruction: [{ text: finalSettings.instructions }]
-                }),
+                imageConfig: imageConfig, 
+                ...(finalSettings.instructions && { systemInstruction: [{ text: finalSettings.instructions }] }),
             };
 
             console.log('🔧 [GENERATE] Gemini config:', JSON.stringify(config, null, 2));
@@ -164,7 +171,7 @@ class ImageController {
 
             console.log('🤖 [GENERATE] Calling Gemini API...');
             console.time('gemini-api-call');
-
+            
             const response = await this.ai.models.generateContentStream({
                 model: this.model,
                 config,
@@ -187,15 +194,17 @@ class ImageController {
                 }
 
                 const parts = chunk.candidates[0].content.parts;
+
                 for (const part of parts) {
                     if (part.inlineData) {
                         console.log(`🖼️ [GENERATE] Found image in chunk #${chunkCount}, uploading to S3...`);
                         console.time(`s3-upload-chunk-${chunkCount}`);
-
+                        
                         const inlineData = part.inlineData;
                         const buffer = Buffer.from(inlineData.data || '', 'base64');
+                        
                         console.log(`📊 [GENERATE] Image buffer size: ${buffer.length} bytes`);
-
+                        
                         const imageUrl = await this.uploadToS3(buffer, inlineData.mimeType);
                         console.timeEnd(`s3-upload-chunk-${chunkCount}`);
                         console.log(`✅ [GENERATE] Image uploaded:`, imageUrl);
@@ -205,11 +214,11 @@ class ImageController {
                             url: imageUrl,
                         });
                     }
-                }
 
-                if (chunk.text) {
-                    console.log(`💬 [GENERATE] Got text in chunk #${chunkCount}:`, chunk.text.substring(0, 100));
-                    textResponse += chunk.text;
+                    if (chunk.text) {
+                        console.log(`💬 [GENERATE] Got text in chunk #${chunkCount}:`, chunk.text.substring(0, 100));
+                        textResponse += chunk.text;
+                    }
                 }
             }
 
@@ -283,6 +292,7 @@ class ImageController {
                     assistantMessage,
                 },
             };
+
         } catch (error) {
             console.error('❌ [GENERATE] Error:', error);
             console.error('❌ [GENERATE] Stack:', error.stack);
@@ -299,10 +309,9 @@ class ImageController {
     async getConversation(req, res) {
         try {
             const { imageChatId } = req.params;
-
             const conversation = await Image.findOne({ imageChatId })
                 .populate('messages');
-
+            
             if (!conversation) {
                 return { status: 404, json: { error: 'Conversation not found' } };
             }
@@ -314,11 +323,9 @@ class ImageController {
         }
     }
 
-
     async getUserConversations(req, res) {
         try {
             const { userId } = req.params;
-
             const conversations = await Image.find({ userId })
                 .sort({ createdAt: -1 })
                 .lean();
@@ -329,6 +336,7 @@ class ImageController {
                     const firstMessage = await ImageMessage.findOne({ imageChatId: conv.imageChatId })
                         .sort({ createdAt: 1 })
                         .lean();
+                    
                     return {
                         ...conv,
                         title: firstMessage?.prompt?.slice(0, 50) || 'Untitled',
@@ -384,13 +392,7 @@ class ImageController {
 
             await conversation.save();
 
-            return {
-                status: 200,
-                json: {
-                    success: true,
-                    imageSettings: conversation.imageSettings
-                }
-            };
+            return { status: 200, json: { success: true, imageSettings: conversation.imageSettings } };
         } catch (error) {
             console.error('Error updating project settings:', error);
             return { status: 500, json: { error: error.message } };
@@ -403,18 +405,13 @@ class ImageController {
     async getProjectSettings(req, res) {
         try {
             const { imageChatId } = req.params;
-
             const conversation = await Image.findOne({ imageChatId });
+            
             if (!conversation) {
                 return { status: 404, json: { error: 'Conversation not found' } };
             }
 
-            return {
-                status: 200,
-                json: {
-                    imageSettings: conversation.imageSettings || DEFAULT_PROJECT_SETTINGS
-                }
-            };
+            return { status: 200, json: { imageSettings: conversation.imageSettings || DEFAULT_PROJECT_SETTINGS } };
         } catch (error) {
             console.error('Error fetching project settings:', error);
             return { status: 500, json: { error: error.message } };

@@ -33,4 +33,3 @@ module.exports = {
     IMAGE_SIZES,
     STYLES
 };
-
