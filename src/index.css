@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Monochrome Theme Variables */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-dark: #09090b;
+  --bg-card-dark: #18181b;
+  
+  /* Text Colors */
+  --text-primary: #18181b;
+  --text-secondary: #71717a;
+  --text-inverted: #ffffff;
+  --text-inverted-secondary: #a1a1aa;
+  
+  /* Accents */
+  --accent-black: #000000;
+  --accent-gray: #27272a;
+  
+  /* Inputs */
+  --input-bg: #f9fafb; /* Slightly darker for better contrast */
+  --input-border: #e4e4e7;
+  --input-focus: #000000;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-dark: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .btn-black {
+    @apply w-full bg-black text-white font-medium rounded-xl hover:bg-gray-800 transition-all duration-300 transform active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 shadow-lg;
+  }
+  
+  .glass-card-dark {
+    @apply bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-3xl p-6 text-white;
+    box-shadow: var(--shadow-dark);
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 3px;
+}

@@ -1,0 +1,43 @@
+/* Additional custom styles for the login page */
+
+.app-container {
+  min-height: 100vh;
+  background: var(--light-gradient);
+}
+
+/* Custom scrollbar for better aesthetics */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--light-gray);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--secondary-purple);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-purple-light);
+}
+
+/* Smooth focus transitions */
+input:focus {
+  transform: translateY(-1px);
+}
+
+/* Loading animation for buttons */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
