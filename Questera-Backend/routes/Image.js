@@ -58,4 +58,15 @@ imageRouter.put("/project-settings/:imageChatId", async (req, res) => {
     }
 });
 
+// Bulk generate images with one reference image and multiple prompts
+imageRouter.post("/bulk-generate", async (req, res) => {
+    try {
+        const { status, json } = await imageController.bulkGenerateImages(req, res);
+        return res.status(status).json(json);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = imageRouter;

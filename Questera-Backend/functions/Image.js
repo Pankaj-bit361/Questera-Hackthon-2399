@@ -101,11 +101,11 @@ class ImageController {
             // FIX: Filter out 'auto' aspect ratio and invalid image sizes
             // The API expects specific strings for aspect ratio. 'auto' is not valid.
             const imageConfig = {};
-            
+
             if (finalSettings.aspectRatio && finalSettings.aspectRatio !== 'auto') {
                 imageConfig.aspectRatio = finalSettings.aspectRatio;
             }
-            
+
             // Note: Gemini API might not support 'imageSize' directly as '2K'/'4K' in basic config. 
             // Usually it infers from aspect ratio or takes width/height. 
             // We'll pass it if it's not the default enum strings just in case, or map it if you have specific mapping logic.
@@ -116,7 +116,7 @@ class ImageController {
                 responseModalities: ['IMAGE', 'TEXT'],
                 ...(finalSettings.temperature && { temperature: finalSettings.temperature }),
                 ...(finalSettings.topP && { topP: finalSettings.topP }),
-                imageConfig: imageConfig, 
+                imageConfig: imageConfig,
                 ...(finalSettings.instructions && { systemInstruction: [{ text: finalSettings.instructions }] }),
             };
 
@@ -171,7 +171,7 @@ class ImageController {
 
             console.log('🤖 [GENERATE] Calling Gemini API...');
             console.time('gemini-api-call');
-            
+
             const response = await this.ai.models.generateContentStream({
                 model: this.model,
                 config,
@@ -199,12 +199,12 @@ class ImageController {
                     if (part.inlineData) {
                         console.log(`🖼️ [GENERATE] Found image in chunk #${chunkCount}, uploading to S3...`);
                         console.time(`s3-upload-chunk-${chunkCount}`);
-                        
+
                         const inlineData = part.inlineData;
                         const buffer = Buffer.from(inlineData.data || '', 'base64');
-                        
+
                         console.log(`📊 [GENERATE] Image buffer size: ${buffer.length} bytes`);
-                        
+
                         const imageUrl = await this.uploadToS3(buffer, inlineData.mimeType);
                         console.timeEnd(`s3-upload-chunk-${chunkCount}`);
                         console.log(`✅ [GENERATE] Image uploaded:`, imageUrl);
@@ -311,7 +311,7 @@ class ImageController {
             const { imageChatId } = req.params;
             const conversation = await Image.findOne({ imageChatId })
                 .populate('messages');
-            
+
             if (!conversation) {
                 return { status: 404, json: { error: 'Conversation not found' } };
             }
@@ -336,7 +336,7 @@ class ImageController {
                     const firstMessage = await ImageMessage.findOne({ imageChatId: conv.imageChatId })
                         .sort({ createdAt: 1 })
                         .lean();
-                    
+
                     return {
                         ...conv,
                         title: firstMessage?.prompt?.slice(0, 50) || 'Untitled',
@@ -406,7 +406,7 @@ class ImageController {
         try {
             const { imageChatId } = req.params;
             const conversation = await Image.findOne({ imageChatId });
-            
+
             if (!conversation) {
                 return { status: 404, json: { error: 'Conversation not found' } };
             }
@@ -415,6 +415,170 @@ class ImageController {
         } catch (error) {
             console.error('Error fetching project settings:', error);
             return { status: 500, json: { error: error.message } };
+        }
+    }
+
+    /**
+     * Bulk generate images with one reference image and multiple prompts
+     * Creates variations of the same person in different scenarios
+     */
+    async bulkGenerateImages(req, res) {
+        try {
+            console.log('🚀 [BULK GENERATE] Starting bulk image generation...');
+            console.log('📥 [BULK GENERATE] Request body:', JSON.stringify(req.body, null, 2));
+
+            const {
+                referenceImage, // Single reference image of the person
+                prompts, // Array of prompts for different scenarios
+                userId,
+                imageChatId,
+                aspectRatio,
+                imageSize,
+                style,
+                batchName, // Optional name for this bulk generation batch
+            } = req.body;
+
+            // Validation
+            if (!referenceImage) {
+                return { status: 400, json: { error: 'Reference image is required' } };
+            }
+            if (!prompts || !Array.isArray(prompts) || prompts.length === 0) {
+                return { status: 400, json: { error: 'Prompts array is required and must not be empty' } };
+            }
+            if (!userId) {
+                return { status: 400, json: { error: 'User ID is required' } };
+            }
+
+            console.log(`📋 [BULK GENERATE] Processing ${prompts.length} prompts with 1 reference image`);
+
+            // Upload reference image to S3 once
+            console.log('☁️ [BULK GENERATE] Uploading reference image to S3...');
+            let referenceImageData = referenceImage.data || referenceImage;
+            let mimeType = referenceImage.mimeType || 'image/jpeg';
+
+            if (typeof referenceImageData === 'string' && referenceImageData.startsWith('http')) {
+                console.log('🌐 [BULK GENERATE] Fetching reference image from URL...');
+                const response = await fetch(referenceImageData);
+                const arrayBuffer = await response.arrayBuffer();
+                referenceImageData = Buffer.from(arrayBuffer).toString('base64');
+                if (referenceImageData.includes('.png')) mimeType = 'image/png';
+                else if (referenceImageData.includes('.webp')) mimeType = 'image/webp';
+            }
+
+            const buffer = Buffer.from(referenceImageData, 'base64');
+            const referenceUrl = await this.uploadToS3(buffer, mimeType);
+            console.log('✅ [BULK GENERATE] Reference image uploaded:', referenceUrl);
+
+            // Create or get conversation
+            const chatId = imageChatId || 'bulk-' + uuidv4();
+            let imageConversation = await Image.findOne({ imageChatId: chatId });
+
+            if (!imageConversation) {
+                console.log('🆕 [BULK GENERATE] Creating new conversation...');
+                imageConversation = await Image.create({
+                    name: batchName || `Bulk Generation - ${new Date().toLocaleDateString()}`,
+                    desc: `Bulk generation with ${prompts.length} variations`,
+                    userId,
+                    imageChatId: chatId,
+                    messages: [],
+                    imageSettings: {
+                        aspectRatio: aspectRatio || 'auto',
+                        imageSize: imageSize || '2K',
+                        style: style || 'none',
+                        instructions: '',
+                        temperature: 1,
+                        topP: 1,
+                    },
+                });
+            }
+
+            const results = [];
+            const errors = [];
+
+            // Process each prompt sequentially to avoid rate limits
+            for (let i = 0; i < prompts.length; i++) {
+                const prompt = prompts[i];
+                console.log(`\n🎨 [BULK GENERATE] Processing prompt ${i + 1}/${prompts.length}: "${prompt.substring(0, 50)}..."`);
+
+                try {
+                    // Create a mock request object for generateImages
+                    const mockReq = {
+                        body: {
+                            prompt,
+                            userId,
+                            imageChatId: chatId,
+                            images: [{
+                                data: referenceImageData,
+                                mimeType: mimeType,
+                            }],
+                            aspectRatio,
+                            imageSize,
+                            style,
+                        }
+                    };
+
+                    const result = await this.generateImages(mockReq, res);
+
+                    if (result.status === 200) {
+                        console.log(`✅ [BULK GENERATE] Prompt ${i + 1} completed successfully`);
+                        results.push({
+                            promptIndex: i,
+                            prompt,
+                            success: true,
+                            imageUrl: result.json.imageUrl,
+                            images: result.json.images,
+                            messageId: result.json.messageId,
+                        });
+                    } else {
+                        console.error(`❌ [BULK GENERATE] Prompt ${i + 1} failed:`, result.json.error);
+                        errors.push({
+                            promptIndex: i,
+                            prompt,
+                            error: result.json.error,
+                        });
+                    }
+
+                    // Add a small delay between requests to avoid rate limiting
+                    if (i < prompts.length - 1) {
+                        console.log('⏳ [BULK GENERATE] Waiting 2 seconds before next generation...');
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+
+                } catch (error) {
+                    console.error(`❌ [BULK GENERATE] Error processing prompt ${i + 1}:`, error);
+                    errors.push({
+                        promptIndex: i,
+                        prompt,
+                        error: error.message,
+                    });
+                }
+            }
+
+            console.log(`\n🎉 [BULK GENERATE] Bulk generation complete!`);
+            console.log(`✅ Successful: ${results.length}/${prompts.length}`);
+            console.log(`❌ Failed: ${errors.length}/${prompts.length}`);
+
+            return {
+                status: 200,
+                json: {
+                    success: true,
+                    imageChatId: chatId,
+                    referenceImageUrl: referenceUrl,
+                    totalPrompts: prompts.length,
+                    successCount: results.length,
+                    failureCount: errors.length,
+                    results,
+                    errors,
+                },
+            };
+
+        } catch (error) {
+            console.error('❌ [BULK GENERATE] Fatal error:', error);
+            console.error('❌ [BULK GENERATE] Stack:', error.stack);
+            return {
+                status: 500,
+                json: { error: error.message },
+            };
         }
     }
 }
