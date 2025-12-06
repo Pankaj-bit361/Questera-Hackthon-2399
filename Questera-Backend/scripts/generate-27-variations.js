@@ -86,6 +86,11 @@ async function generateAllVariations() {
             addLog(`🎨 [${i + 1}/${PROMPTS.length}] Generating variation...`);
 
             try {
+                addLog(`⏳ Waiting for Gemini API (this may take 30-60 seconds per image)...`);
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout per image
+
                 const response = await fetch('http://localhost:3001/api/image/generate', {
                     method: 'POST',
                     headers: {
@@ -102,9 +107,11 @@ async function generateAllVariations() {
                         aspectRatio: aspectRatio,
                         imageSize: imageSize,
                         style: style
-                    })
+                    }),
+                    signal: controller.signal
                 });
 
+                clearTimeout(timeoutId);
                 const result = await response.json();
 
                 if (result.success && result.imageUrl) {
@@ -118,9 +125,9 @@ async function generateAllVariations() {
                     addLog(`❌ [${i + 1}/${PROMPTS.length}] Failed: ${result.error || 'Unknown error'}`);
                 }
 
-                // Add delay to avoid rate limiting
+                // Add minimal delay to avoid rate limiting (API calls are already slow)
                 if (i < PROMPTS.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
             } catch (error) {
