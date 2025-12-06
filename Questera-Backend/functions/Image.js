@@ -177,6 +177,7 @@ class ImageController {
                 config,
                 contents,
             });
+            
 
             console.log('📡 [GENERATE] Got stream response, processing chunks...');
 
