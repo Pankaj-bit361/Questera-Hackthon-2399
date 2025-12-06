@@ -168,6 +168,7 @@ class ImageController {
                     parts,
                 },
             ];
+            
 
             console.log('🤖 [GENERATE] Calling Gemini API...');
             console.time('gemini-api-call');
