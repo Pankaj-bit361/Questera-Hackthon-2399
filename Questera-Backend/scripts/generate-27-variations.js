@@ -1,3 +1,6 @@
+// User ID for API requests
+const USER_ID = 'u-241a712b-e27d-4b7c-b0fb-764d95fb4f3d';
+
 // 27 Portrait Variation Prompts
 const PROMPTS = [
     "Create a cinematic portrait photo of a young woman with long dark hair styled in loose waves, wearing a pale green knitted sweater. She gently holds a single white flower in both hands, gazing calmly toward the camera with a serene, natural expression. The background is softly blurred, filled with floating soap bubbles, creating a dreamy atmosphere. The diffused luminous lighting adds a fresh airy feel with soft bokeh in greens, silvers, and pastels.",
@@ -33,11 +36,11 @@ let generatedImages = [];
 let startTime = 0;
 
 // Image preview
-document.getElementById('referenceImage').addEventListener('change', function(e) {
+document.getElementById('referenceImage').addEventListener('change', function (e) {
     const file = e.target.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             document.getElementById('previewImg').src = e.target.result;
             document.getElementById('imagePreview').style.display = 'block';
         };
@@ -90,6 +93,7 @@ async function generateAllVariations() {
                         'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
                     },
                     body: JSON.stringify({
+                        userId: USER_ID,
                         referenceImage: {
                             data: imageBase64,
                             mimeType: mimeType
@@ -222,6 +226,7 @@ async function saveAsTemplate() {
                 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
             },
             body: JSON.stringify({
+                userId: USER_ID,
                 name: templateName,
                 description: document.getElementById('templateDescription').value,
                 category: 'lifestyle',
@@ -233,7 +238,7 @@ async function saveAsTemplate() {
                 aspectRatio: document.getElementById('aspectRatio').value,
                 imageSize: document.getElementById('imageSize').value,
                 style: document.getElementById('style').value,
-                createdBy: 'admin'
+                createdBy: USER_ID
             })
         });
 

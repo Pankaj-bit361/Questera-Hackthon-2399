@@ -22,8 +22,8 @@ app.get('/test', (req, res) => {
 app.use('/api/auth', authRouter);
 
 // Protected routes
-app.use('/api/image', authMiddleware, imageRouter);
-app.use('/api/template', authMiddleware, templateRouter);
+app.use('/api/image',  imageRouter);
+app.use('/api/template',  templateRouter);
 
 // Database connection and Server Start
 const startServer = async () => {
