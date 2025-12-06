@@ -94,10 +94,10 @@ async function generateAllVariations() {
                     },
                     body: JSON.stringify({
                         userId: USER_ID,
-                        referenceImage: {
+                        images: [{
                             data: imageBase64,
                             mimeType: mimeType
-                        },
+                        }],
                         prompt: prompt,
                         aspectRatio: aspectRatio,
                         imageSize: imageSize,
