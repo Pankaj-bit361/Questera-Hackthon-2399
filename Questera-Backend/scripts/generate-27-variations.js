@@ -75,65 +75,65 @@ async function generateAllVariations() {
         addLog('');
 
         const aspectRatio = document.getElementById('aspectRatio').value;
-        const imageSize = document.getElementById('imageSize').value;
+        const imageSize = '1K'; // Use 1K for faster generation
         const style = document.getElementById('style').value;
 
-        // Generate each image
-        for (let i = 0; i < PROMPTS.length; i++) {
-            const prompt = PROMPTS[i];
-            updateProgress((i / PROMPTS.length) * 100);
-            document.getElementById('currentPrompt').textContent = `Generating ${i + 1}/${PROMPTS.length}...`;
-            addLog(`🎨 [${i + 1}/${PROMPTS.length}] Generating variation...`);
+        addLog(`🚀 Launching ${PROMPTS.length} parallel API calls...`);
+        addLog(`⏳ This may take 2-5 minutes depending on API speed...`);
+        addLog('');
 
-            try {
-                addLog(`⏳ Waiting for Gemini API (this may take 30-60 seconds per image)...`);
+        // Create all API requests in parallel
+        const apiPromises = PROMPTS.map((prompt, i) => {
+            return (async () => {
+                try {
+                    document.getElementById('currentPrompt').textContent = `Processing ${i + 1}/${PROMPTS.length}...`;
+                    addLog(`🎨 [${i + 1}/${PROMPTS.length}] Sending request...`);
 
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout per image
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minute timeout per image
 
-                const response = await fetch('http://localhost:3001/api/image/generate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
-                    },
-                    body: JSON.stringify({
-                        userId: USER_ID,
-                        images: [{
-                            data: imageBase64,
-                            mimeType: mimeType
-                        }],
-                        prompt: prompt,
-                        aspectRatio: aspectRatio,
-                        imageSize: imageSize,
-                        style: style
-                    }),
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-                const result = await response.json();
-
-                if (result.success && result.imageUrl) {
-                    generatedImages.push({
-                        prompt: prompt,
-                        imageUrl: result.imageUrl,
-                        index: i + 1
+                    const response = await fetch('http://localhost:3001/api/image/generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
+                        },
+                        body: JSON.stringify({
+                            userId: USER_ID,
+                            images: [{
+                                data: imageBase64,
+                                mimeType: mimeType
+                            }],
+                            prompt: prompt,
+                            aspectRatio: aspectRatio,
+                            imageSize: imageSize,
+                            style: style
+                        }),
+                        signal: controller.signal
                     });
-                    addLog(`✅ [${i + 1}/${PROMPTS.length}] Success!`);
-                } else {
-                    addLog(`❌ [${i + 1}/${PROMPTS.length}] Failed: ${result.error || 'Unknown error'}`);
-                }
 
-                // Add minimal delay to avoid rate limiting (API calls are already slow)
-                if (i < PROMPTS.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
+                    clearTimeout(timeoutId);
+                    const result = await response.json();
 
-            } catch (error) {
-                addLog(`❌ [${i + 1}/${PROMPTS.length}] Error: ${error.message}`);
-            }
-        }
+                    if (result.success && result.imageUrl) {
+                        generatedImages.push({
+                            prompt: prompt,
+                            imageUrl: result.imageUrl,
+                            index: i + 1
+                        });
+                        addLog(`✅ [${i + 1}/${PROMPTS.length}] Success!`);
+                        updateProgress((generatedImages.length / PROMPTS.length) * 100);
+                    } else {
+                        addLog(`❌ [${i + 1}/${PROMPTS.length}] Failed: ${result.error || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    addLog(`❌ [${i + 1}/${PROMPTS.length}] Error: ${error.message}`);
+                }
+            })();
+        });
+
+        // Wait for all requests to complete
+        await Promise.all(apiPromises);
 
         updateProgress(100);
         displayResults();
