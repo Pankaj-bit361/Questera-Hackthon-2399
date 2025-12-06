@@ -24,12 +24,19 @@ app.use('/api/auth', authRouter);
 // Protected routes
 app.use('/api/image', authMiddleware, imageRouter);
 
-app.listen(port, async () => {
-    console.log(`Server running on http://localhost:${port}`);
-    try {
-        await connectDB();
-        console.log('MongoDB connected');
-    } catch (error) {
-        console.error('MongoDB connection error:', error);
-    }
+// Connect to database
+connectDB().then(() => {
+    console.log('MongoDB connected');
+}).catch((error) => {
+    console.error('MongoDB connection error:', error);
 });
+
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(port, () => {
+        console.log(`Server running on http://localhost:${port}`);
+    });
+}
+
+// Export for Vercel
+module.exports = app;
