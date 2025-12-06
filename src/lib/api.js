@@ -1,16 +1,16 @@
-const API_BASE_URL = 'https://questera-backend.vercel.app/api';
+const API_BASE_URL='https://questera-hackthon-2399.vercel.app/api';
 
-const getAuthToken = () => localStorage.getItem('authToken');
+const getAuthToken=()=> localStorage.getItem('authToken');
 
-const headers = () => ({
+const headers=()=> ({
   'Content-Type': 'application/json',
   'Authorization': `Bearer ${getAuthToken()}`
 });
 
-export const imageAPI = {
+export const imageAPI={
   // Generate Image
-  generate: async (payload) => {
-    const response = await fetch(`${API_BASE_URL}/image/generate`, {
+  generate: async (payload)=> {
+    const response=await fetch(`${API_BASE_URL}/image/generate`,{
       method: 'POST',
       headers: headers(),
       body: JSON.stringify(payload),
@@ -19,8 +19,8 @@ export const imageAPI = {
   },
 
   // Get Conversation History
-  getConversation: async (imageChatId) => {
-    const response = await fetch(`${API_BASE_URL}/image/conversation/${imageChatId}`, {
+  getConversation: async (imageChatId)=> {
+    const response=await fetch(`${API_BASE_URL}/image/conversation/${imageChatId}`,{
       method: 'GET',
       headers: headers(),
     });
@@ -28,8 +28,8 @@ export const imageAPI = {
   },
 
   // Get User Conversations
-  getUserConversations: async (userId) => {
-    const response = await fetch(`${API_BASE_URL}/image/user/${userId}/conversations`, {
+  getUserConversations: async (userId)=> {
+    const response=await fetch(`${API_BASE_URL}/image/user/${userId}/conversations`,{
       method: 'GET',
       headers: headers(),
     });
@@ -37,8 +37,8 @@ export const imageAPI = {
   },
 
   // Get Project Settings
-  getProjectSettings: async (imageChatId) => {
-    const response = await fetch(`${API_BASE_URL}/image/project-settings/${imageChatId}`, {
+  getProjectSettings: async (imageChatId)=> {
+    const response=await fetch(`${API_BASE_URL}/image/project-settings/${imageChatId}`,{
       method: 'GET',
       headers: headers(),
     });
@@ -46,8 +46,8 @@ export const imageAPI = {
   },
 
   // Update Project Settings
-  updateProjectSettings: async (imageChatId, settings) => {
-    const response = await fetch(`${API_BASE_URL}/image/project-settings/${imageChatId}`, {
+  updateProjectSettings: async (imageChatId,settings)=> {
+    const response=await fetch(`${API_BASE_URL}/image/project-settings/${imageChatId}`,{
       method: 'PUT',
       headers: headers(),
       body: JSON.stringify(settings),

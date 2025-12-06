@@ -35,7 +35,6 @@ class AuthController {
     async googleLogin(req, res) {
         try {
             const { idToken } = req.body;
-
             if (!idToken) {
                 return { status: 400, json: { error: 'ID token is required' } };
             }
@@ -45,7 +44,6 @@ class AuthController {
                 idToken,
                 audience: process.env.GOOGLE_CLIENT_ID,
             });
-
             const payload = ticket.getPayload();
             const { sub: googleId, email, name, picture } = payload;
 
@@ -100,7 +98,6 @@ class AuthController {
     async sendOTP(req, res) {
         try {
             const { email } = req.body;
-
             if (!email) {
                 return { status: 400, json: { error: 'Email is required' } };
             }
@@ -108,7 +105,7 @@ class AuthController {
             const otp = this.generateOTP();
             const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-            // Log OTP for development
+            //JW: Log OTP for development
             console.log(`\n🔐 OTP for ${email}: ${otp}\n`);
 
             // Find or create user
@@ -128,18 +125,69 @@ class AuthController {
             // Send email via SES
             const emailParams = {
                 Source: this.senderEmail,
-                Destination: { ToAddresses: [email] },
+                Destination: {
+                    ToAddresses: [email]
+                },
                 Message: {
-                    Subject: { Data: 'Your Instapixel Login Code' },
+                    Subject: {
+                        Data: 'Your Velos Verification Code'
+                    },
                     Body: {
                         Html: {
                             Data: `
-                                <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto;">
-                                    <h2>Your Login Code</h2>
-                                    <p style="font-size: 32px; font-weight: bold; color: #4F46E5;">${otp}</p>
-                                    <p>This code expires in 10 minutes.</p>
-                                    <p>If you didn't request this code, please ignore this email.</p>
-                                </div>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Velos Verification Code</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f4f5; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 480px; width: 100%; background-color: #ffffff; border-radius: 24px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); overflow: hidden; margin: 0 20px;">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 48px 40px 0 40px; text-align: center;">
+              <div style="width: 56px; height: 56px; background-color: #000000; border-radius: 16px; margin: 0 auto 24px auto; line-height: 56px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                <span style="color: #ffffff; font-size: 28px; line-height: 56px;">⚡</span>
+              </div>
+              <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; color: #18181b;">Velos</h1>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 40px 40px 40px; text-align: center;">
+              <p style="margin: 0 0 32px 0; font-size: 16px; line-height: 26px; color: #52525b; font-weight: 500;">
+                Welcome back! Use the code below to securely sign in to your account.
+              </p>
+              
+              <div style="background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 20px; padding: 24px 0; margin-bottom: 32px;">
+                <span style="font-family: 'Courier New', Courier, monospace; font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #000000; display: block; line-height: 1;">${otp}</span>
+              </div>
+              
+              <p style="margin: 0; font-size: 14px; color: #a1a1aa; line-height: 20px;">
+                This code will expire in <strong style="color: #71717a;">10 minutes</strong>.<br>If you didn't request this, please ignore this email.
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #fafafa; padding: 24px; text-align: center; border-top: 1px solid #f4f4f5;">
+              <p style="margin: 0; font-size: 12px; color: #d4d4d8; font-weight: 500;">
+                &copy; ${new Date().getFullYear()} Velos AI. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
                             `,
                         },
                     },
@@ -150,7 +198,10 @@ class AuthController {
 
             return {
                 status: 200,
-                json: { success: true, message: 'OTP sent to email' },
+                json: {
+                    success: true,
+                    message: 'OTP sent to email',
+                },
             };
         } catch (error) {
             console.error('Send OTP error:', error);
@@ -164,7 +215,6 @@ class AuthController {
     async verifyOTP(req, res) {
         try {
             const { email, otp } = req.body;
-
             if (!email || !otp) {
                 return { status: 400, json: { error: 'Email and OTP are required' } };
             }
@@ -220,7 +270,6 @@ class AuthController {
     async getProfile(req, res) {
         try {
             const user = await User.findById(req.user.id).select('-otp');
-
             if (!user) {
                 return { status: 404, json: { error: 'User not found' } };
             }

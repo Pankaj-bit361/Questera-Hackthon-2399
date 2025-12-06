@@ -19,7 +19,6 @@ app.get('/test', (req, res) => {
 });
 
 
-
 // Public routes
 app.use('/api/auth', authRouter);
 
