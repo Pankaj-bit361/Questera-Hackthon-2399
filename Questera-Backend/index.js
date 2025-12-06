@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const imageRouter = require('./routes/Image');
 const authRouter = require('./routes/Auth');
+const templateRouter = require('./routes/Template');
 const authMiddleware = require('./middlewares/auth');
 const connectDB = require('./db');
 
@@ -22,13 +23,14 @@ app.use('/api/auth', authRouter);
 
 // Protected routes
 app.use('/api/image', authMiddleware, imageRouter);
+app.use('/api/template', authMiddleware, templateRouter);
 
 // Database connection and Server Start
 const startServer = async () => {
     try {
         // Connect to DB before starting server to prevent buffering timeouts
         await connectDB();
-        
+
         // Only listen when running locally/dev (Vercel handles this automatically)
         if (process.env.NODE_ENV !== 'production') {
             app.listen(port, () => {

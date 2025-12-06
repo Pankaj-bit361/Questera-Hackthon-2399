@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Template Creator - Questera</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .form-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .form-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="file"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 150px;
+            font-family: monospace;
+            resize: vertical;
+        }
+
+        .image-preview {
+            margin-top: 15px;
+            max-width: 300px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .image-preview img {
+            width: 100%;
+            display: block;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .progress.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+        }
+
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f0f8ff;
+            border-radius: 10px;
+            border: 2px solid #667eea;
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .results h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .gallery-item {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+        }
+
+        .gallery-item-info {
+            padding: 15px;
+        }
+
+        .gallery-item-info h3 {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .gallery-item-info p {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .info-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            color: #856404;
+        }
+
+        .info-box li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎨 Template Creator</h1>
+        <p class="subtitle">Create reusable AI image templates with one reference image and multiple prompts</p>
+
+        <div class="info-box">
+            <h3>📋 How it works:</h3>
+            <ul>
+                <li>Upload ONE reference image (the person/subject)</li>
+                <li>Add MULTIPLE prompts (one per line) describing different scenarios</li>
+                <li>The system will generate AI images for each prompt using your reference image</li>
+                <li>All variations are saved as a template that can be reused later</li>
+            </ul>
+        </div>
+
+        <form id="templateForm">
+            <!-- Template Info -->
+            <div class="form-section">
+                <h2>📝 Template Information</h2>
+
+                <div class="form-group">
+                    <label for="templateName">Template Name *</label>
+                    <input type="text" id="templateName" required placeholder="e.g., Professional Headshots">
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <input type="text" id="description" placeholder="Brief description of this template">
+                </div>
+
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <select id="category">
+                        <option value="professional">Professional</option>
+                        <option value="casual">Casual</option>
+                        <option value="artistic">Artistic</option>
+                        <option value="lifestyle">Lifestyle</option>
+                        <option value="seasonal">Seasonal</option>
+                        <option value="fashion">Fashion</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="tags">Tags (comma-separated)</label>
+                    <input type="text" id="tags" placeholder="e.g., business, corporate, linkedin">
+                </div>
+            </div>
+
+            <!-- Reference Image -->
+            <div class="form-section">
+                <h2>📸 Reference Image</h2>
+
+                <div class="form-group">
+                    <label for="referenceImage">Upload Reference Image *</label>
+                    <input type="file" id="referenceImage" accept="image/*" required>
+                    <div id="imagePreview" class="image-preview" style="display: none;">
+                        <img id="previewImg" src="" alt="Preview">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prompts -->
+            <div class="form-section">
+                <h2>✍️ Prompts (One per line)</h2>
+
+                <div class="form-group">
+                    <label for="prompts">Enter Prompts *</label>
+                    <textarea id="prompts" required
+                        placeholder="Create a professional portrait in an office setting&#10;Create a casual portrait outdoors in natural lighting&#10;Create an artistic portrait with dramatic lighting&#10;..."></textarea>
+                    <small style="color: #666;">Each line will generate one variation. Minimum 1 prompt
+                        required.</small>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="form-section">
+                <h2>⚙️ Generation Settings</h2>
+
+                <div class="form-group">
+                    <label for="aspectRatio">Aspect Ratio</label>
+                    <select id="aspectRatio">
+                        <option value="1:1">1:1 (Square)</option>
+                        <option value="16:9">16:9 (Landscape)</option>
+                        <option value="9:16">9:16 (Portrait)</option>
+                        <option value="4:3">4:3 (Classic)</option>
+                        <option value="3:4">3:4 (Classic Portrait)</option>
+                        <option value="auto">Auto</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="imageSize">Image Size</label>
+                    <select id="imageSize">
+                        <option value="2K" selected>2K (Faster, Good for Web)</option>
+                        <option value="4K">4K (Slower, Better Quality)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="style">Style</label>
+                    <select id="style">
+                        <option value="photorealistic" selected>Photorealistic</option>
+                        <option value="artistic">Artistic</option>
+                        <option value="cinematic">Cinematic</option>
+                        <option value="none">None (Natural)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="isPublic">
+                        Make this template public (others can use it)
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn" id="submitBtn">🚀 Create Template</button>
+        </form>
+
+        <!-- Progress -->
+        <div class="progress" id="progress">
+            <h2>⏳ Creating Template...</h2>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
+            </div>
+            <div class="log" id="log"></div>
+        </div>
+
+        <!-- Results -->
+        <div class="results" id="results">
+            <h2>✅ Template Created Successfully!</h2>
+            <div id="resultsInfo"></div>
+            <div class="gallery" id="gallery"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3001/api/template/create';
+        const USER_ID = 'admin'; // Change this to actual user ID
+
+        // Image preview
+        document.getElementById('referenceImage').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('previewImg').src = e.target.result;
+                    document.getElementById('imagePreview').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Form submission
+        document.getElementById('templateForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('submitBtn');
+            const progress = document.getElementById('progress');
+            const results = document.getElementById('results');
+            const log = document.getElementById('log');
+
+            // Reset
+            progress.classList.add('active');
+            results.classList.remove('active');
+            log.innerHTML = '';
+            submitBtn.disabled = true;
+
+            try {
+                // Get form data
+                const templateName = document.getElementById('templateName').value;
+                const description = document.getElementById('description').value;
+                const category = document.getElementById('category').value;
+                const tags = document.getElementById('tags').value.split(',').map(t => t.trim()).filter(t => t);
+                const aspectRatio = document.getElementById('aspectRatio').value;
+                const imageSize = document.getElementById('imageSize').value;
+                const style = document.getElementById('style').value;
+                const isPublic = document.getElementById('isPublic').checked;
+
+                // Get prompts
+                const promptsText = document.getElementById('prompts').value;
+                const prompts = promptsText.split('\n').filter(p => p.trim()).map(p => p.trim());
+
+                if (prompts.length === 0) {
+                    alert('Please enter at least one prompt');
+                    submitBtn.disabled = false;
+                    progress.classList.remove('active');
+                    return;
+                }
+
+                // Get image
+                const imageFile = document.getElementById('referenceImage').files[0];
+                if (!imageFile) {
+                    alert('Please select a reference image');
+                    submitBtn.disabled = false;
+                    progress.classList.remove('active');
+                    return;
+                }
+
+                addLog(`📋 Template: ${templateName}`);
+                addLog(`📸 Reference image: ${imageFile.name}`);
+                addLog(`✍️  Prompts: ${prompts.length} variations`);
+                addLog(`⚙️  Settings: ${imageSize}, ${aspectRatio}, ${style}`);
+                addLog('');
+                addLog('🔄 Converting image to base64...');
+
+                // Convert image to base64
+                const imageBase64 = await fileToBase64(imageFile);
+
+                addLog('✅ Image converted');
+                addLog('🚀 Sending request to server...');
+                addLog('⏳ This may take several minutes...');
+                addLog('');
+
+                // Prepare request
+                const requestBody = {
+                    name: templateName,
+                    description: description || `Template with ${prompts.length} variations`,
+                    category,
+                    referenceImage: {
+                        data: imageBase64,
+                        mimeType: imageFile.type
+                    },
+                    prompts,
+                    aspectRatio,
+                    imageSize,
+                    style,
+                    tags,
+                    isPublic,
+                    createdBy: USER_ID
+                };
+
+                const startTime = Date.now();
+
+                // Make request
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const result = await response.json();
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+
+                if (result.success) {
+                    addLog('');
+                    addLog(`✅ Template created successfully in ${elapsed}s!`);
+                    addLog(`📊 Success: ${result.successCount}/${result.template.variations.length}`);
+                    addLog(`❌ Failed: ${result.failureCount}`);
+
+                    // Show results
+                    displayResults(result);
+                } else {
+                    addLog('');
+                    addLog(`❌ Error: ${result.error}`);
+                    alert(`Error: ${result.error}`);
+                }
+
+            } catch (error) {
+                addLog('');
+                addLog(`❌ Error: ${error.message}`);
+                alert(`Error: ${error.message}`);
+            } finally {
+                submitBtn.disabled = false;
+                updateProgress(100);
+            }
+        });
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function addLog(message) {
+            const log = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function updateProgress(percent) {
+            const fill = document.getElementById('progressFill');
+            fill.style.width = percent + '%';
+            fill.textContent = Math.round(percent) + '%';
+        }
+
+        function displayResults(result) {
+            const results = document.getElementById('results');
+            const resultsInfo = document.getElementById('resultsInfo');
+            const gallery = document.getElementById('gallery');
+
+            results.classList.add('active');
+
+            // Info
+            resultsInfo.innerHTML = `
+                <p><strong>Template ID:</strong> ${result.template._id}</p>
+                <p><strong>Name:</strong> ${result.template.name}</p>
+                <p><strong>Category:</strong> ${result.template.category}</p>
+                <p><strong>Variations:</strong> ${result.successCount} successful, ${result.failureCount} failed</p>
+                <p><strong>Reference Image:</strong> <a href="${result.template.referenceImageUrl}" target="_blank">View</a></p>
+            `;
+
+            // Gallery
+            gallery.innerHTML = '';
+            result.template.variations.forEach((variation, index) => {
+                const item = document.createElement('div');
+                item.className = 'gallery-item';
+                item.innerHTML = `
+                    <img src="${variation.generatedImageUrl}" alt="Variation ${index + 1}">
+                    <div class="gallery-item-info">
+                        <h3>Variation ${index + 1}</h3>
+                        <p>${variation.prompt}</p>
+                    </div>
+                `;
+                gallery.appendChild(item);
+            });
+        }
+    </script>
+</body>
+
+</html>
