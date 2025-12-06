@@ -45,6 +45,7 @@ class AuthController {
                 audience: process.env.GOOGLE_CLIENT_ID,
             });
             const payload = ticket.getPayload();
+            // Fixed typo here: removed 'kq'
             const { sub: googleId, email, name, picture } = payload;
 
             // Find or create user
@@ -105,7 +106,7 @@ class AuthController {
             const otp = this.generateOTP();
             const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-            //JW: Log OTP for development
+            // JW: Log OTP for development
             console.log(`\n🔐 OTP for ${email}: ${otp}\n`);
 
             // Find or create user
@@ -122,7 +123,7 @@ class AuthController {
                 });
             }
 
-            // Send email via SES
+            // Send email via SES with Premium Velos Template
             const emailParams = {
                 Source: this.senderEmail,
                 Destination: {

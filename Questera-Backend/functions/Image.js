@@ -168,7 +168,7 @@ class ImageController {
                     parts,
                 },
             ];
-            
+
             console.log('🤖 [GENERATE] Calling Gemini API...');
             console.time('gemini-api-call');
             
@@ -177,7 +177,6 @@ class ImageController {
                 config,
                 contents,
             });
-            
 
             console.log('📡 [GENERATE] Got stream response, processing chunks...');
 
