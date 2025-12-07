@@ -406,6 +406,97 @@ class TemplateController {
             return { status: 500, json: { error: error.message } };
         }
     }
+
+    /**
+     * Get templates by category
+     */
+    async getTemplatesByCategory(req, res) {
+        try {
+            const { category } = req.params;
+            const templates = await Template.find({ category, isPublic: true })
+                .select('name description category referenceImageUrl variations settings tags createdBy createdAt')
+                .limit(20);
+
+            return {
+                status: 200,
+                json: {
+                    success: true,
+                    count: templates.length,
+                    templates,
+                },
+            };
+        } catch (error) {
+            console.error('Error fetching templates by category:', error);
+            return { status: 500, json: { error: error.message } };
+        }
+    }
+
+    /**
+     * Create template from pre-generated image URLs
+     */
+    async createTemplateFromUrls(req, res) {
+        try {
+            console.log('🎨 [TEMPLATE] Creating template from URLs...');
+
+            const {
+                name,
+                description,
+                category,
+                imageUrls,
+                createdBy,
+                tags,
+                isPublic,
+            } = req.body;
+
+            if (!name || !imageUrls || !createdBy) {
+                return { status: 400, json: { error: 'Name, imageUrls, and createdBy are required' } };
+            }
+
+            if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
+                return { status: 400, json: { error: 'imageUrls must be a non-empty array' } };
+            }
+
+            // Create variations from URLs
+            const variations = imageUrls.map((url, index) => ({
+                generatedImageUrl: url,
+                order: index,
+                prompt: `Generated variation ${index + 1}`,
+            }));
+
+            // Create template
+            const template = await Template.create({
+                name,
+                description,
+                category: category || 'other',
+                referenceImageUrl: imageUrls[0], // Use first image as reference
+                variations,
+                settings: {
+                    aspectRatio: '1:1',
+                    imageSize: '1K',
+                    style: 'none',
+                },
+                isPublic: isPublic || false,
+                createdBy,
+                tags: tags || [],
+                status: 'completed',
+            });
+
+            console.log('✅ [TEMPLATE] Template created from URLs:', template._id);
+
+            return {
+                status: 201,
+                json: {
+                    success: true,
+                    templateId: template._id,
+                    template,
+                },
+            };
+
+        } catch (error) {
+            console.error('❌ [TEMPLATE] Error creating template from URLs:', error);
+            return { status: 500, json: { error: error.message } };
+        }
+    }
 }
 
 module.exports = TemplateController;

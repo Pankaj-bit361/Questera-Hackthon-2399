@@ -25,6 +25,28 @@ templateRouter.get("/", async (req, res) => {
     }
 });
 
+// Get templates by category
+templateRouter.get("/category/:category", async (req, res) => {
+    try {
+        const { status, json } = await templateController.getTemplatesByCategory(req, res);
+        return res.status(status).json(json);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// Create template from generated image URLs
+templateRouter.post("/create-from-urls", async (req, res) => {
+    try {
+        const { status, json } = await templateController.createTemplateFromUrls(req, res);
+        return res.status(status).json(json);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
 // Get a single template by ID
 templateRouter.get("/:id", async (req, res) => {
     try {

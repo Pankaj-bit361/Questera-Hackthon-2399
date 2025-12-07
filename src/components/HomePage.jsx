@@ -8,24 +8,33 @@ import Sidebar from './Sidebar';
 const { FiZap, FiArrowRight, FiUpload, FiGrid, FiImage, FiLayout } = FiIcons;
 
 const TEMPLATE_VARIATIONS = [
-  {
-    id: 1,
-    title: "Cinematic Portrait – White Flower & Bubbles",
-    prompt: "Create a cinematic portrait photo of a young woman with long dark hair styled in loose waves, wearing a pale green knitted sweater. She gently holds a single white flower in both hands, gazing calmly toward the camera with a serene, natural expression. The background is softly blurred, filled with floating soap bubbles, creating a dreamy atmosphere. The diffused luminous lighting adds a fresh airy feel with soft bokeh in greens, silvers, and pastels.",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop"
-  },
-  {
-    id: 2,
-    title: "Golden Hour Garden Portrait",
-    prompt: "Create a warm golden hour portrait of a young woman in a mustard-yellow silk saree with golden motifs. Her hair is tied in a jasmine-decorated bun with silver jhumkas. Soft sunlight enhances rich textures and a modern traditional aesthetic.",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop"
-  },
-  {
-    id: 3,
-    title: "Sunset Palm Vibe",
-    prompt: "Create a peaceful beach portrait of a young woman standing by the shore during a pastel sunset. She wears a black wrap top and high-waisted orange trousers with white palm leaf patterns. Breezy hair, gold jewelry, warm reflective light on wet sand.",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop"
-  },
+  { id: 1, title: "Cinematic Portrait – White Flower & Bubbles", prompt: "Create a cinematic portrait photo of a young woman with long dark hair styled in loose waves, wearing a pale green knitted sweater. She gently holds a single white flower in both hands, gazing calmly toward the camera with a serene, natural expression. The background is softly blurred, filled with floating soap bubbles, creating a dreamy atmosphere. The diffused luminous lighting adds a fresh airy feel with soft bokeh in greens, silvers, and pastels." },
+  { id: 2, title: "Cozy Indoor with Teddy Bears", prompt: "Create a cozy indoor portrait of a young woman with long straight dark hair, sitting cross-legged against a warm mustard-yellow background. She wears a soft blue knitted sweater and white pants, smiling gently while hugging a large pink teddy bear. Two plush teddies — one blue and one peach — sit behind her. Soft even lighting enhances the pastel playful textures and nostalgic comfort." },
+  { id: 3, title: "Sunlit Flowering Vines", prompt: "Create a sunlit outdoor portrait of a young woman standing beside a wall of white and yellow flowering vines. She has long wavy dark hair and wears an off-white sleeveless top tucked into high-waisted cream trousers. She gently touches the flowers while golden-hour sunlight casts soft shadows. The scene feels serene, natural, and organic." },
+  { id: 4, title: "Yellow Dress Summer Vibe", prompt: "Create a stylish outdoor portrait of a young woman leaning against a light-colored wall surrounded by greenery. She wears a bright yellow flowy dress with flutter sleeves and reflective sunglasses. Sunlit bokeh creates a calm summer vibe. Blue and yellow flowers above her add a soft color frame." },
+  { id: 5, title: "Park Lavender Spring", prompt: "Create a natural outdoor portrait of a young woman sitting on a rock in a lush green park. She has long wavy dark hair and a gentle smile. She wears a purple kurti with white floral patterns, blue jeans, and white sneakers. Blooming lavender trees behind her create dreamy spring colors with warm light." },
+  { id: 6, title: "Casual Lifestyle Moment", prompt: "Create a candid indoor lifestyle portrait of a young woman casually smiling at her phone, holding a half-finished iced Starbucks drink. She wears an oversized white t-shirt and black shorts. A laptop rests on her lap. Soft sunlight creates a spontaneous, youthful glow." },
+  { id: 7, title: "Cozy Café Evening", prompt: "Create a warm evening portrait of a young woman sitting at a cozy café decorated with potted flowers and ambient lights. She wears a sleeveless black-and-white patterned dress, smiling gently. Golden bokeh lights and a lively yet intimate atmosphere surround her." },
+  { id: 8, title: "Chic Street Style", prompt: "Create a fashionable portrait of a young woman standing confidently on a sunlit cobblestone street. She wears an off-shoulder white embroidered blouse with lavender details and high-waisted jeans with a bow belt. Her ponytail and sunglasses give a chic travel style under warm daylight." },
+  { id: 9, title: "Serene Beach Turquoise", prompt: "Create a serene beach portrait of a young woman sitting on soft white sand near turquoise water. She wears a flowing pastel mint-green dress with thin straps. Her wavy hair blows in the breeze as she gazes toward the horizon in warm afternoon light." },
+  { id: 10, title: "Romantic Sunset Field", prompt: "Create a romantic outdoor portrait of a young woman sitting on a lush green field at sunset. She wears a long black off-shoulder dress with red cherry patterns and holds a small bouquet of red flowers. A chic red handbag lies beside her. Warm light enhances red-green harmony." },
+  { id: 11, title: "Dramatic B&W Studio", prompt: "Create a dramatic black-and-white studio portrait of a young woman in an oversized white shirt with one shoulder exposed. Intense yet calm expression. Strong contrast lighting with geometric shadows. Minimalist, elegant, editorial style." },
+  { id: 12, title: "Urban Brick Wall", prompt: "Create a lively street portrait of a young woman sitting on a bench against a red brick wall with graffiti. She smiles brightly, wearing a black leather jacket, floral black skirt, black boots, and sunglasses on her head. Soft daylight and shallow depth of field give an urban vibe." },
+  { id: 13, title: "Neon Modern Aesthetic", prompt: "Create a trendy indoor portrait of a young woman posed inside a circular neon frame decorated with hanging vines. She wears a rose-pink ribbed sweater, white high-waisted trousers, and chunky sneakers. Warm and teal lighting mix for a cinematic modern look." },
+  { id: 14, title: "Dreamy Cloud Heart", prompt: "Create a dreamy outdoor portrait of a young woman in a white sweater with yellow flowers, eyes closed and smiling peacefully. A perfect heart-shaped cloud floats above her head. Gentle sunlight and clear blue sky evoke calm, joy, and playful romance." },
+  { id: 15, title: "Tropical Swing Paradise", prompt: "Create a cheerful terrace portrait of a young woman sitting on a hanging swing chair surrounded by tropical plants and pink bougainvillea. She wears a floral maxi skirt and white sleeveless top. Ocean view in the distance, soft golden light, breezy summer charm." },
+  { id: 16, title: "Stone Fountain Serenity", prompt: "Create a serene outdoor portrait of a young woman sitting in front of an old stone fountain surrounded by greenery. She wears a white sleeveless top, flowing royal-blue skirt, and minimal accessories. Warm golden-hour glow enhances rustic charm." },
+  { id: 17, title: "Confident Street Style", prompt: "Create a stylish street portrait of a young woman leaning against a textured beige wall. She wears a cropped black top, loose navy jeans, a red-white-blue bomber jacket, and white sneakers. Hands in pockets, confident expression. Soft daylight with autumn leaves on the pavement." },
+  { id: 18, title: "Moody Café Thoughts", prompt: "Create a moody cinematic portrait of a young woman sitting at a rustic café table, face resting on hands. She wears a fitted light beige ribbed sweater. Soft window light and warm bokeh background create intimate, thoughtful vibes." },
+  { id: 19, title: "Mirror Selfie Romance", prompt: "Create a softly lit mirror selfie of a young woman wearing a cream corset top with pink rose prints. Long wavy hair, henna on her hand as she tucks hair back. Warm light and blurred background add romantic elegance." },
+  { id: 20, title: "White Roses Elegance", prompt: "Create a sophisticated indoor portrait of a young woman holding a bouquet of white roses and baby's breath. She wears a white off-shoulder satin blouse with puff sleeves and a high-waisted black skirt. Glowing hanging lights blur behind her for a cinematic atmosphere." },
+  { id: 21, title: "Beach Straw Hat Elegance", prompt: "Create a radiant beach portrait of a young woman in an off-shoulder white eyelet dress and wide straw hat. Intricate gold butterfly earrings. Blue sky and ocean in soft blur behind her. Natural golden lighting adds summer elegance." },
+  { id: 22, title: "Daisy Field Dreams", prompt: "Create a tranquil countryside portrait of a young woman standing in a blooming daisy field under a clear blue sky. She wears a royal-blue sweater with shoulder ruffles and holds a big bouquet of daisies. Soft breeze, bright sunlight, dreamy bokeh." },
+  { id: 23, title: "Taj Mahal Travel", prompt: "Create a travel portrait of a young woman posing calmly on a sandstone balcony overlooking the Taj Mahal. She wears a white crop top and black skirt with turquoise embroidery, plus sunglasses. Pigeons in flight add motion to the iconic backdrop." },
+  { id: 24, title: "Bougainvillea Romance", prompt: "Create a serene outdoor portrait of a young woman standing beneath colorful bougainvillea in pink, blue, and yellow. She wears a sleeveless floral dress and stylish round sunglasses. Soft filtered sunlight adds golden warmth and romantic charm." },
+  { id: 25, title: "Ethnic Red Top Warmth", prompt: "Create a soft outdoor portrait of a young woman in a red ethnic printed top with silver jhumka earrings. Long hair flowing, arms loosely folded, warm genuine smile. Sunlight forms a golden rim light against blurred greenery." },
+  { id: 26, title: "Golden Saree Tradition", prompt: "Create a radiant portrait of a young woman in a mustard-yellow silk saree with golden motifs. Her hair is tied in a jasmine-decorated bun with silver jhumkas. Soft sunlight enhances rich textures and a modern traditional aesthetic." },
+  { id: 27, title: "Sunset Palm Vibe", prompt: "Create a peaceful beach portrait of a young woman standing by the shore during a pastel sunset. She wears a black wrap top and high-waisted orange trousers with white palm leaf patterns. Breezy hair, gold jewelry, warm reflective light on wet sand." },
 ];
 
 const HomePage = () => {
@@ -51,6 +60,40 @@ const HomePage = () => {
   const handleTemplateClick = (template) => {
     setPrompt(template.prompt);
     setSelectedTemplate(template.id);
+  };
+
+  const saveAsTemplate = async (templateName) => {
+    if (!templateName.trim()) {
+      alert('Please enter a template name');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:3001/api/template/create-from-urls', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: 'u-241a712b-e27d-4b7c-b0fb-764d95fb4f3d',
+          name: templateName,
+          description: prompt,
+          category: 'portrait',
+          imageUrls: [], // Will be populated with generated images
+          createdBy: 'u-241a712b-e27d-4b7c-b0fb-764d95fb4f3d',
+          isPublic: true,
+        }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert(`✅ Template "${templateName}" saved successfully!`);
+      } else {
+        alert(`❌ Error: ${result.error}`);
+      }
+    } catch (error) {
+      alert(`❌ Error saving template: ${error.message}`);
+    }
   };
 
   return (
