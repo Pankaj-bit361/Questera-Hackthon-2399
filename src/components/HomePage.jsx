@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import Sidebar from './Sidebar';
+import InstagramConnect from './InstagramConnect';
 
 const { FiZap, FiArrowRight, FiUpload, FiGrid, FiImage, FiLayout } = FiIcons;
 
@@ -251,6 +252,16 @@ const HomePage = () => {
               <SafeIcon icon={FiImage} className="w-4 h-4" />
               Upload Image
             </button>
+          </motion.div>
+
+          {/* Instagram Connect Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="pt-8 border-t border-white/10"
+          >
+            <InstagramConnect userId="u-241a712b-e27d-4b7c-b0fb-764d95fb4f3d" />
           </motion.div>
         </div>
 
