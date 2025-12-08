@@ -4,6 +4,7 @@ const cors = require('cors');
 const imageRouter = require('./routes/Image');
 const authRouter = require('./routes/Auth');
 const templateRouter = require('./routes/Template');
+const instagramRouter = require('./routes/Instagram');
 const authMiddleware = require('./middlewares/auth');
 const connectDB = require('./db');
 
@@ -31,6 +32,7 @@ app.use('/api/auth', authRouter);
 // Protected routes
 app.use('/api/image', imageRouter);
 app.use('/api/template', templateRouter);
+app.use('/api/instagram', instagramRouter);
 
 // Database connection and Server Start
 const startServer = async () => {
