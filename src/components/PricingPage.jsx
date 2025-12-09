@@ -5,7 +5,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { creditsAPI } from '../lib/api';
 
-const { FiCheck, FiX, FiChevronLeft, FiZap, FiStar, FiTrendingUp, FiAward, FiLoader } = FiIcons;
+const { FiCheck, FiX, FiChevronLeft, FiZap, FiStar, FiTrendingUp, FiArrowRight, FiLoader, FiShield } = FiIcons;
 
 const FEATURES_MAP = {
   free: [
@@ -37,49 +37,47 @@ const FEATURES_MAP = {
     "Dedicated account manager",
     "Custom model fine-tuning",
     "Unlimited storage",
-    "Team collaboration features"
+    "Team collaboration"
   ]
 };
 
-const PLAN_STYLES = {
-  free: {
-    gradient: "from-zinc-700 to-zinc-900",
-    border: "border-zinc-700",
-    glow: "group-hover:shadow-zinc-500/20",
-    badge: null
-  },
-  launch: {
-    gradient: "from-blue-600 to-indigo-700",
-    border: "border-blue-500/50",
-    glow: "group-hover:shadow-blue-500/40",
-    badge: "Starter Choice"
-  },
-  standard: {
-    gradient: "from-purple-600 to-pink-600",
-    border: "border-purple-500/50",
-    glow: "group-hover:shadow-purple-500/50",
-    badge: "Most Popular"
-  },
-  scale: {
-    gradient: "from-amber-500 to-orange-600",
-    border: "border-amber-500/50",
-    glow: "group-hover:shadow-amber-500/40",
-    badge: "Best Value"
+// Simplified, premium styling logic
+const getPlanStyles = (key) => {
+  if (key === 'standard') {
+    return {
+      container: "bg-[#18181b] border-white/10 ring-1 ring-white/20 shadow-[0_0_50px_-12px_rgba(120,50,255,0.2)]",
+      button: "bg-white text-black hover:bg-zinc-200",
+      badge: "bg-white text-black",
+      icon: "text-white"
+    };
   }
+  if (key === 'scale') {
+    return {
+      container: "bg-[#09090b] border-white/5 hover:border-white/10",
+      button: "bg-zinc-800 text-white hover:bg-zinc-700 border border-white/5",
+      badge: "bg-zinc-800 text-zinc-300 border border-white/10",
+      icon: "text-amber-400"
+    };
+  }
+  return {
+    container: "bg-[#09090b] border-white/5 hover:border-white/10",
+    button: "bg-[#18181b] text-white hover:bg-zinc-800 border border-white/5",
+    badge: null,
+    icon: "text-zinc-500"
+  };
 };
 
 const PricingPage = () => {
   const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [billingCycle, setBillingCycle] = useState('monthly'); // visual toggle only for now
+  const [billingCycle, setBillingCycle] = useState('monthly');
 
   useEffect(() => {
     const fetchPlans = async () => {
       try {
         const response = await creditsAPI.getPlans();
         if (response.success) {
-          // Sort plans by price
           const sortedPlans = response.plans.sort((a, b) => a.price - b.price);
           setPlans(sortedPlans);
         }
@@ -93,180 +91,159 @@ const PricingPage = () => {
   }, []);
 
   const handleSubscribe = (plan) => {
-    // Placeholder for payment integration
-    console.log("Subscribe to:", plan);
-    // You would typically redirect to a payment gateway or open a modal here
     alert(`Redirecting to payment for ${plan.name}... (Integration required)`);
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <SafeIcon icon={FiLoader} className="w-8 h-8 text-white animate-spin" />
+        <SafeIcon icon={FiLoader} className="w-6 h-6 text-zinc-500 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans overflow-x-hidden selection:bg-purple-500/30">
-      {/* Ambient Background */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-900/10 rounded-full blur-[120px]" />
+    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-white/20">
+      
+      {/* Subtle Gradient Background */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-gradient-to-b from-white/5 to-transparent blur-[120px] rounded-full opacity-20" />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+        
         {/* Header */}
-        <header className="flex items-center justify-between mb-16">
+        <header className="flex items-center justify-between mb-24">
           <button 
             onClick={() => navigate('/home')}
-            className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors group"
+            className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors text-sm font-medium group"
           >
-            <div className="p-2 rounded-full bg-white/5 group-hover:bg-white/10 transition-colors">
-              <SafeIcon icon={FiChevronLeft} className="w-5 h-5" />
-            </div>
-            <span className="font-medium">Back to Home</span>
+            <SafeIcon icon={FiChevronLeft} className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            Back
           </button>
           
-          <div className="flex items-center gap-2">
-             <div className="w-8 h-8 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20">
-                <SafeIcon icon={FiZap} className="text-white w-4 h-4" />
+          <div className="flex items-center gap-2.5">
+             <div className="w-6 h-6 bg-white rounded flex items-center justify-center">
+                <SafeIcon icon={FiZap} className="text-black w-3.5 h-3.5" />
              </div>
-             <span className="font-bold text-xl tracking-tight">Velos Premium</span>
+             <span className="font-bold text-lg tracking-tight">Velos Pro</span>
           </div>
         </header>
 
-        {/* Hero Section */}
-        <div className="text-center max-w-3xl mx-auto mb-20">
+        {/* Hero */}
+        <div className="text-center max-w-2xl mx-auto mb-20">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight"
+            className="text-4xl md:text-6xl font-bold mb-6 tracking-tight"
           >
-            Unlock your <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-zinc-400">
-              creative potential
-            </span>
+            Simple, transparent <br />
+            <span className="text-zinc-500">pricing for creators.</span>
           </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-zinc-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed"
-          >
-            Choose the perfect plan to fuel your imagination. Generate stunning visuals with higher limits, faster speeds, and exclusive features.
-          </motion.p>
-
-          {/* Billing Toggle (Visual Only) */}
+          
+          {/* Billing Switch */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mt-10 inline-flex items-center p-1 bg-white/5 rounded-full border border-white/10 backdrop-blur-md"
+            transition={{ delay: 0.1 }}
+            className="inline-flex items-center p-1 bg-[#18181b] rounded-full border border-white/5"
           >
             <button 
               onClick={() => setBillingCycle('monthly')}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 ${billingCycle === 'monthly' ? 'bg-white text-black shadow-lg' : 'text-zinc-400 hover:text-white'}`}
+              className={`px-5 py-2 rounded-full text-xs font-semibold transition-all ${billingCycle === 'monthly' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}
             >
               Monthly
             </button>
             <button 
               onClick={() => setBillingCycle('yearly')}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 ${billingCycle === 'yearly' ? 'bg-white text-black shadow-lg' : 'text-zinc-400 hover:text-white'}`}
+              className={`px-5 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 ${billingCycle === 'yearly' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}
             >
-              Yearly <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30">-20%</span>
+              Yearly <span className="text-[9px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20">-20%</span>
             </button>
           </motion.div>
         </div>
 
         {/* Plans Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 relative">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {plans.map((plan, index) => {
-            const styles = PLAN_STYLES[plan.key] || PLAN_STYLES.free;
+            const styles = getPlanStyles(plan.key);
             const features = FEATURES_MAP[plan.key] || FEATURES_MAP.free;
-            const isPopular = plan.key === 'standard';
+            const isStandard = plan.key === 'standard';
 
             return (
               <motion.div
                 key={plan.key}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 + 0.3 }}
-                className={`relative group flex flex-col p-6 rounded-3xl border bg-[#1c1c1e] transition-all duration-500 hover:-translate-y-2 ${styles.border} ${styles.glow} shadow-2xl hover:shadow-2xl`}
+                transition={{ delay: index * 0.1 + 0.2 }}
+                className={`relative flex flex-col p-6 rounded-3xl border transition-all duration-300 ${styles.container}`}
               >
-                {/* Popular Badge */}
-                {styles.badge && (
-                  <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-white shadow-lg bg-gradient-to-r ${styles.gradient}`}>
-                    {styles.badge}
+                {/* Badge */}
+                {isStandard && (
+                  <div className="absolute -top-3 right-6 px-3 py-1 bg-white text-black text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg shadow-white/10">
+                    Most Popular
                   </div>
                 )}
 
-                {/* Header */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-zinc-300 mb-2 uppercase tracking-widest text-xs">{plan.name}</h3>
+                <div className="mb-8">
+                  <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">{plan.name}</h3>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-white">${plan.price}</span>
-                    <span className="text-zinc-500 text-sm">/month</span>
+                    <span className="text-3xl font-bold text-white">${plan.price}</span>
+                    <span className="text-zinc-500 text-sm">/mo</span>
                   </div>
-                  <div className="mt-4 flex items-center gap-2 text-sm text-zinc-300 bg-white/5 p-3 rounded-xl border border-white/5">
-                    <SafeIcon icon={FiZap} className="w-4 h-4 text-yellow-400" />
-                    <span className="font-bold text-white">{plan.credits}</span> Credits / mo
+                  <div className="mt-4 flex items-center gap-2 text-xs text-zinc-300">
+                    <SafeIcon icon={FiZap} className={`w-3.5 h-3.5 ${styles.icon}`} />
+                    <span><strong className="text-white">{plan.credits}</strong> credits monthly</span>
                   </div>
                 </div>
 
-                {/* Divider */}
-                <div className="h-px w-full bg-white/5 mb-6" />
-
-                {/* Features */}
-                <div className="flex-1 space-y-4 mb-8">
+                {/* Features List */}
+                <div className="flex-1 space-y-3 mb-8">
                   {features.map((feature, i) => (
-                    <div key={i} className="flex items-start gap-3 text-sm text-zinc-400 group-hover:text-zinc-300 transition-colors">
-                      <div className={`mt-0.5 w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 bg-white/5 group-hover:bg-white/10`}>
-                        <SafeIcon icon={FiCheck} className={`w-2.5 h-2.5 ${plan.key === 'free' ? 'text-zinc-500' : 'text-white'}`} />
-                      </div>
-                      {feature}
+                    <div key={i} className="flex items-start gap-3 text-xs text-zinc-400">
+                      <SafeIcon icon={FiCheck} className="w-3.5 h-3.5 text-white flex-shrink-0 mt-0.5" />
+                      <span className="leading-relaxed">{feature}</span>
                     </div>
                   ))}
                 </div>
 
-                {/* Action Button */}
                 <button
                   onClick={() => handleSubscribe(plan)}
-                  className={`w-full py-4 rounded-xl font-bold text-sm transition-all duration-300 relative overflow-hidden group/btn ${
-                    plan.key === 'free' 
-                      ? 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
-                      : `bg-gradient-to-r ${styles.gradient} text-white shadow-lg`
-                  }`}
+                  className={`w-full py-3 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center justify-center gap-2 ${styles.button}`}
                 >
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    {plan.key === 'free' ? 'Current Plan' : 'Get Started'}
-                    {plan.key !== 'free' && <SafeIcon icon={FiIcons.FiArrowRight} className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />}
-                  </span>
-                  {plan.key !== 'free' && (
-                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300" />
-                  )}
+                  {plan.key === 'free' ? 'Current Plan' : 'Subscribe'}
+                  {plan.key !== 'free' && <SafeIcon icon={FiArrowRight} className="w-3.5 h-3.5" />}
                 </button>
               </motion.div>
             );
           })}
         </div>
 
-        {/* FAQ / Trust Section */}
+        {/* Enterprise / Footer */}
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="mt-32 text-center border-t border-white/5 pt-16"
+          transition={{ delay: 0.6 }}
+          className="mt-20 pt-10 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6"
         >
-          <p className="text-zinc-500 text-sm mb-6 uppercase tracking-widest">Trusted by creators worldwide</p>
-          <div className="flex flex-wrap justify-center gap-8 md:gap-16 opacity-40 grayscale">
-             {/* Placeholder Logos */}
-             <div className="text-2xl font-bold">ACME Corp</div>
-             <div className="text-2xl font-bold">GlobalDesign</div>
-             <div className="text-2xl font-bold">NextGen</div>
-             <div className="text-2xl font-bold">Visionary</div>
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-[#18181b] flex items-center justify-center border border-white/5">
+              <SafeIcon icon={FiShield} className="w-4 h-4 text-zinc-400" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-white">Enterprise Security</h4>
+              <p className="text-xs text-zinc-500">SOC2 compliant data handling for teams.</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-8 opacity-30 grayscale mix-blend-screen">
+             {/* Simple text logos for aesthetic */}
+             <span className="font-bold text-lg tracking-widest">ACME</span>
+             <span className="font-bold text-lg tracking-widest">LAYER</span>
+             <span className="font-bold text-lg tracking-widest">CHEX</span>
           </div>
         </motion.div>
+
       </div>
     </div>
   );
