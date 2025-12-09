@@ -4,6 +4,8 @@ const { v4: uuidv4 } = require('uuid');
 const Image = require('../models/image');
 const ImageMessage = require('../models/imageMessage');
 const { ASPECT_RATIOS, IMAGE_SIZES, STYLES } = require('../enums/imageEnums');
+const CreditsController = require('./Credits');
+const creditsController = new CreditsController();
 
 // Default project settings
 const DEFAULT_PROJECT_SETTINGS = {
@@ -57,12 +59,14 @@ class ImageController {
 
             const {
                 prompt,
+                originalMessage, // Original user message (before enhancement) for UI display
                 userId,
                 imageChatId,
                 images,
                 aspectRatio: aspectRatioOverride,
                 imageSize: imageSizeOverride,
                 style: styleOverride,
+                viralContent, // Viral content (hashtags, description) from orchestrator
             } = req.body;
 
             if (!prompt) {
@@ -71,6 +75,22 @@ class ImageController {
             if (!userId) {
                 return { status: 400, json: { error: 'User ID is required' } };
             }
+
+            // Check if user has enough credits
+            console.log('💳 [GENERATE] Checking credits for user:', userId);
+            const hasCredits = await creditsController.hasCredits(userId, 1);
+            if (!hasCredits) {
+                console.log('❌ [GENERATE] Insufficient credits for user:', userId);
+                return {
+                    status: 402, // Payment Required
+                    json: {
+                        error: 'Insufficient credits',
+                        code: 'INSUFFICIENT_CREDITS',
+                        message: 'You don\'t have enough credits. Please upgrade your plan or wait for your credits to reset.',
+                    }
+                };
+            }
+            console.log('✅ [GENERATE] Credit check passed');
 
             console.log('📋 [GENERATE] Prompt:', prompt);
             console.log('📋 [GENERATE] Overrides:', { aspectRatioOverride, imageSizeOverride, styleOverride });
@@ -229,10 +249,12 @@ class ImageController {
             const messageId = 'm' + uuidv4();
 
             console.log('💾 [GENERATE] Saving user message...');
+            // Use originalMessage if provided, otherwise fall back to prompt
+            const displayMessage = originalMessage || prompt;
             const userMessage = await ImageMessage.create({
                 role: 'user',
                 userId,
-                content: prompt,
+                content: displayMessage, // Save original user message, not enhanced prompt
                 referenceImages: referenceImageUrls,
                 imageChatId: chatId,
                 messageId: 'm-' + uuidv4(),
@@ -247,6 +269,7 @@ class ImageController {
                 imageUrl: generatedImages.length > 0 ? generatedImages[0].url : null,
                 imageChatId: chatId,
                 messageId: 'm-' + uuidv4(),
+                viralContent: viralContent || null, // Save viral content for Instagram posts
             });
             console.log('✅ [GENERATE] Assistant message saved');
 
@@ -278,6 +301,16 @@ class ImageController {
                 console.log('✅ [GENERATE] Conversation updated');
             }
 
+            // Deduct credit after successful generation
+            console.log('💳 [GENERATE] Deducting 1 credit...');
+            const creditResult = await creditsController.deductCredits(
+                userId,
+                1,
+                chatId,
+                `Image generation: ${displayMessage.substring(0, 50)}...`
+            );
+            console.log('💳 [GENERATE] Credit deducted. Remaining balance:', creditResult.balance);
+
             console.log('🎉 [GENERATE] Complete! Returning response...');
             return {
                 status: 200,
@@ -290,6 +323,7 @@ class ImageController {
                     textResponse,
                     userMessage,
                     assistantMessage,
+                    creditsRemaining: creditResult.balance,
                 },
             };
 
@@ -579,6 +613,74 @@ class ImageController {
                 status: 500,
                 json: { error: error.message },
             };
+        }
+    }
+
+    /**
+     * Delete a specific message from a conversation
+     */
+    async deleteMessage(req, res) {
+        try {
+            const { messageId } = req.params;
+
+            if (!messageId) {
+                return { status: 400, json: { error: 'messageId is required' } };
+            }
+
+            // Find and delete the message
+            const message = await ImageMessage.findOneAndDelete({ messageId });
+
+            if (!message) {
+                return { status: 404, json: { error: 'Message not found' } };
+            }
+
+            // Also remove from the Image document's messages array
+            await Image.updateOne(
+                { imageChatId: message.imageChatId },
+                { $pull: { messages: message._id } }
+            );
+
+            console.log(`🗑️ [DELETE] Deleted message: ${messageId}`);
+            return { status: 200, json: { success: true, messageId } };
+        } catch (error) {
+            console.error('Error deleting message:', error);
+            return { status: 500, json: { error: error.message } };
+        }
+    }
+
+    /**
+     * Delete an entire conversation and all its messages
+     */
+    async deleteConversation(req, res) {
+        try {
+            const { imageChatId } = req.params;
+
+            if (!imageChatId) {
+                return { status: 400, json: { error: 'imageChatId is required' } };
+            }
+
+            // Delete all messages in the conversation
+            const deletedMessages = await ImageMessage.deleteMany({ imageChatId });
+
+            // Delete the conversation itself
+            const conversation = await Image.findOneAndDelete({ imageChatId });
+
+            if (!conversation) {
+                return { status: 404, json: { error: 'Conversation not found' } };
+            }
+
+            console.log(`🗑️ [DELETE] Deleted conversation: ${imageChatId} (${deletedMessages.deletedCount} messages)`);
+            return {
+                status: 200,
+                json: {
+                    success: true,
+                    imageChatId,
+                    deletedMessagesCount: deletedMessages.deletedCount
+                }
+            };
+        } catch (error) {
+            console.error('Error deleting conversation:', error);
+            return { status: 500, json: { error: error.message } };
         }
     }
 }

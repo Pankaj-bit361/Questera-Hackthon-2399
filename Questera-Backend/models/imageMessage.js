@@ -26,6 +26,24 @@ const imageMessageSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true
+    },
+    // Viral content for Instagram posts
+    viralContent: {
+        title: String,
+        hook: String,
+        description: String,
+        shortCaption: String,
+        callToAction: String,
+        hashtags: {
+            primary: [String],
+            secondary: [String],
+            niche: [String],
+            branded: [String]
+        },
+        hashtagString: String,
+        bestPostingTimes: [String],
+        viralScore: Number,
+        viralTips: [String]
     }
 },
     { timestamps: true }

@@ -5,6 +5,8 @@ const imageRouter = require('./routes/Image');
 const authRouter = require('./routes/Auth');
 const templateRouter = require('./routes/Template');
 const instagramRouter = require('./routes/Instagram');
+const chatRouter = require('./routes/Chat');
+const creditsRouter = require('./routes/Credits');
 const authMiddleware = require('./middlewares/auth');
 const connectDB = require('./db');
 
@@ -33,6 +35,8 @@ app.use('/api/auth', authRouter);
 app.use('/api/image', imageRouter);
 app.use('/api/template', templateRouter);
 app.use('/api/instagram', instagramRouter);
+app.use('/api/chat', chatRouter); // Smart AI Chat & Image Generation
+app.use('/api/credits', creditsRouter); // Credits & Subscription Management
 
 // Database connection and Server Start
 const startServer = async () => {
