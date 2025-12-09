@@ -144,4 +144,3 @@ const InstagramConnect = ({ userId }) => {
 };
 
 export default InstagramConnect;
-

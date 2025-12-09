@@ -56,4 +56,3 @@ referenceAssetSchema.index({ userId: 1, type: 1, isActive: 1 });
 referenceAssetSchema.index({ userId: 1, profileId: 1, type: 1 });
 
 module.exports = mongoose.model('ReferenceAsset', referenceAssetSchema);
-

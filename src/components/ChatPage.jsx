@@ -292,17 +292,18 @@ const ChatPage = () => {
           viralContent: chatResponse.viralContent,
         };
         setMessages(prev => [...prev, aiMsg]);
+        
+        // Update credits after successful generation (Moved inside the block where data is defined)
+        if (data.creditsRemaining !== undefined) {
+          setCredits(prev => ({ ...prev, balance: data.creditsRemaining }));
+        } else {
+          fetchCredits(); // Fallback: fetch fresh credits
+        }
       }
 
       setMessageOverrides({ aspectRatio: null, imageSize: null, style: null });
       setReferenceImages([]);
 
-      // Update credits after successful generation
-      if (data.creditsRemaining !== undefined) {
-        setCredits(prev => ({ ...prev, balance: data.creditsRemaining }));
-      } else {
-        fetchCredits(); // Fallback: fetch fresh credits
-      }
     } catch (error) {
       console.error('Failed to generate:', error);
       // Fallback to direct image generation if smart chat fails

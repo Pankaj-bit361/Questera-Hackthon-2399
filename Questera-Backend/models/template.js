@@ -78,4 +78,3 @@ templateSchema.index({ createdBy: 1 });
 templateSchema.index({ tags: 1 });
 
 module.exports = mongoose.model('Template', templateSchema);
-

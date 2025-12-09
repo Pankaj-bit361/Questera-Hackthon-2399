@@ -266,4 +266,3 @@ class MemoryService {
 }
 
 module.exports = MemoryService;
-

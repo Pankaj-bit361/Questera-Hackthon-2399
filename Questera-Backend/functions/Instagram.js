@@ -590,4 +590,3 @@ class InstagramController {
 }
 
 module.exports = InstagramController;
-

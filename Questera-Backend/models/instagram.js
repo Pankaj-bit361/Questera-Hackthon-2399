@@ -92,4 +92,3 @@ const instagramSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model('Instagram', instagramSchema);
-

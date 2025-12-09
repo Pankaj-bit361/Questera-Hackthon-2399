@@ -331,4 +331,3 @@ class CreditsController {
 }
 
 module.exports = CreditsController;
-

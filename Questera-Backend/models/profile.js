@@ -61,4 +61,3 @@ const profileSchema = new mongoose.Schema({
 profileSchema.index({ userId: 1, isActive: 1 });
 
 module.exports = mongoose.model('Profile', profileSchema);
-

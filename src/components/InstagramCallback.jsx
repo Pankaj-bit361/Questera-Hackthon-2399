@@ -132,4 +132,3 @@ const InstagramCallback = () => {
 };
 
 export default InstagramCallback;
-

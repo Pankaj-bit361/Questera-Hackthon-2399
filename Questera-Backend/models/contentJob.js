@@ -139,4 +139,3 @@ contentJobSchema.index({ userId: 1, status: 1 });
 contentJobSchema.index({ userId: 1, type: 1, createdAt: -1 });
 
 module.exports = mongoose.model('ContentJob', contentJobSchema);
-

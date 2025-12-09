@@ -264,4 +264,3 @@ const InstagramIntegration = ({ userId }) => {
 };
 
 export default InstagramIntegration;
-

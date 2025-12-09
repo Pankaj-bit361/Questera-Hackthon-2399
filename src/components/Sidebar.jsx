@@ -5,10 +5,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { imageAPI } from '../lib/api';
 
-const {
-  FiPlus, FiSearch, FiMessageSquare, FiGift, FiSettings,
-  FiLogOut, FiX
-} = FiIcons;
+const { FiPlus, FiSearch, FiMessageSquare, FiTrendingUp, FiSettings, FiLogOut, FiX } = FiIcons;
 
 const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
   const navigate = useNavigate();
@@ -21,7 +18,6 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     setUser(userData);
-
     if (userData.userId) {
       fetchChats(userData.userId);
     }
@@ -29,7 +25,7 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
 
   const fetchChats = async (userId) => {
     try {
-      // FIX: Response is the JSON object itself, not wrapped in { data }
+      // FIX: Response is the JSON object itself, not wrapped in {data}
       const response = await imageAPI.getUserConversations(userId);
       setChats(response.conversations || []);
     } catch (error) {
@@ -108,13 +104,13 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
                     <button
                       key={chat.imageChatId}
                       onClick={() => handleChatClick(chat.imageChatId)}
-                      className={`w-full flex items-center gap-3 px-3 py-3 text-sm rounded-xl transition-all text-left group relative overflow-hidden ${location.pathname.includes(chat.imageChatId)
+                      className={`w-full flex items-center gap-3 px-3 py-3 text-sm rounded-xl transition-all text-left group relative overflow-hidden ${
+                        location.pathname.includes(chat.imageChatId)
                           ? 'bg-[#1c1c1e] text-white border border-white/5 shadow-md'
                           : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#1c1c1e]/50 border border-transparent'
-                        }`}
+                      }`}
                     >
-                      <SafeIcon icon={FiMessageSquare} className={`w-4 h-4 flex-shrink-0 ${location.pathname.includes(chat.imageChatId) ? 'text-white' : 'text-zinc-600 group-hover:text-zinc-400'
-                        }`} />
+                      <SafeIcon icon={FiMessageSquare} className={`w-4 h-4 flex-shrink-0 ${location.pathname.includes(chat.imageChatId) ? 'text-white' : 'text-zinc-600 group-hover:text-zinc-400'}`} />
                       <span className="truncate font-medium relative z-10">
                         {chat.name || chat.title || 'Untitled Chat'}
                       </span>
@@ -134,16 +130,20 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
 
           {/* Bottom Menu */}
           <div className="p-4 space-y-1 border-t border-white/5 bg-[#09090b]">
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-zinc-400 hover:text-white hover:bg-[#1c1c1e] rounded-xl transition-colors">
-              <SafeIcon icon={FiGift} className="w-4 h-4 text-emerald-400" />
-              Get free tokens
+            <button 
+              onClick={() => navigate('/pricing')}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 hover:border-purple-500/50 rounded-xl transition-all group"
+            >
+              <SafeIcon icon={FiTrendingUp} className="w-4 h-4 text-purple-400 group-hover:text-purple-300" />
+              <span className="font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">Upgrade Plan</span>
             </button>
             <button
               onClick={() => navigate('/settings')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl transition-colors ${location.pathname === '/settings'
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl transition-colors ${
+                location.pathname === '/settings'
                   ? 'bg-[#1c1c1e] text-white border border-white/5'
                   : 'text-zinc-400 hover:text-white hover:bg-[#1c1c1e]'
-                }`}
+              }`}
             >
               <SafeIcon icon={FiSettings} className="w-4 h-4" />
               Settings

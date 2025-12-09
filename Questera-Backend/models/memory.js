@@ -56,4 +56,3 @@ memorySchema.index({ userId: 1, type: 1, importance: -1 });
 memorySchema.index({ userId: 1, profileId: 1 });
 
 module.exports = mongoose.model('Memory', memorySchema);
-

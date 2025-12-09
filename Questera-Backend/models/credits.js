@@ -148,4 +148,3 @@ creditsSchema.statics.getPlanByRazorpayId = function (razorpayPlanId) {
 module.exports = mongoose.model('Credits', creditsSchema);
 module.exports.PLAN_CONFIG = PLAN_CONFIG;
 module.exports.TRANSACTION_TYPES = TRANSACTION_TYPES;
-

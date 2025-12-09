@@ -70,4 +70,3 @@ instagramRouter.post('/refresh-token', async (req, res) => {
 });
 
 module.exports = instagramRouter;
-
