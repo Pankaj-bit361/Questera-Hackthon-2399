@@ -1,14 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const InstagramCallback = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState('processing');
   const [message, setMessage] = useState('Connecting your Instagram account...');
+  const hasCalledRef = useRef(false); // Prevent duplicate calls
 
   useEffect(() => {
+    // Only call once - prevent React Strict Mode double-call and re-renders
+    if (hasCalledRef.current) return;
+    hasCalledRef.current = true;
+
     handleCallback();
   }, []);
 
@@ -21,29 +28,29 @@ const InstagramCallback = () => {
       if (error) {
         setStatus('error');
         setMessage(`Error: ${searchParams.get('error_description') || error}`);
-        setTimeout(() => navigate('/'), 3000);
+        setTimeout(() => navigate('/settings'), 3000);
         return;
       }
 
       if (!code) {
         setStatus('error');
         setMessage('No authorization code received');
-        setTimeout(() => navigate('/'), 3000);
+        setTimeout(() => navigate('/settings'), 3000);
         return;
       }
 
-      // Get userId from sessionStorage
-      const userId = sessionStorage.getItem('instagramUserId');
+      // Get userId from sessionStorage (key set by InstagramIntegration)
+      const userId = sessionStorage.getItem('instagram_oauth_userId');
 
       if (!userId) {
         setStatus('error');
         setMessage('User ID not found. Please try again.');
-        setTimeout(() => navigate('/'), 3000);
+        setTimeout(() => navigate('/settings'), 3000);
         return;
       }
 
       // Exchange code for token
-      const response = await fetch('http://localhost:3001/api/instagram/callback', {
+      const response = await fetch(`${API_URL}/api/instagram/callback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, state, userId }),
@@ -53,58 +60,71 @@ const InstagramCallback = () => {
 
       if (data.success) {
         setStatus('success');
-        setMessage(`✅ Connected! Welcome @${data.instagram.username}`);
-        sessionStorage.removeItem('instagramUserId');
-        setTimeout(() => navigate('/'), 2000);
+        // Handle both single account (legacy) and multi-account responses
+        if (data.connectedAccounts && data.connectedAccounts.length > 0) {
+          const usernames = data.connectedAccounts.map(a => `@${a.username}`).join(', ');
+          setMessage(`Connected ${data.connectedAccounts.length} account(s): ${usernames}`);
+        } else if (data.instagram?.username) {
+          setMessage(`Connected! Welcome @${data.instagram.username}`);
+        } else {
+          setMessage(data.message || 'Instagram connected successfully!');
+        }
+        sessionStorage.removeItem('instagram_oauth_userId');
+        sessionStorage.removeItem('instagram_oauth_state');
+        setTimeout(() => navigate('/settings'), 2000);
       } else {
         setStatus('error');
-        setMessage(`Error: ${data.error}`);
-        setTimeout(() => navigate('/'), 3000);
+        setMessage(`Error: ${data.error || 'Unknown error'}`);
+        setTimeout(() => navigate('/settings'), 3000);
       }
     } catch (error) {
       setStatus('error');
       setMessage(`Error: ${error.message}`);
-      setTimeout(() => navigate('/'), 3000);
+      setTimeout(() => navigate('/settings'), 3000);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center">
+    <div className="min-h-screen bg-[#09090b] flex items-center justify-center font-sans">
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4"
+        className="bg-[#1c1c1e] rounded-2xl p-8 border border-zinc-800/50 max-w-md w-full mx-4"
       >
         <div className="text-center">
           {status === 'processing' && (
             <>
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-100 flex items-center justify-center">
-                <div className="w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+              <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-zinc-800 flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-zinc-600 border-t-white rounded-full animate-spin"></div>
               </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Connecting...</h2>
+              <h2 className="text-xl font-bold text-white mb-2">Connecting...</h2>
             </>
           )}
 
           {status === 'success' && (
             <>
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
-                <span className="text-3xl">✅</span>
+              <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                <svg className="w-7 h-7 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
               </div>
-              <h2 className="text-2xl font-bold text-green-600 mb-2">Success!</h2>
+              <h2 className="text-xl font-bold text-emerald-400 mb-2">Connected!</h2>
             </>
           )}
 
           {status === 'error' && (
             <>
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
-                <span className="text-3xl">❌</span>
+              <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-red-500/20 flex items-center justify-center">
+                <svg className="w-7 h-7 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </div>
-              <h2 className="text-2xl font-bold text-red-600 mb-2">Connection Failed</h2>
+              <h2 className="text-xl font-bold text-red-400 mb-2">Connection Failed</h2>
             </>
           )}
 
-          <p className="text-gray-600 text-lg">{message}</p>
-          <p className="text-gray-500 text-sm mt-4">Redirecting...</p>
+          <p className="text-zinc-300 text-sm">{message}</p>
+          <p className="text-zinc-600 text-xs mt-4">Redirecting to settings...</p>
         </div>
       </motion.div>
     </div>

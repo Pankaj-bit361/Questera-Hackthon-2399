@@ -47,5 +47,27 @@ instagramRouter.post('/disconnect/:userId', async (req, res) => {
   }
 });
 
+// Publish image to Instagram
+instagramRouter.post('/publish', async (req, res) => {
+  try {
+    const { status, json } = await instagramController.publishImage(req, res);
+    return res.status(status).json(json);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Refresh access token
+instagramRouter.post('/refresh-token', async (req, res) => {
+  try {
+    const { status, json } = await instagramController.refreshToken(req, res);
+    return res.status(status).json(json);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = instagramRouter;
 

@@ -141,11 +141,6 @@ const ChatInput = ({
         </div>
       </div>
       
-      <div className="text-center mt-3">
-        <p className="text-[11px] text-zinc-600 font-medium">
-          Velos v2.0 may produce inaccurate information about people, places, or facts.
-        </p>
-      </div>
     </div>
   );
 };

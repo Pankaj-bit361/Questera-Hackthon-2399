@@ -5,9 +5,9 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { imageAPI } from '../lib/api';
 
-const { 
-  FiPlus, FiSearch, FiMessageSquare, FiGift, FiSettings, 
-  FiLogOut, FiX 
+const {
+  FiPlus, FiSearch, FiMessageSquare, FiGift, FiSettings,
+  FiLogOut, FiX
 } = FiIcons;
 
 const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
@@ -21,7 +21,7 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     setUser(userData);
-    
+
     if (userData.userId) {
       fetchChats(userData.userId);
     }
@@ -67,7 +67,7 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
           <div className="p-5 flex items-center justify-between">
             <div className="flex items-center gap-2 text-white font-bold text-xl cursor-pointer" onClick={() => navigate('/home')}>
               <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                 <span className="text-black text-lg">⚡</span> 
+                <span className="text-black text-lg">⚡</span>
               </div>
               <span className="tracking-tight">Velos</span>
             </div>
@@ -75,7 +75,7 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
 
           {/* New Chat Button */}
           <div className="px-4 pb-2">
-            <button 
+            <button
               onClick={handleNewChat}
               className="w-full flex items-center gap-3 bg-white text-black hover:bg-zinc-200 px-4 py-3 rounded-xl transition-all text-sm font-bold shadow-lg shadow-white/5 group"
             >
@@ -88,9 +88,9 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
           <div className="px-4 pb-4 pt-3">
             <div className="relative group">
               <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 w-4 h-4 group-focus-within:text-white transition-colors" />
-              <input 
-                type="text" 
-                placeholder="Search history..." 
+              <input
+                type="text"
+                placeholder="Search history..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-[#1c1c1e] text-zinc-300 placeholder-zinc-600 text-sm rounded-xl pl-9 pr-4 py-2.5 border border-transparent focus:border-zinc-700 outline-none transition-all"
@@ -105,23 +105,21 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
               <div className="space-y-1">
                 {filteredChats.length > 0 ? (
                   filteredChats.map((chat) => (
-                    <button 
+                    <button
                       key={chat.imageChatId}
                       onClick={() => handleChatClick(chat.imageChatId)}
-                      className={`w-full flex items-center gap-3 px-3 py-3 text-sm rounded-xl transition-all text-left group relative overflow-hidden ${
-                        location.pathname.includes(chat.imageChatId)
+                      className={`w-full flex items-center gap-3 px-3 py-3 text-sm rounded-xl transition-all text-left group relative overflow-hidden ${location.pathname.includes(chat.imageChatId)
                           ? 'bg-[#1c1c1e] text-white border border-white/5 shadow-md'
                           : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#1c1c1e]/50 border border-transparent'
-                      }`}
+                        }`}
                     >
-                      <SafeIcon icon={FiMessageSquare} className={`w-4 h-4 flex-shrink-0 ${
-                        location.pathname.includes(chat.imageChatId) ? 'text-white' : 'text-zinc-600 group-hover:text-zinc-400'
-                      }`} />
+                      <SafeIcon icon={FiMessageSquare} className={`w-4 h-4 flex-shrink-0 ${location.pathname.includes(chat.imageChatId) ? 'text-white' : 'text-zinc-600 group-hover:text-zinc-400'
+                        }`} />
                       <span className="truncate font-medium relative z-10">
                         {chat.name || chat.title || 'Untitled Chat'}
                       </span>
                       {location.pathname.includes(chat.imageChatId) && (
-                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white rounded-r-full"></div>
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white rounded-r-full"></div>
                       )}
                     </button>
                   ))
@@ -140,7 +138,13 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
               <SafeIcon icon={FiGift} className="w-4 h-4 text-emerald-400" />
               Get free tokens
             </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-zinc-400 hover:text-white hover:bg-[#1c1c1e] rounded-xl transition-colors">
+            <button
+              onClick={() => navigate('/settings')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-xl transition-colors ${location.pathname === '/settings'
+                  ? 'bg-[#1c1c1e] text-white border border-white/5'
+                  : 'text-zinc-400 hover:text-white hover:bg-[#1c1c1e]'
+                }`}
+            >
               <SafeIcon icon={FiSettings} className="w-4 h-4" />
               Settings
             </button>

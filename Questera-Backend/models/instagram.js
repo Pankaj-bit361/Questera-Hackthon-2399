@@ -1,5 +1,43 @@
 const mongoose = require('mongoose');
 
+// Sub-schema for individual Instagram accounts (for multi-account support)
+const instagramAccountSchema = new mongoose.Schema({
+  instagramBusinessAccountId: {
+    type: String,
+    required: true,
+  },
+  facebookPageId: {
+    type: String,
+    required: true,
+  },
+  facebookPageName: {
+    type: String,
+  },
+  accessToken: {
+    type: String,
+    required: true,
+  },
+  instagramUsername: {
+    type: String,
+  },
+  instagramName: {
+    type: String,
+  },
+  profilePictureUrl: {
+    type: String,
+  },
+  isConnected: {
+    type: Boolean,
+    default: true,
+  },
+  connectedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+// Main schema - now supports single account (backward compatible)
+// Can be upgraded to accounts[] array for multi-account
 const instagramSchema = new mongoose.Schema(
   {
     userId: {
@@ -8,17 +46,18 @@ const instagramSchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
+    // Single account fields (current implementation)
     instagramBusinessAccountId: {
       type: String,
-      required: true,
     },
     facebookPageId: {
       type: String,
-      required: true,
+    },
+    facebookPageName: {
+      type: String,
     },
     accessToken: {
       type: String,
-      required: true,
     },
     refreshToken: {
       type: String,
@@ -46,6 +85,8 @@ const instagramSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    // Multi-account support (for future use)
+    accounts: [instagramAccountSchema],
   },
   { timestamps: true }
 );
