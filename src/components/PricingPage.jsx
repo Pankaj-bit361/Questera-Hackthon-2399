@@ -15,7 +15,7 @@ const FEATURES_MAP = {
     "Basic styles",
     "Community support"
   ],
-  launch: [
+  pro: [
     "Fast generation speed",
     "Private gallery",
     "High resolution (2K)",
@@ -23,7 +23,7 @@ const FEATURES_MAP = {
     "Priority support",
     "No watermarks"
   ],
-  standard: [
+  growth: [
     "Turbo generation speed",
     "Private gallery",
     "Ultra resolution (4K)",
@@ -31,7 +31,7 @@ const FEATURES_MAP = {
     "Commercial license",
     "Priority support (24/7)"
   ],
-  scale: [
+  business: [
     "Instant generation",
     "API Access",
     "Dedicated account manager",
@@ -43,7 +43,7 @@ const FEATURES_MAP = {
 
 // Simplified, premium styling logic
 const getPlanStyles = (key) => {
-  if (key === 'standard') {
+  if (key === 'growth') {
     return {
       container: "bg-[#18181b] border-white/10 ring-1 ring-white/20 shadow-[0_0_50px_-12px_rgba(120,50,255,0.2)]",
       button: "bg-white text-black hover:bg-zinc-200",
@@ -51,7 +51,7 @@ const getPlanStyles = (key) => {
       icon: "text-white"
     };
   }
-  if (key === 'scale') {
+  if (key === 'business') {
     return {
       container: "bg-[#09090b] border-white/5 hover:border-white/10",
       button: "bg-zinc-800 text-white hover:bg-zinc-700 border border-white/5",
@@ -262,7 +262,7 @@ const PricingPage = () => {
           {plans.map((plan, index) => {
             const styles = getPlanStyles(plan.key);
             const features = FEATURES_MAP[plan.key] || FEATURES_MAP.free;
-            const isStandard = plan.key === 'standard';
+            const isGrowth = plan.key === 'growth';
 
             return (
               <motion.div
@@ -273,7 +273,7 @@ const PricingPage = () => {
                 className={`relative flex flex-col p-6 rounded-3xl border transition-all duration-300 ${styles.container}`}
               >
                 {/* Badge */}
-                {isStandard && (
+                {isGrowth && (
                   <div className="absolute -top-3 right-6 px-3 py-1 bg-white text-black text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg shadow-white/10">
                     Most Popular
                   </div>
@@ -282,7 +282,7 @@ const PricingPage = () => {
                 <div className="mb-8">
                   <h3 className="text-sm font-medium text-zinc-400 mb-2 uppercase tracking-wider">{plan.name}</h3>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-white">${plan.price}</span>
+                    <span className="text-3xl font-bold text-white">₹{plan.price}</span>
                     <span className="text-zinc-500 text-sm">/mo</span>
                   </div>
                   <div className="mt-4 flex items-center gap-2 text-xs text-zinc-300">
