@@ -1,1 +1,1 @@
-web: cd Questera-Backend && node index.js
+web: cd Questera-Backend && npm start
