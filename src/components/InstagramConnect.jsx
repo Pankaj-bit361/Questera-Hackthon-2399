@@ -3,9 +3,9 @@ import { motion } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiInstagram, FiLogOut, FiCheck } = FiIcons;
+import { API_BASE_URL } from '../config';
 
-const API_BASE_URL = 'https://hackathon.velosapps.com/api';
+const { FiInstagram, FiLogOut, FiCheck } = FiIcons;
 
 const InstagramConnect = ({ userId }) => {
   const [isConnected, setIsConnected] = useState(false);

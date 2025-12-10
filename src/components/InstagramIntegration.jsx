@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiCheck, FiX, FiLoader, FiExternalLink, FiCamera, FiMessageCircle, FiTrendingUp, FiPlus, FiTrash2 } = FiIcons;
+import { API_BASE_URL } from '../config';
 
-const API_BASE_URL = 'https://hackathon.velosapps.com/api';
+const { FiCheck, FiX, FiLoader, FiExternalLink, FiCamera, FiMessageCircle, FiTrendingUp, FiPlus, FiTrash2 } = FiIcons;
 
 const InstagramIntegration = ({ userId }) => {
   const [accounts, setAccounts] = useState([]);

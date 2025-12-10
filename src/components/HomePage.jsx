@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import Sidebar from './Sidebar';
+import { API_BASE_URL } from '../config';
 
 
 const { FiZap, FiArrowRight, FiUpload, FiGrid, FiImage, FiLayout } = FiIcons;
@@ -70,7 +71,7 @@ const HomePage = () => {
     }
 
     try {
-      const response = await fetch('https://hackathon.velosapps.com/api/template/create-from-urls', {
+      const response = await fetch(`${API_BASE_URL}/template/create-from-urls`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://hackathon.velosapps.com/api';
+import { API_BASE_URL } from '../config';
 
 const getAuthToken = () => localStorage.getItem('authToken');
 

@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../common/SafeIcon';
 
-const { FiUser, FiZap, FiDownload, FiRefreshCw, FiCheck, FiX, FiChevronDown, FiTrash2, FiCopy } = FiIcons;
+import { API_BASE_URL } from '../../config';
 
-const API_BASE_URL = 'https://hackathon.velosapps.com/api';
+const { FiUser, FiZap, FiDownload, FiRefreshCw, FiCheck, FiX, FiChevronDown, FiTrash2, FiCopy } = FiIcons;
 
 const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit, onSelectImageForEdit, onClearSelectedImage }) => {
   const scrollRef = useRef(null);

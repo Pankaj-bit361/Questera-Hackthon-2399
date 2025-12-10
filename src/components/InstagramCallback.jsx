@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-
-const API_BASE_URL = 'https://hackathon.velosapps.com/api';
+import { API_BASE_URL } from '../config';
 
 const InstagramCallback = () => {
   const navigate = useNavigate();
