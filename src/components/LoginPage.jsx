@@ -307,7 +307,7 @@ const LoginPage=()=> {
 
         {/* Top: Large Geometric "V" Logo */}
         <div className="relative z-10 flex-1 flex flex-col justify-center items-center mt-[-40px]">
-          <div className="w-[400px] h-[400px] relative flex items-center justify-center">
+          <div className="w-[300px] h-[300px] relative flex items-center justify-center">
             {/* The V Shape */}
             <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-2xl opacity-90">
               <defs>
@@ -342,13 +342,12 @@ const LoginPage=()=> {
 
           {/* Middle Content */}
           <div className="w-full max-w-sm mt-8 space-y-6">
-            <h2 className="text-xl font-medium text-white tracking-wide">Velos</h2>
             <div className="space-y-4">
               <h1 className="text-4xl font-bold text-white leading-tight">
                 Welcome to Velos
               </h1>
               <p className="text-gray-400 text-sm leading-relaxed">
-                Velos helps marketers to build high-converting ad creatives using advanced AI models. Join us and start scaling your campaigns today.
+                Velos helps marketers to build high-converting ad creatives using advanced AI models.
               </p>
               <p className="text-gray-500 text-xs mt-4">
                 More than 17k people joined us,it's your turn

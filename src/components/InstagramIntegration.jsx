@@ -4,7 +4,7 @@ import SafeIcon from '../common/SafeIcon';
 
 const { FiCheck, FiX, FiLoader, FiExternalLink, FiCamera, FiMessageCircle, FiTrendingUp, FiPlus, FiTrash2 } = FiIcons;
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL = 'https://hackathon.velosapps.com/api';
 
 const InstagramIntegration = ({ userId }) => {
   const [accounts, setAccounts] = useState([]);
@@ -20,7 +20,7 @@ const InstagramIntegration = ({ userId }) => {
   const checkConnection = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/instagram/info/${userId}`);
+      const response = await fetch(`${API_BASE_URL}/instagram/info/${userId}`);
       const data = await response.json();
 
       if (data.success && data.accounts?.length > 0) {
@@ -43,7 +43,7 @@ const InstagramIntegration = ({ userId }) => {
 
       sessionStorage.setItem('instagram_oauth_userId', userId);
 
-      const response = await fetch(`${API_URL}/api/instagram/oauth-url`);
+      const response = await fetch(`${API_BASE_URL}/instagram/oauth-url`);
       const data = await response.json();
 
       if (data.success && data.oauthUrl) {
@@ -63,7 +63,7 @@ const InstagramIntegration = ({ userId }) => {
   const handleDisconnect = async (accountId = null) => {
     try {
       setDisconnecting(accountId || 'all');
-      const response = await fetch(`${API_URL}/api/instagram/disconnect/${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/instagram/disconnect/${userId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId }),

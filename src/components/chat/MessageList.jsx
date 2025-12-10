@@ -5,7 +5,7 @@ import SafeIcon from '../../common/SafeIcon';
 
 const { FiUser, FiZap, FiDownload, FiRefreshCw, FiCheck, FiX, FiChevronDown, FiTrash2, FiCopy } = FiIcons;
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL = 'https://hackathon.velosapps.com/api';
 
 const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit, onSelectImageForEdit, onClearSelectedImage }) => {
   const scrollRef = useRef(null);
@@ -32,7 +32,7 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
       if (!user.userId) return;
 
       try {
-        const response = await fetch(`${API_URL}/api/instagram/info/${user.userId}`);
+        const response = await fetch(`${API_BASE_URL}/instagram/info/${user.userId}`);
         const data = await response.json();
         if (data.success && data.accounts) {
           console.log('Accounts:', data.accounts);
@@ -74,7 +74,7 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
     setShowAccountPicker(null);
 
     try {
-      const response = await fetch(`${API_URL}/api/instagram/publish`, {
+      const response = await fetch(`${API_BASE_URL}/instagram/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

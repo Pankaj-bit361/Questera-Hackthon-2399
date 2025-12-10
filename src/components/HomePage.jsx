@@ -70,7 +70,7 @@ const HomePage = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3001/api/template/create-from-urls', {
+      const response = await fetch('https://hackathon.velosapps.com/api/template/create-from-urls', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

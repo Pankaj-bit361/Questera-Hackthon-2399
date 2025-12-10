@@ -5,6 +5,8 @@ import SafeIcon from '../common/SafeIcon';
 
 const { FiInstagram, FiLogOut, FiCheck } = FiIcons;
 
+const API_BASE_URL = 'https://hackathon.velosapps.com/api';
+
 const InstagramConnect = ({ userId }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [instagramInfo, setInstagramInfo] = useState(null);
@@ -17,7 +19,8 @@ const InstagramConnect = ({ userId }) => {
 
   const checkInstagramConnection = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/instagram/info/${userId}`);
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/instagram/info/${userId}`);
       const data = await response.json();
 
       if (data.success) {
@@ -35,7 +38,7 @@ const InstagramConnect = ({ userId }) => {
       setError(null);
 
       // Get OAuth URL
-      const response = await fetch('http://localhost:3001/api/instagram/oauth-url');
+      const response = await fetch(`${API_BASE_URL}/instagram/oauth-url`);
       const data = await response.json();
 
       if (data.success) {
@@ -56,7 +59,7 @@ const InstagramConnect = ({ userId }) => {
   const handleDisconnect = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/api/instagram/disconnect/${userId}`, {
+      const response = await fetch(`${API_BASE_URL}/instagram/disconnect/${userId}`, {
         method: 'POST',
       });
 

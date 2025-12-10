@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:3001/api';  // 'https://questera-hackthon-2399.vercel.app/api';
+const API_BASE_URL = 'https://hackathon.velosapps.com/api';
 
 const getAuthToken = () => localStorage.getItem('authToken');
 
