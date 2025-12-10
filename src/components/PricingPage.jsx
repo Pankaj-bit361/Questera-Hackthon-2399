@@ -15,7 +15,7 @@ const FEATURES_MAP = {
     "Basic styles",
     "Community support"
   ],
-  pro: [
+  growth: [
     "Fast generation speed",
     "Private gallery",
     "High resolution (2K)",
@@ -23,7 +23,7 @@ const FEATURES_MAP = {
     "Priority support",
     "No watermarks"
   ],
-  growth: [
+  pro: [
     "Turbo generation speed",
     "Private gallery",
     "Ultra resolution (4K)",
@@ -43,7 +43,7 @@ const FEATURES_MAP = {
 
 // Simplified, premium styling logic
 const getPlanStyles = (key) => {
-  if (key === 'growth') {
+  if (key === 'pro') {
     return {
       container: "bg-[#18181b] border-white/10 ring-1 ring-white/20 shadow-[0_0_50px_-12px_rgba(120,50,255,0.2)]",
       button: "bg-white text-black hover:bg-zinc-200",
@@ -262,7 +262,7 @@ const PricingPage = () => {
           {plans.map((plan, index) => {
             const styles = getPlanStyles(plan.key);
             const features = FEATURES_MAP[plan.key] || FEATURES_MAP.free;
-            const isGrowth = plan.key === 'growth';
+            const isPro = plan.key === 'pro';
 
             return (
               <motion.div
@@ -273,7 +273,7 @@ const PricingPage = () => {
                 className={`relative flex flex-col p-6 rounded-3xl border transition-all duration-300 ${styles.container}`}
               >
                 {/* Badge */}
-                {isGrowth && (
+                {isPro && (
                   <div className="absolute -top-3 right-6 px-3 py-1 bg-white text-black text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg shadow-white/10">
                     Most Popular
                   </div>

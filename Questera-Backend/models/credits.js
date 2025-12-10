@@ -9,17 +9,17 @@ const PLAN_CONFIG = {
     price: 0,
     razorpayPlanId: null,
   },
-  pro: {
-    name: 'Velos Pro',
-    credits: 100,
-    price: 1800, // ₹1,800/month
-    razorpayPlanId: 'plan_RWMcpE4Eq1vFo7',
-  },
   growth: {
     name: 'Velos Growth',
-    credits: 250,
+    credits: 100,
     price: 1000, // ₹1,000/month
     razorpayPlanId: 'plan_RWN6JIj7uVFq68',
+  },
+  pro: {
+    name: 'Velos Pro',
+    credits: 250,
+    price: 1800, // ₹1,800/month
+    razorpayPlanId: 'plan_RWMcpE4Eq1vFo7',
   },
   business: {
     name: 'Velos Business',
@@ -84,7 +84,7 @@ const creditsSchema = new mongoose.Schema({
   // Current plan
   plan: {
     type: String,
-    enum: ['free', 'pro', 'growth', 'business'],
+    enum: ['free', 'growth', 'pro', 'business'],
     default: 'free',
   },
   planName: {
