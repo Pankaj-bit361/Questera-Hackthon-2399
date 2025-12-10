@@ -3,10 +3,10 @@ import {motion,AnimatePresence} from 'framer-motion';
 import {useNavigate} from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
+import { API_BASE_URL } from '../config';
 
 const {FiMail,FiArrowRight,FiCheck,FiChevronLeft,FiZap,FiAlertCircle}=FiIcons;
 
-const API_BASE_URL='https://questera-hackthon-2399.vercel.app/api/auth';
 
 const LoginPage=()=> {
   const navigate=useNavigate();
