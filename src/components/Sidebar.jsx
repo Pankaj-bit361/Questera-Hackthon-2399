@@ -222,22 +222,21 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
       )}
     </AnimatePresence>
 
-    {/* Logout Confirmation Modal - Outside Sidebar AnimatePresence */ }
-  <AnimatePresence>
-    {showLogoutModal && (
-      <>
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={() => setShowLogoutModal(false)}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
-        />
-        {/* Modal */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
+    <AnimatePresence>
+      {showLogoutModal && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowLogoutModal(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+          />
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[101] w-[320px] bg-[#18181b] border border-white/10 rounded-2xl p-6 shadow-2xl"
@@ -268,7 +267,7 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
         </motion.div>
       </>
     )}
-  </AnimatePresence>
+    </AnimatePresence>
   );
 };
 
