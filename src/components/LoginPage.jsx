@@ -1,50 +1,70 @@
-import React,{useState,useEffect,useRef} from 'react';
-import {motion,AnimatePresence} from 'framer-motion';
-import {useNavigate} from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { API_BASE_URL } from '../config';
 
-const {FiMail,FiArrowRight,FiCheck,FiChevronLeft,FiZap,FiAlertCircle}=FiIcons;
+const { FiMail, FiArrowRight, FiCheck, FiChevronLeft, FiZap, FiAlertCircle } = FiIcons;
 
+// Helper to check if JWT token is expired
+const isTokenExpired = (token) => {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const exp = payload.exp * 1000; // Convert to milliseconds
+    return Date.now() >= exp;
+  } catch {
+    return true;
+  }
+};
 
-const LoginPage=()=> {
-  const navigate=useNavigate();
-  const [step,setStep]=useState('email');// 'email' or 'otp'
-  const [loading,setLoading]=useState(false);
-  const [email,setEmail]=useState('');
-  const [otp,setOtp]=useState(new Array(6).fill(''));// 6 digits
-  const [timer,setTimer]=useState(30);
-  const [error,setError]=useState('');
-  const otpInputRefs=useRef([]);
+const LoginPage = () => {
+  const navigate = useNavigate();
+  const [step, setStep] = useState('email');// 'email' or 'otp'
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState(new Array(6).fill(''));// 6 digits
+  const [timer, setTimer] = useState(30);
+  const [error, setError] = useState('');
+  const otpInputRefs = useRef([]);
+
+  // Check if user is already logged in with valid token - redirect to home
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    if (token && user && !isTokenExpired(token)) {
+      navigate('/home', { replace: true });
+    }
+  }, [navigate]);
 
   // OTP Timer countdown
-  useEffect(()=> {
+  useEffect(() => {
     let interval;
-    if (step==='otp' && timer > 0) {
-      interval=setInterval(()=> setTimer((prev)=> prev - 1),1000);
+    if (step === 'otp' && timer > 0) {
+      interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
     }
-    return ()=> clearInterval(interval);
-  },[step,timer]);
+    return () => clearInterval(interval);
+  }, [step, timer]);
 
   // Clear error when user types
-  useEffect(()=> {
+  useEffect(() => {
     if (error) setError('');
-  },[email,otp]);
+  }, [email, otp]);
 
-  const handleEmailSubmit=async (e)=> {
+  const handleEmailSubmit = async (e) => {
     e.preventDefault();
     if (!email) return;
     setLoading(true);
     setError('');
 
     try {
-      const response=await fetch(`${API_BASE_URL}/auth/send-otp`,{
+      const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({email}),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
       });
-      const data=await response.json();
+      const data = await response.json();
 
       if (response.ok) {
         setStep('otp');
@@ -60,10 +80,10 @@ const LoginPage=()=> {
     }
   };
 
-  const handleOtpChange=(index,value)=> {
+  const handleOtpChange = (index, value) => {
     if (isNaN(value)) return;
-    const newOtp=[...otp];
-    newOtp[index]=value;
+    const newOtp = [...otp];
+    newOtp[index] = value;
     setOtp(newOtp);
     // Auto-focus next input
     if (value && index < 5) {
@@ -71,44 +91,44 @@ const LoginPage=()=> {
     }
   };
 
-  const handleKeyDown=(index,e)=> {
-    if (e.key==='Backspace' && !otp[index] && index > 0) {
+  const handleKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
       otpInputRefs.current[index - 1].focus();
     }
   };
 
-  const handlePaste=(e)=> {
+  const handlePaste = (e) => {
     e.preventDefault();
-    const pastedData=e.clipboardData.getData('text').slice(0,6).split('');
-    if (pastedData.every(char=> !isNaN(char))) {
-      const newOtp=[...otp];
-      pastedData.forEach((val,i)=> {
-        if (i < 6) newOtp[i]=val;
+    const pastedData = e.clipboardData.getData('text').slice(0, 6).split('');
+    if (pastedData.every(char => !isNaN(char))) {
+      const newOtp = [...otp];
+      pastedData.forEach((val, i) => {
+        if (i < 6) newOtp[i] = val;
       });
       setOtp(newOtp);
-      const nextFocus=Math.min(pastedData.length,5);
+      const nextFocus = Math.min(pastedData.length, 5);
       otpInputRefs.current[nextFocus].focus();
     }
   };
 
-  const handleVerify=async (e)=> {
+  const handleVerify = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    const otpCode=otp.join('');
+    const otpCode = otp.join('');
 
     try {
-      const response=await fetch(`${API_BASE_URL}/auth/verify-otp`,{
+      const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({email,otp: otpCode}),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp: otpCode }),
       });
-      const data=await response.json();
+      const data = await response.json();
 
       if (response.ok) {
         // Store auth data
-        localStorage.setItem('authToken',data.token);
-        localStorage.setItem('user',JSON.stringify(data.user));
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
         navigate('/home');
       } else {
         setError(data.error || 'Invalid verification code.');
@@ -121,19 +141,19 @@ const LoginPage=()=> {
     }
   };
 
-  const handleResendCode=async ()=> {
+  const handleResendCode = async () => {
     setLoading(true);
     setError('');
     try {
-      const response=await fetch(`${API_BASE_URL}/auth/send-otp`,{
+      const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({email}),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
       });
       if (response.ok) {
         setTimer(30);
       } else {
-        const data=await response.json();
+        const data = await response.json();
         setError(data.error || 'Failed to resend code.');
       }
     } catch (err) {
@@ -158,15 +178,15 @@ const LoginPage=()=> {
             </div>
             <motion.div
               key={step}
-              initial={{opacity: 0,y: 10}}
-              animate={{opacity: 1,y: 0}}
-              transition={{duration: 0.4}}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
             >
               <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                {step==='email' ? 'Welcome Back' : 'Check your inbox'}
+                {step === 'email' ? 'Welcome Back' : 'Check your inbox'}
               </h1>
               <p className="text-gray-500 mt-2 text-base">
-                {step==='email' ? 'Enter your email to start generating high-converting ads.' : `We've sent a 6-digit code to ${email}`}
+                {step === 'email' ? 'Enter your email to start generating high-converting ads.' : `We've sent a 6-digit code to ${email}`}
               </p>
             </motion.div>
           </div>
@@ -175,9 +195,9 @@ const LoginPage=()=> {
           <AnimatePresence>
             {error && (
               <motion.div
-                initial={{opacity: 0,height: 0}}
-                animate={{opacity: 1,height: 'auto'}}
-                exit={{opacity: 0,height: 0}}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
                 className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2 border border-red-100"
               >
                 <SafeIcon icon={FiAlertCircle} className="w-4 h-4 flex-shrink-0" />
@@ -189,12 +209,12 @@ const LoginPage=()=> {
           {/* Form Container */}
           <div className="space-y-6">
             <AnimatePresence mode="wait">
-              {step==='email' ? (
+              {step === 'email' ? (
                 <motion.form
                   key="email-form"
-                  initial={{opacity: 0,x: -20}}
-                  animate={{opacity: 1,x: 0}}
-                  exit={{opacity: 0,x: 20}}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
                   onSubmit={handleEmailSubmit}
                   className="space-y-6"
                 >
@@ -205,7 +225,7 @@ const LoginPage=()=> {
                       <input
                         type="email"
                         value={email}
-                        onChange={(e)=> setEmail(e.target.value)}
+                        onChange={(e) => setEmail(e.target.value)}
                         className="w-full px-4 py-4 pl-11 bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-black focus:bg-white transition-all duration-200 font-medium"
                         placeholder="name@company.com"
                         required
@@ -231,22 +251,22 @@ const LoginPage=()=> {
               ) : (
                 <motion.form
                   key="otp-form"
-                  initial={{opacity: 0,x: 20}}
-                  animate={{opacity: 1,x: 0}}
-                  exit={{opacity: 0,x: -20}}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
                   onSubmit={handleVerify}
                   className="space-y-8"
                 >
                   <div className="flex gap-2 sm:gap-3 justify-between" onPaste={handlePaste}>
-                    {otp.map((digit,i)=> (
+                    {otp.map((digit, i) => (
                       <input
                         key={i}
-                        ref={el=> otpInputRefs.current[i]=el}
+                        ref={el => otpInputRefs.current[i] = el}
                         type="text"
                         maxLength={1}
                         value={digit}
-                        onChange={(e)=> handleOtpChange(i,e.target.value)}
-                        onKeyDown={(e)=> handleKeyDown(i,e)}
+                        onChange={(e) => handleOtpChange(i, e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(i, e)}
                         className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-black focus:bg-white transition-all outline-none caret-black selection:bg-black/20"
                       />
                     ))}
@@ -254,7 +274,7 @@ const LoginPage=()=> {
                   <div className="flex flex-col gap-4">
                     <button
                       type="submit"
-                      disabled={loading || otp.join('').length !==6}
+                      disabled={loading || otp.join('').length !== 6}
                       className="btn-black py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                     >
                       {loading ? (
@@ -264,7 +284,7 @@ const LoginPage=()=> {
                     <div className="flex items-center justify-between text-sm">
                       <button
                         type="button"
-                        onClick={()=> {setStep('email');setOtp(new Array(6).fill(''));setError('');}}
+                        onClick={() => { setStep('email'); setOtp(new Array(6).fill('')); setError(''); }}
                         className="text-gray-500 hover:text-black font-medium flex items-center gap-1 transition-colors"
                       >
                         <SafeIcon icon={FiChevronLeft} /> Wrong email?
@@ -317,10 +337,10 @@ const LoginPage=()=> {
                   <stop offset="100%" stopColor="#000" />
                 </linearGradient>
                 <filter id="glow">
-                  <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                  <feGaussianBlur stdDeviation="4" result="coloredBlur" />
                   <feMerge>
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
+                    <feMergeNode in="coloredBlur" />
+                    <feMergeNode in="SourceGraphic" />
                   </feMerge>
                 </filter>
               </defs>
@@ -362,7 +382,7 @@ const LoginPage=()=> {
             {/* Card Content */}
             <div className="relative z-10">
               <h3 className="text-2xl font-semibold text-white mb-2">
-                Generate your first <br/> ad creative now
+                Generate your first <br /> ad creative now
               </h3>
               <p className="text-gray-400 text-sm max-w-[240px] leading-relaxed">
                 Be among the first founders to experience the easiest way to generate ads.
@@ -371,7 +391,7 @@ const LoginPage=()=> {
               {/* Avatar Group */}
               <div className="flex items-center gap-3 mt-8 justify-end">
                 <div className="flex -space-x-4">
-                  {[1,2,3,4].map((i)=> (
+                  {[1, 2, 3, 4].map((i) => (
                     <div key={i} className="w-10 h-10 rounded-full border-2 border-[#1c1c1e] bg-gray-700 overflow-hidden relative">
                       <img
                         src={`https://i.pravatar.cc/100?img=${10 + i}`}

@@ -14,6 +14,15 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [user, setUser] = useState({});
   const [credits, setCredits] = useState({ balance: 0, plan: 'free', planName: 'Free' });
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setShowLogoutModal(false);
+    navigate('/', { replace: true });
+  };
 
   // Fetch credits
   const fetchCredits = async (userId) => {
@@ -200,12 +209,65 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
                   <span className="text-[12px] font-medium text-white truncate">{user.name || 'Account'}</span>
                 </div>
               </div>
-              <SafeIcon icon={FiLogOut} className="w-3.5 h-3.5 text-zinc-600 hover:text-red-400 transition-colors cursor-pointer" />
+              <button
+                onClick={() => setShowLogoutModal(true)}
+                className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+              >
+                <SafeIcon icon={FiLogOut} className="w-3.5 h-3.5 text-zinc-600 hover:text-red-400 transition-colors cursor-pointer" />
+              </button>
             </div>
 
           </div>
         </motion.div>
       )}
+
+      {/* Logout Confirmation Modal */}
+      <AnimatePresence>
+        {showLogoutModal && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLogoutModal(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            />
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[101] w-[320px] bg-[#18181b] border border-white/10 rounded-2xl p-6 shadow-2xl"
+            >
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                  <SafeIcon icon={FiLogOut} className="w-6 h-6 text-red-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">Logout</h3>
+                <p className="text-sm text-zinc-400 mb-6">
+                  Are you sure you want to logout? You'll need to sign in again to access your account.
+                </p>
+                <div className="flex gap-3 w-full">
+                  <button
+                    onClick={() => setShowLogoutModal(false)}
+                    className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white text-sm font-medium rounded-xl border border-white/10 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="flex-1 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-xl transition-colors"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 };
