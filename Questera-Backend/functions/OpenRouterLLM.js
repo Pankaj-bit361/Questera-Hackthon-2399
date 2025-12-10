@@ -24,14 +24,14 @@ class OpenRouterLLM {
     } = options;
 
     const messages = [];
-    
+
     if (systemPrompt) {
       messages.push({
         role: 'system',
         content: systemPrompt
       });
     }
-    
+
     messages.push({
       role: 'user',
       content: prompt
@@ -51,7 +51,7 @@ class OpenRouterLLM {
 
     try {
       console.log('🤖 [OPENROUTER] Calling API with model:', this.model);
-      
+
       const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
@@ -70,14 +70,14 @@ class OpenRouterLLM {
       }
 
       const data = await response.json();
-      
+
       if (!data.choices || data.choices.length === 0) {
         throw new Error('No response from OpenRouter');
       }
 
       const content = data.choices[0].message.content;
       console.log('✅ [OPENROUTER] Response received, length:', content?.length || 0);
-      
+
       return content;
     } catch (error) {
       console.error('❌ [OPENROUTER] Error:', error.message);
@@ -92,13 +92,25 @@ class OpenRouterLLM {
    * @returns {object} - Parsed JSON response
    */
   async generateJSON(prompt, options = {}) {
-    const text = await this.generateText(prompt, {
+    // Wrap the prompt with strong JSON instructions
+    const jsonPrompt = `${prompt}
+
+CRITICAL INSTRUCTIONS:
+1. You MUST respond with ONLY a valid JSON object
+2. Do NOT include any text before or after the JSON
+3. Do NOT use markdown code blocks
+4. Start your response with { and end with }
+5. Ensure all strings are properly escaped`;
+
+    const text = await this.generateText(jsonPrompt, {
       ...options,
-      systemPrompt: (options.systemPrompt || '') + '\n\nIMPORTANT: Always respond with valid JSON only. No markdown, no explanations, just the JSON object.'
+      systemPrompt: 'You are a JSON-only response bot. You MUST always respond with valid JSON and nothing else. Never include explanations, markdown, or text outside the JSON object.'
     });
 
     // Clean and parse JSON
-    let cleaned = text.trim();
+    let cleaned = (text || '').trim();
+
+    // Remove markdown code blocks if present
     if (cleaned.startsWith('```json')) {
       cleaned = cleaned.slice(7);
     } else if (cleaned.startsWith('```')) {
@@ -109,17 +121,23 @@ class OpenRouterLLM {
     }
     cleaned = cleaned.trim();
 
-    // Extract JSON if wrapped in text
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      cleaned = jsonMatch[0];
+    // Try to extract JSON object if wrapped in text
+    const jsonObjectMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (jsonObjectMatch) {
+      cleaned = jsonObjectMatch[0];
+    }
+
+    // Try to extract JSON array if that's what we expect
+    const jsonArrayMatch = cleaned.match(/\[[\s\S]*\]/);
+    if (!jsonObjectMatch && jsonArrayMatch) {
+      cleaned = jsonArrayMatch[0];
     }
 
     try {
       return JSON.parse(cleaned);
     } catch (error) {
       console.warn('⚠️ [OPENROUTER] JSON parse failed:', error.message);
-      console.warn('⚠️ [OPENROUTER] Raw response:', text.slice(0, 500));
+      console.warn('⚠️ [OPENROUTER] Raw response (first 300 chars):', (text || '').slice(0, 300));
       return options.fallback || {};
     }
   }
