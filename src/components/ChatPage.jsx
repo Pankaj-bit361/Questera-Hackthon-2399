@@ -177,6 +177,21 @@ const ChatPage = () => {
         return;
       }
 
+      // Handle schedule intent - just show the message, don't generate new images
+      if (chatResponse.intent === 'schedule' || chatResponse.type === 'scheduled') {
+        const aiMsg = {
+          role: 'assistant',
+          content: chatResponse.message,
+          isScheduled: true,
+          scheduledPost: chatResponse.post,
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        setMessageOverrides({ aspectRatio: null, imageSize: null, style: null });
+        setReferenceImages([]);
+        setLoading(false);
+        return;
+      }
+
       // Handle edit/remix - needs to pass the previous image as reference
       if (chatResponse.intent === 'edit' || chatResponse.intent === 'remix') {
         // Add AI acknowledgment message
