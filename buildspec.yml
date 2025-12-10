@@ -11,6 +11,13 @@ phases:
       - cd Questera-Backend && npm run build || echo "No build step"
 artifacts:
   files:
-    - '**/*'
+    - 'Procfile'
+    - 'package.json'
+    - 'index.js'
+    - 'node_modules/**/*'
+    - 'functions/**/*'
+    - 'models/**/*'
+    - 'routes/**/*'
+    - 'middleware/**/*'
   base-directory: Questera-Backend
 
