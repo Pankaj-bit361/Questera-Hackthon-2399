@@ -5,7 +5,7 @@ import * as FiIcons from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import SafeIcon from '../common/SafeIcon';
 import { creditsAPI } from '../lib/api';
-import logo from ".././../assets/velos 1.svg";
+import logo from "../../assets/velos 1.svg";
 
 const { FiCheck, FiX, FiChevronLeft, FiZap, FiStar, FiTrendingUp, FiArrowRight, FiLoader, FiShield } = FiIcons;
 
@@ -219,7 +219,7 @@ const PricingPage = () => {
           </button>
 
           <div className="flex items-center gap-2.5">
-            
+
             <span className="font-bold text-lg tracking-tight">
               <img src={logo} alt="Logo" className="w-8 h-8" />
             </span>
@@ -237,7 +237,7 @@ const PricingPage = () => {
             <span className="text-zinc-500">pricing for creators.</span>
           </motion.h1>
 
-      
+
         </div>
 
         {/* Plans Grid */}
