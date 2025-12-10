@@ -5,6 +5,7 @@ const ContentEngine = require('./ContentEngine');
 const ContentJob = require('../models/contentJob');
 const Image = require('../models/image');
 const ImageMessage = require('../models/imageMessage');
+const OpenRouterLLM = require('./OpenRouterLLM');
 
 /**
  * Helper to clean JSON from markdown code blocks and extract JSON
@@ -55,6 +56,7 @@ class OrchestratorService {
       apiKey: process.env.GEMINI_API_KEY,
     });
     this.textModel = 'gemini-2.5-flash-lite-preview-09-2025';
+    this.openRouter = new OpenRouterLLM(); // Use OpenRouter for text tasks
     this.memoryService = new MemoryService();
     this.contentEngine = new ContentEngine();
   }
@@ -208,32 +210,23 @@ Output JSON:
   }
 }`;
 
-    try {
-      const response = await this.ai.models.generateContent({
-        model: this.textModel,
-        contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          responseMimeType: 'application/json',
-        },
-      });
+    const fallback = {
+      intent: hasReferenceImages ? 'image_generation' : 'conversation',
+      confidence: 0.5,
+      message: "I'll help you with that!",
+      contentJob: { generateBrief: hasReferenceImages, type: 'single', count: 1 }
+    };
 
-      const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-      const parsed = safeJsonParse(text, {
-        intent: hasReferenceImages ? 'image_generation' : 'conversation',
-        confidence: 0.5,
-        message: "I'll help you with that!",
-        contentJob: { generateBrief: hasReferenceImages, type: 'single', count: 1 }
+    try {
+      // Use OpenRouter (Kimi K2) for intent detection
+      const parsed = await this.openRouter.generateJSON(systemPrompt, {
+        temperature: 0.3,
+        fallback
       });
       return parsed;
     } catch (error) {
       console.error('Error determining intent:', error);
-      return {
-        intent: hasReferenceImages ? 'image_generation' : 'conversation',
-        confidence: 0.5,
-        message: "I'll help you with that!",
-        contentJob: { generateBrief: hasReferenceImages, type: 'single', count: 1 }
-      };
+      return fallback;
     }
   }
 
