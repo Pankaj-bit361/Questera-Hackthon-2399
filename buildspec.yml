@@ -1,0 +1,16 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - cd Questera-Backend && npm install
+  build:
+    commands:
+      - cd Questera-Backend && npm run build || echo "No build step"
+artifacts:
+  files:
+    - '**/*'
+  base-directory: Questera-Backend
+
