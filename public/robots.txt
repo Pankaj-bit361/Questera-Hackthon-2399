@@ -1,0 +1,14 @@
+# Velos AI - Robots.txt
+# https://www.velosapps.com
+
+User-agent: *
+Allow: /
+
+# Disallow API routes and private pages
+Disallow: /api/
+Disallow: /chat/
+Disallow: /admin/
+
+# Sitemap
+Sitemap: https://www.velosapps.com/sitemap.xml
+
