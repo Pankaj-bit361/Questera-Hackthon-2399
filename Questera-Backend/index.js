@@ -11,7 +11,7 @@ const authMiddleware = require('./middlewares/auth');
 const connectDB = require('./db');
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 8080;
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Increase limit for image uploads
@@ -44,12 +44,10 @@ const startServer = async () => {
         // Connect to DB before starting server to prevent buffering timeouts
         await connectDB();
 
-        // Only listen when running locally/dev (Vercel handles this automatically)
-        if (process.env.NODE_ENV !== 'production') {
-            app.listen(port, () => {
-                console.log(`🚀 Server running on http://localhost:${port}`);
-            });
-        }
+        // Start the server (works for both local dev and Elastic Beanstalk)
+        app.listen(port, () => {
+            console.log(`🚀 Server running on port ${port}`);
+        });
     } catch (error) {
         console.error('Failed to start server:', error);
     }
