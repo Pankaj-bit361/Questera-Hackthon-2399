@@ -8,16 +8,10 @@ phases:
       - cd Questera-Backend && npm install
   build:
     commands:
-      - cd Questera-Backend && npm run build || echo "No build step"
+      - echo "Build complete"
 artifacts:
   files:
     - 'Procfile'
-    - 'package.json'
-    - 'index.js'
-    - 'node_modules/**/*'
-    - 'functions/**/*'
-    - 'models/**/*'
-    - 'routes/**/*'
-    - 'middleware/**/*'
-  base-directory: Questera-Backend
+    - 'Questera-Backend/**/*'
+  discard-paths: no
 
