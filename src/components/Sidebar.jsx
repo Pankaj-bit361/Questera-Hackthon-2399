@@ -76,9 +76,11 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
           {/* Header */}
           <div className="p-6 flex items-center justify-between">
             <div className="flex items-center gap-3 text-white font-bold text-xl cursor-pointer group" onClick={() => navigate('/home')}>
-              <div className="w-9 h-9 bg-gradient-to-tr from-white to-zinc-200 rounded-xl flex items-center justify-center shadow-lg shadow-white/5 transition-transform group-hover:scale-105">
-                <span className="text-black text-lg">⚡</span>
-              </div>
+              <img
+                src="/velos-logo.svg"
+                alt="Velos AI"
+                className="w-9 h-9 transition-transform group-hover:scale-105"
+              />
               <span className="tracking-tight font-display text-white/90">Velos</span>
             </div>
           </div>
