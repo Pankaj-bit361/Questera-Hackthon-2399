@@ -11,7 +11,7 @@ import ChatInput from './chat/ChatInput';
 import ProjectSettings from './chat/ProjectSettings';
 import { DEFAULT_PROJECT_SETTINGS } from './chat/constants';
 
-const { FiMenu, FiSettings, FiShare2, FiCheck, FiChevronLeft, FiZap } = FiIcons;
+const { FiMenu, FiSettings, FiShare2, FiCheck, FiChevronLeft } = FiIcons;
 
 const ChatPage = () => {
   const { chatId } = useParams();
@@ -68,10 +68,20 @@ const ChatPage = () => {
     fetchCredits(); // Fetch credits on mount
     if (chatId === 'new' && !hasInitialized.current) {
       const initialPrompt = location.state?.prompt;
-      if (initialPrompt) {
+      const initialImages = location.state?.referenceImages || [];
+
+      // Set reference images if passed from HomePage
+      if (initialImages.length > 0) {
+        setReferenceImages(initialImages);
+      }
+
+      if (initialPrompt || initialImages.length > 0) {
         hasInitialized.current = true;
         setLoadingChat(false);
-        generateImage(initialPrompt, null);
+        // Pass images directly to generateImage to avoid state timing issues
+        if (initialPrompt) {
+          generateImage(initialPrompt, null, initialImages);
+        }
       } else {
         setLoadingChat(false);
       }
@@ -100,7 +110,7 @@ const ChatPage = () => {
     }
   };
 
-  const generateImage = async (userPrompt, existingChatId) => {
+  const generateImage = async (userPrompt, existingChatId, initialImages = null) => {
     setLoading(true);
 
     // Prepare overrides
@@ -109,7 +119,9 @@ const ChatPage = () => {
     if (messageOverrides.imageSize) overrides.imageSize = messageOverrides.imageSize;
     if (messageOverrides.style) overrides.style = messageOverrides.style;
 
-    const refImagesForApi = referenceImages.map(img => ({
+    // Use initialImages if provided (from HomePage navigation), otherwise use referenceImages state
+    const imagesToUse = initialImages || referenceImages;
+    const refImagesForApi = imagesToUse.map(img => ({
       data: img.data,
       mimeType: img.mimeType,
       url: img.preview
@@ -123,7 +135,7 @@ const ChatPage = () => {
       imageUrlForEdit = lastAssistantMessage?.imageUrl || null;
     }
 
-    const tempUserMsg = { role: 'user', content: userPrompt, referenceImages: referenceImages.map(r => r.preview) };
+    const tempUserMsg = { role: 'user', content: userPrompt, referenceImages: imagesToUse.map(r => r.preview) };
     setMessages(prev => [...prev, tempUserMsg]);
 
     // Clear selected image after use
@@ -292,7 +304,7 @@ const ChatPage = () => {
           viralContent: chatResponse.viralContent,
         };
         setMessages(prev => [...prev, aiMsg]);
-        
+
         // Update credits after successful generation (Moved inside the block where data is defined)
         if (data.creditsRemaining !== undefined) {
           setCredits(prev => ({ ...prev, balance: data.creditsRemaining }));
@@ -445,18 +457,6 @@ const ChatPage = () => {
           </div>
 
           <div className="flex items-center gap-3 pointer-events-auto">
-            {/* Credits Badge */}
-            <div className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold backdrop-blur-md border ${credits.balance <= 5
-              ? 'bg-red-500/10 text-red-400 border-red-500/20'
-              : credits.balance <= 10
-                ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-              }`}>
-              <SafeIcon icon={FiZap} className="w-3.5 h-3.5" />
-              <span>{credits.balance}</span>
-              <span className="hidden sm:inline text-zinc-500">credits</span>
-            </div>
-
             <button
               onClick={handleShare}
               className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 text-xs font-bold text-zinc-400 hover:bg-white/10 hover:text-white transition-all backdrop-blur-md border border-white/5 hover:border-white/10"

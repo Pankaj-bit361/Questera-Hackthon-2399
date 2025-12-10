@@ -177,16 +177,33 @@ class CreditsController {
   async handleCancellation(userId) {
     const credits = await this.getOrCreateCredits(userId);
 
+    const previousBalance = credits.balance;
+
+    // Remove all credits when subscription is cancelled
+    credits.balance = 0;
     credits.subscriptionStatus = 'canceled';
-    // Keep current balance, just change plan to free (they keep remaining credits)
     credits.plan = 'free';
     credits.planName = 'Free';
+    credits.razorpaySubscriptionId = null;
+    credits.currentPeriodStart = null;
+    credits.currentPeriodEnd = null;
+
+    // Log the cancellation transaction
+    if (previousBalance > 0) {
+      credits.transactions.push({
+        type: 'credit_deduct',
+        amount: -previousBalance,
+        description: 'Subscription cancelled - all credits removed',
+        referenceType: 'subscription',
+        balanceAfter: 0,
+      });
+    }
 
     await credits.save();
 
-    console.log(`💳 [CREDITS] Subscription canceled for user ${userId}. Balance: ${credits.balance}`);
+    console.log(`💳 [CREDITS] Subscription canceled for user ${userId}. Removed ${previousBalance} credits. Balance: 0`);
 
-    return { success: true, balance: credits.balance };
+    return { success: true, balance: 0, creditsRemoved: previousBalance };
   }
 
   /**
@@ -452,6 +469,50 @@ class CreditsController {
       return { status: 200, json: { received: true } };
     } catch (error) {
       console.error('[WEBHOOK] Error:', error);
+      return { status: 500, json: { error: error.message } };
+    }
+  }
+
+  /**
+   * Cancel user subscription via API
+   */
+  async cancelSubscription(req, res) {
+    try {
+      const { userId } = req.body;
+
+      if (!userId) {
+        return { status: 400, json: { error: 'userId is required' } };
+      }
+
+      const credits = await this.getOrCreateCredits(userId);
+
+      if (!credits.razorpaySubscriptionId) {
+        return { status: 400, json: { error: 'No active subscription found' } };
+      }
+
+      // Cancel subscription in Razorpay
+      try {
+        await razorpay.subscriptions.cancel(credits.razorpaySubscriptionId);
+        console.log(`✅ [CANCEL] Cancelled Razorpay subscription ${credits.razorpaySubscriptionId}`);
+      } catch (razorpayError) {
+        console.error('❌ [CANCEL] Razorpay cancellation error:', razorpayError);
+        // Continue with local cancellation even if Razorpay fails
+      }
+
+      // Remove all credits and update status
+      const result = await this.handleCancellation(userId);
+
+      return {
+        status: 200,
+        json: {
+          success: true,
+          message: 'Subscription cancelled successfully. All credits have been removed.',
+          creditsRemoved: result.creditsRemoved,
+          balance: 0,
+        },
+      };
+    } catch (error) {
+      console.error('[CANCEL] Error cancelling subscription:', error);
       return { status: 500, json: { error: error.message } };
     }
   }

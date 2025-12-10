@@ -216,4 +216,68 @@ export const creditsAPI = {
     });
     return response.json();
   },
+
+  // Cancel subscription
+  cancelSubscription: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/credits/cancel-subscription`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ userId }),
+    });
+    return response.json();
+  },
+};
+
+/**
+ * Scheduler API - Post scheduling and calendar
+ */
+export const schedulerAPI = {
+  // Create a scheduled post
+  createPost: async (postData) => {
+    const response = await fetch(`${API_BASE_URL}/scheduler/posts`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(postData),
+    });
+    return response.json();
+  },
+
+  // Get scheduled posts for a user
+  getPosts: async (userId, options = {}) => {
+    const params = new URLSearchParams();
+    if (options.startDate) params.append('startDate', options.startDate);
+    if (options.endDate) params.append('endDate', options.endDate);
+    if (options.status) params.append('status', options.status);
+
+    const url = `${API_BASE_URL}/scheduler/posts/${userId}${params.toString() ? '?' + params.toString() : ''}`;
+    const response = await fetch(url, { headers: headers() });
+    return response.json();
+  },
+
+  // Update a scheduled post
+  updatePost: async (postId, updates) => {
+    const response = await fetch(`${API_BASE_URL}/scheduler/posts/${postId}`, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify(updates),
+    });
+    return response.json();
+  },
+
+  // Cancel a scheduled post
+  cancelPost: async (postId) => {
+    const response = await fetch(`${API_BASE_URL}/scheduler/posts/${postId}`, {
+      method: 'DELETE',
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Get scheduler stats
+  getStats: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/scheduler/stats/${userId}`, {
+      headers: headers(),
+    });
+    return response.json();
+  },
 };

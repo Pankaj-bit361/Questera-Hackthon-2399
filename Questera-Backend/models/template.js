@@ -27,7 +27,7 @@ const templateSchema = new mongoose.Schema({
     },
     category: {
         type: String,
-        enum: ['professional', 'casual', 'artistic', 'lifestyle', 'seasonal', 'fashion', 'other'],
+        enum: ['professional', 'casual', 'artistic', 'lifestyle', 'seasonal', 'fashion', 'portrait', 'other'],
         default: 'other',
     },
     referenceImageUrl: {

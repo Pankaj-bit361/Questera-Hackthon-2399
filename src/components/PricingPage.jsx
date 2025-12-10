@@ -132,7 +132,7 @@ const PricingPage = () => {
       const options = {
         key: response.razorpayKeyId,
         subscription_id: response.subscriptionId,
-        name: 'Velos Pro',
+        name: plan.name,
         description: response.description,
         handler: async function (paymentResponse) {
           // Verify payment on backend
@@ -167,6 +167,14 @@ const PricingPage = () => {
           ondismiss: function () {
             setSubscribing(null);
           },
+        },
+        // For subscriptions, only these methods are supported
+        method: {
+          card: true,
+          upi: true,        // UPI Autopay
+          emandate: true,   // Bank mandate
+          netbanking: false,
+          wallet: false,
         },
       };
 

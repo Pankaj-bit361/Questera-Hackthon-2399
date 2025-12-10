@@ -87,4 +87,18 @@ creditsRouter.post('/webhook/razorpay', async (req, res) => {
   }
 });
 
+/**
+ * POST /credits/cancel-subscription
+ * Cancel user's subscription and remove all credits
+ */
+creditsRouter.post('/cancel-subscription', async (req, res) => {
+  try {
+    const { status, json } = await creditsController.cancelSubscription(req, res);
+    return res.status(status).json(json);
+  } catch (error) {
+    console.error('[CREDITS] Cancel Subscription Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = creditsRouter;

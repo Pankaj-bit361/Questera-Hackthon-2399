@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../common/SafeIcon';
+import { schedulerAPI } from '../../lib/api';
 
 import { API_BASE_URL } from '../../config';
 
-const { FiUser, FiZap, FiDownload, FiRefreshCw, FiCheck, FiX, FiChevronDown, FiTrash2, FiCopy } = FiIcons;
+const { FiUser, FiZap, FiDownload, FiRefreshCw, FiCheck, FiX, FiChevronDown, FiTrash2, FiCopy, FiCalendar, FiClock } = FiIcons;
 
 const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit, onSelectImageForEdit, onClearSelectedImage }) => {
   const scrollRef = useRef(null);
@@ -16,6 +17,13 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
   const [showAccountPicker, setShowAccountPicker] = useState(null); // idx of image showing picker
   const [selectedAccount, setSelectedAccount] = useState(null); // selected account ID
   const [selectedAccountPerImage, setSelectedAccountPerImage] = useState({}); // { idx: accountId } - tracks selection per image
+
+  // Schedule modal state
+  const [showScheduleModal, setShowScheduleModal] = useState(null); // idx of image being scheduled
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
+  const [scheduleCaption, setScheduleCaption] = useState('');
+  const [schedulingStatus, setSchedulingStatus] = useState({}); // { idx: 'scheduling' | 'success' | 'error' }
 
   useEffect(() => {
     if (bottomRef.current) {
@@ -128,6 +136,69 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
   // Get account info by ID
   const getAccountById = (accountId) => {
     return instagramAccounts.find(acc => acc.id === accountId);
+  };
+
+  // Open schedule modal for an image
+  const openScheduleModal = (idx, viralContent) => {
+    setShowScheduleModal(idx);
+    // Set default date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setScheduleDate(tomorrow.toISOString().split('T')[0]);
+    setScheduleTime('09:00');
+    // Pre-fill caption from viral content
+    const caption = viralContent?.description || '';
+    const hashtags = viralContent?.hashtagString || '';
+    setScheduleCaption(caption + (hashtags ? '\n\n' + hashtags : ''));
+  };
+
+  // Handle schedule submission
+  const handleSchedulePost = async (imageUrl, idx) => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!user.userId) {
+      alert('Please log in to schedule');
+      return;
+    }
+
+    if (!scheduleDate || !scheduleTime) {
+      alert('Please select a date and time');
+      return;
+    }
+
+    const scheduledAt = new Date(`${scheduleDate}T${scheduleTime}`);
+    if (scheduledAt <= new Date()) {
+      alert('Scheduled time must be in the future');
+      return;
+    }
+
+    setSchedulingStatus(prev => ({ ...prev, [idx]: 'scheduling' }));
+
+    try {
+      const selectedId = getSelectedAccountForImage(idx);
+      const result = await schedulerAPI.createPost({
+        userId: user.userId,
+        imageUrl,
+        caption: scheduleCaption,
+        hashtags: '',
+        platform: 'instagram',
+        accountId: selectedId,
+        scheduledAt: scheduledAt.toISOString(),
+      });
+
+      if (result.success) {
+        setSchedulingStatus(prev => ({ ...prev, [idx]: 'success' }));
+        setShowScheduleModal(null);
+        setTimeout(() => {
+          setSchedulingStatus(prev => ({ ...prev, [idx]: null }));
+        }, 3000);
+      } else {
+        setSchedulingStatus(prev => ({ ...prev, [idx]: 'error' }));
+        alert(`Failed to schedule: ${result.error}`);
+      }
+    } catch (error) {
+      setSchedulingStatus(prev => ({ ...prev, [idx]: 'error' }));
+      alert(`Error: ${error.message}`);
+    }
   };
 
   return (
@@ -250,6 +321,27 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
                       >
                         <SafeIcon icon={FiDownload} className="w-4 h-4" />
                         Download
+                      </button>
+
+                      {/* Schedule Button */}
+                      <button
+                        onClick={() => openScheduleModal(idx, msg.viralContent)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-colors shadow-lg ${schedulingStatus[idx] === 'success'
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-purple-600 hover:bg-purple-700 text-white'
+                          }`}
+                      >
+                        {schedulingStatus[idx] === 'success' ? (
+                          <>
+                            <SafeIcon icon={FiCheck} className="w-4 h-4" />
+                            Scheduled!
+                          </>
+                        ) : (
+                          <>
+                            <SafeIcon icon={FiCalendar} className="w-4 h-4" />
+                            Schedule
+                          </>
+                        )}
                       </button>
 
                       {/* Publish to Instagram Button */}
@@ -467,6 +559,121 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
 
         <div ref={bottomRef} className="h-1" />
       </div>
+
+      {/* Schedule Modal */}
+      <AnimatePresence>
+        {showScheduleModal !== null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowScheduleModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[#111] border border-zinc-800 rounded-2xl p-6 w-full max-w-md"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <SafeIcon icon={FiCalendar} className="w-5 h-5 text-purple-400" />
+                Schedule Post
+              </h3>
+
+              {/* Date & Time */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Date</label>
+                  <input
+                    type="date"
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Time</label>
+                  <input
+                    type="time"
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                    className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              {/* Caption */}
+              <div className="mb-4">
+                <label className="text-xs text-zinc-500 mb-1 block">Caption & Hashtags</label>
+                <textarea
+                  value={scheduleCaption}
+                  onChange={(e) => setScheduleCaption(e.target.value)}
+                  rows={4}
+                  placeholder="Write your caption..."
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 resize-none"
+                />
+              </div>
+
+              {/* Account Selection */}
+              {instagramAccounts.length > 0 && (
+                <div className="mb-4">
+                  <label className="text-xs text-zinc-500 mb-1 block">Post to</label>
+                  <div className="flex items-center gap-2 p-2 bg-zinc-900 border border-zinc-700 rounded-lg">
+                    {(() => {
+                      const acc = getAccountById(getSelectedAccountForImage(showScheduleModal));
+                      return acc ? (
+                        <>
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">{acc.username?.[0]?.toUpperCase()}</span>
+                          </div>
+                          <span className="text-sm text-white">@{acc.username}</span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-zinc-500">Select account</span>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowScheduleModal(null)}
+                  className="flex-1 px-4 py-2 bg-zinc-800 text-white rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    const msg = messages.find((_, i) => i === showScheduleModal);
+                    if (msg?.imageUrl) {
+                      handleSchedulePost(msg.imageUrl, showScheduleModal);
+                    }
+                  }}
+                  disabled={schedulingStatus[showScheduleModal] === 'scheduling'}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-bold hover:bg-purple-700 transition-colors disabled:opacity-50"
+                >
+                  {schedulingStatus[showScheduleModal] === 'scheduling' ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Scheduling...
+                    </>
+                  ) : (
+                    <>
+                      <SafeIcon icon={FiClock} className="w-4 h-4" />
+                      Schedule Post
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

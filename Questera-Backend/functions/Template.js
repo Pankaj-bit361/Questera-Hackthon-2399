@@ -169,7 +169,9 @@ class TemplateController {
      * Generate a single image using Gemini API
      */
     async generateSingleImage(referenceImageData, mimeType, prompt, aspectRatio, imageSize, style) {
-        const imageConfig = {};
+        const imageConfig = {
+            imageSize: imageSize || '2K',
+        };
         if (aspectRatio && aspectRatio !== 'auto') {
             imageConfig.aspectRatio = aspectRatio;
         }
