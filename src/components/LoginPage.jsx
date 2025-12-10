@@ -39,7 +39,7 @@ const LoginPage=()=> {
     setError('');
 
     try {
-      const response=await fetch(`${API_BASE_URL}/send-otp`,{
+      const response=await fetch(`${API_BASE_URL}/auth/send-otp`,{
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({email}),
@@ -98,7 +98,7 @@ const LoginPage=()=> {
     const otpCode=otp.join('');
 
     try {
-      const response=await fetch(`${API_BASE_URL}/verify-otp`,{
+      const response=await fetch(`${API_BASE_URL}/auth/verify-otp`,{
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({email,otp: otpCode}),
@@ -125,7 +125,7 @@ const LoginPage=()=> {
     setLoading(true);
     setError('');
     try {
-      const response=await fetch(`${API_BASE_URL}/send-otp`,{
+      const response=await fetch(`${API_BASE_URL}/auth/send-otp`,{
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({email}),
