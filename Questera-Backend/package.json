@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "./node_modules/pm2/bin/pm2-runtime start index.js -i max",
+    "start": "node index.js",
     "dev": "nodemon index.js"
   },
   "keywords": [],
