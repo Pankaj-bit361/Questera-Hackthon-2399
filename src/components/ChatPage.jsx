@@ -196,45 +196,20 @@ const ChatPage = () => {
 
         // Prepare images for edit - include the last image if available
         let imagesToSend = refImagesForApi;
-        let editImageFetched = false;
 
         if (chatResponse.useLastImage && chatResponse.lastImageUrl) {
-          // Fetch the last image and convert to base64 for editing
-          try {
-            console.log('🖼️ [EDIT] Fetching image for edit:', chatResponse.lastImageUrl);
-            const response = await fetch(chatResponse.lastImageUrl, { mode: 'cors' });
-            if (!response.ok) {
-              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            const blob = await response.blob();
-            const reader = new FileReader();
-            const base64Data = await new Promise((resolve, reject) => {
-              reader.onloadend = () => resolve(reader.result.split(',')[1]);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
-            imagesToSend = [{
-              data: base64Data,
-              mimeType: blob.type || 'image/png',
-              url: chatResponse.lastImageUrl
-            }];
-            editImageFetched = true;
-            console.log('✅ [EDIT] Image fetched successfully, size:', base64Data.length);
-          } catch (fetchError) {
-            console.error('❌ [EDIT] Failed to fetch last image for editing:', fetchError);
-            // If we can't fetch the image, tell the user
-            const errorMsg = {
-              role: 'assistant',
-              content: "I couldn't access the previous image. Please try clicking on the image you want to edit, or upload it again.",
-            };
-            setMessages(prev => [...prev, errorMsg]);
-            setLoading(false);
-            return;
-          }
+          // Pass the URL directly to the backend - it will fetch the image server-side
+          // This is more reliable than fetching in the browser (avoids CORS/network issues)
+          console.log('🖼️ [EDIT] Passing image URL to backend for edit:', chatResponse.lastImageUrl);
+          imagesToSend = [{
+            data: chatResponse.lastImageUrl, // Backend will detect URL and fetch it
+            mimeType: 'image/jpeg',
+            url: chatResponse.lastImageUrl
+          }];
         }
 
-        // If edit was requested but no image was found/fetched, inform user
-        if (chatResponse.useLastImage && !editImageFetched && imagesToSend.length === 0) {
+        // If edit was requested but no image URL available, inform user
+        if (chatResponse.useLastImage && !chatResponse.lastImageUrl && imagesToSend.length === 0) {
           console.warn('⚠️ [EDIT] No image available for edit operation');
           const errorMsg = {
             role: 'assistant',
