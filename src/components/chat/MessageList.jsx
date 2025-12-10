@@ -559,69 +559,88 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4"
             onClick={() => setShowScheduleModal(null)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#111] border border-zinc-800 rounded-2xl p-6 w-full max-w-md"
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="bg-[#09090b] border border-white/5 rounded-3xl p-6 w-full max-w-md shadow-2xl relative overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+              {/* Background Glow */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-[50px] pointer-events-none"></div>
+
+              <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-white relative z-10">
                 <SafeIcon icon={FiCalendar} className="w-5 h-5 text-purple-400" />
                 Schedule Post
               </h3>
 
               {/* Date & Time */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="grid grid-cols-2 gap-4 mb-5 relative z-10">
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">Date</label>
-                  <input
-                    type="date"
-                    value={scheduleDate}
-                    onChange={(e) => setScheduleDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
-                  />
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Date</label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={scheduleDate}
+                      onChange={(e) => setScheduleDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-4 py-3 bg-zinc-900/50 border border-white/5 rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/50 focus:bg-zinc-900 transition-all [color-scheme:dark]"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="text-xs text-zinc-500 mb-1 block">Time</label>
-                  <input
-                    type="time"
-                    value={scheduleTime}
-                    onChange={(e) => setScheduleTime(e.target.value)}
-                    className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
-                  />
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Time</label>
+                  <div className="relative">
+                    <input
+                      type="time"
+                      value={scheduleTime}
+                      onChange={(e) => setScheduleTime(e.target.value)}
+                      className="w-full px-4 py-3 bg-zinc-900/50 border border-white/5 rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/50 focus:bg-zinc-900 transition-all [color-scheme:dark]"
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Caption */}
-              <div className="mb-4">
-                <label className="text-xs text-zinc-500 mb-1 block">Caption & Hashtags</label>
-                <textarea
-                  value={scheduleCaption}
-                  onChange={(e) => setScheduleCaption(e.target.value)}
-                  rows={4}
-                  placeholder="Write your caption..."
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500 resize-none"
-                />
+              <div className="mb-5 relative z-10">
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Caption & Hashtags</label>
+                <div className="relative">
+                  <textarea
+                    value={scheduleCaption}
+                    onChange={(e) => setScheduleCaption(e.target.value)}
+                    rows={4}
+                    placeholder="Write your caption..."
+                    className="w-full px-4 py-3 bg-zinc-900/50 border border-white/5 rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/50 focus:bg-zinc-900 transition-all resize-none placeholder-zinc-600 custom-scrollbar"
+                  />
+                  <div className="absolute bottom-2 right-2 text-[10px] text-zinc-600 font-mono">
+                    {scheduleCaption.length} chars
+                  </div>
+                </div>
               </div>
 
               {/* Account Selection */}
               {instagramAccounts.length > 0 && (
-                <div className="mb-4">
-                  <label className="text-xs text-zinc-500 mb-1 block">Post to</label>
-                  <div className="flex items-center gap-2 p-2 bg-zinc-900 border border-zinc-700 rounded-lg">
+                <div className="mb-6 relative z-10">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 block">Post to</label>
+                  <div className="flex items-center gap-3 p-3 bg-zinc-900/30 border border-white/5 rounded-xl">
                     {(() => {
                       const acc = getAccountById(getSelectedAccountForImage(showScheduleModal));
                       return acc ? (
                         <>
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">{acc.username?.[0]?.toUpperCase()}</span>
+                          {acc.profilePictureUrl ? (
+                            <img src={acc.profilePictureUrl} alt={acc.username} className="w-8 h-8 rounded-full ring-2 ring-purple-500/20" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center shadow-lg">
+                              <span className="text-white text-xs font-bold">{acc.username?.[0]?.toUpperCase()}</span>
+                            </div>
+                          )}
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-white">@{acc.username}</span>
+                            <span className="text-[10px] text-zinc-500">Instagram</span>
                           </div>
-                          <span className="text-sm text-white">@{acc.username}</span>
                         </>
                       ) : (
                         <span className="text-sm text-zinc-500">Select account</span>
@@ -632,10 +651,10 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
               )}
 
               {/* Actions */}
-              <div className="flex gap-3">
+              <div className="flex gap-3 relative z-10">
                 <button
                   onClick={() => setShowScheduleModal(null)}
-                  className="flex-1 px-4 py-2 bg-zinc-800 text-white rounded-lg text-sm font-medium hover:bg-zinc-700 transition-colors"
+                  className="flex-1 px-4 py-3 bg-white/5 text-zinc-400 rounded-xl text-xs font-bold hover:bg-white/10 hover:text-white transition-all backdrop-blur-sm"
                 >
                   Cancel
                 </button>
@@ -647,16 +666,16 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
                     }
                   }}
                   disabled={schedulingStatus[showScheduleModal] === 'scheduling'}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-bold hover:bg-purple-700 transition-colors disabled:opacity-50"
+                  className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl text-xs font-bold hover:shadow-lg hover:shadow-purple-500/20 transition-all disabled:opacity-50 disabled:shadow-none"
                 >
                   {schedulingStatus[showScheduleModal] === 'scheduling' ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       Scheduling...
                     </>
                   ) : (
                     <>
-                      <SafeIcon icon={FiClock} className="w-4 h-4" />
+                      <SafeIcon icon={FiClock} className="w-3.5 h-3.5" />
                       Schedule Post
                     </>
                   )}
@@ -665,8 +684,8 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence >
-    </div >
+      </AnimatePresence>
+    </div>
   );
 };
 

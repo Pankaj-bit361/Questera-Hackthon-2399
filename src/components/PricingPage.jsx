@@ -5,7 +5,7 @@ import * as FiIcons from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import SafeIcon from '../common/SafeIcon';
 import { creditsAPI } from '../lib/api';
-import logo from "../"
+import logo from ".././../assets/velos 1.svg";
 
 const { FiCheck, FiX, FiChevronLeft, FiZap, FiStar, FiTrendingUp, FiArrowRight, FiLoader, FiShield } = FiIcons;
 
@@ -219,10 +219,10 @@ const PricingPage = () => {
           </button>
 
           <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 bg-white rounded flex items-center justify-center">
-              <SafeIcon icon={FiZap} className="text-black w-3.5 h-3.5" />
-            </div>
-            <span className="font-bold text-lg tracking-tight">Velos</span>
+            
+            <span className="font-bold text-lg tracking-tight">
+              <img src={logo} alt="Logo" className="w-8 h-8" />
+            </span>
           </div>
         </header>
 
