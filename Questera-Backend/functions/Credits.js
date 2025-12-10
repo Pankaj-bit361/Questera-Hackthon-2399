@@ -1,6 +1,13 @@
 const Credits = require('../models/credits');
 const { PLAN_CONFIG } = require('../models/credits');
 const crypto = require('crypto');
+const Razorpay = require('razorpay');
+
+// Initialize Razorpay
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
 
 class CreditsController {
   /**
@@ -234,6 +241,126 @@ class CreditsController {
       };
     } catch (error) {
       console.error('[CREDITS] Error getting plans:', error);
+      return { status: 500, json: { error: error.message } };
+    }
+  }
+
+  /**
+   * Create Razorpay subscription for a user
+   */
+  async createSubscription(req, res) {
+    try {
+      const { userId, planKey, email, name, contact } = req.body;
+
+      if (!userId || !planKey) {
+        return { status: 400, json: { error: 'userId and planKey are required' } };
+      }
+
+      const planConfig = PLAN_CONFIG[planKey];
+      if (!planConfig || !planConfig.razorpayPlanId) {
+        return { status: 400, json: { error: 'Invalid plan or free plan selected' } };
+      }
+
+      console.log(`💳 [SUBSCRIPTION] Creating subscription for user ${userId}, plan: ${planKey}`);
+
+      // Create Razorpay subscription
+      const subscription = await razorpay.subscriptions.create({
+        plan_id: planConfig.razorpayPlanId,
+        total_count: 12, // 12 billing cycles (1 year for monthly)
+        quantity: 1,
+        customer_notify: 1,
+        notes: {
+          userId: userId,
+          planKey: planKey,
+          email: email || '',
+          name: name || '',
+        },
+      });
+
+      console.log(`✅ [SUBSCRIPTION] Created subscription ${subscription.id} for user ${userId}`);
+
+      return {
+        status: 200,
+        json: {
+          success: true,
+          subscriptionId: subscription.id,
+          razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+          amount: planConfig.price * 100, // In paise
+          currency: 'INR',
+          name: planConfig.name,
+          description: `${planConfig.name} - ${planConfig.credits} credits/month`,
+        },
+      };
+    } catch (error) {
+      console.error('[SUBSCRIPTION] Error creating subscription:', error);
+      return { status: 500, json: { error: error.message } };
+    }
+  }
+
+  /**
+   * Verify Razorpay payment after checkout
+   */
+  async verifyPayment(req, res) {
+    try {
+      const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature, userId, planKey } = req.body;
+
+      if (!razorpay_payment_id || !razorpay_subscription_id || !razorpay_signature) {
+        return { status: 400, json: { error: 'Missing payment details' } };
+      }
+
+      // Verify signature
+      const generatedSignature = crypto
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+        .update(`${razorpay_payment_id}|${razorpay_subscription_id}`)
+        .digest('hex');
+
+      if (generatedSignature !== razorpay_signature) {
+        console.error('❌ [PAYMENT] Invalid signature');
+        return { status: 400, json: { error: 'Invalid payment signature' } };
+      }
+
+      console.log(`✅ [PAYMENT] Verified payment ${razorpay_payment_id} for subscription ${razorpay_subscription_id}`);
+
+      // Fetch subscription details from Razorpay
+      const subscription = await razorpay.subscriptions.fetch(razorpay_subscription_id);
+
+      // Get plan config
+      const planConfig = PLAN_CONFIG[planKey];
+      if (!planConfig) {
+        return { status: 400, json: { error: 'Invalid plan' } };
+      }
+
+      // Calculate period dates
+      const periodStart = new Date(subscription.current_start * 1000);
+      const periodEnd = new Date(subscription.current_end * 1000);
+
+      // Update user credits
+      await this.handleSubscription(
+        userId,
+        planKey,
+        subscription.customer_id || '',
+        razorpay_subscription_id,
+        periodStart,
+        periodEnd
+      );
+
+      // Get updated credits
+      const credits = await this.getOrCreateCredits(userId);
+
+      return {
+        status: 200,
+        json: {
+          success: true,
+          message: 'Payment verified and subscription activated',
+          credits: {
+            balance: credits.balance,
+            plan: credits.plan,
+            planName: credits.planName,
+          },
+        },
+      };
+    } catch (error) {
+      console.error('[PAYMENT] Error verifying payment:', error);
       return { status: 500, json: { error: error.message } };
     }
   }

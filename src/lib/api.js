@@ -196,4 +196,24 @@ export const creditsAPI = {
     });
     return response.json();
   },
+
+  // Create subscription
+  createSubscription: async (userId, planKey, email, name) => {
+    const response = await fetch(`${API_BASE_URL}/credits/subscribe`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ userId, planKey, email, name }),
+    });
+    return response.json();
+  },
+
+  // Verify payment
+  verifyPayment: async (paymentData) => {
+    const response = await fetch(`${API_BASE_URL}/credits/verify-payment`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(paymentData),
+    });
+    return response.json();
+  },
 };

@@ -46,6 +46,34 @@ creditsRouter.get('/plans/all', async (req, res) => {
 });
 
 /**
+ * POST /credits/subscribe
+ * Create a new Razorpay subscription
+ */
+creditsRouter.post('/subscribe', async (req, res) => {
+  try {
+    const { status, json } = await creditsController.createSubscription(req, res);
+    return res.status(status).json(json);
+  } catch (error) {
+    console.error('[CREDITS] Subscribe Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /credits/verify-payment
+ * Verify Razorpay payment after checkout
+ */
+creditsRouter.post('/verify-payment', async (req, res) => {
+  try {
+    const { status, json } = await creditsController.verifyPayment(req, res);
+    return res.status(status).json(json);
+  } catch (error) {
+    console.error('[CREDITS] Verify Payment Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /credits/webhook/razorpay
  * Handle Razorpay webhook events
  */

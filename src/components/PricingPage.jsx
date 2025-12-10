@@ -72,6 +72,10 @@ const PricingPage = () => {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [billingCycle, setBillingCycle] = useState('monthly');
+  const [subscribing, setSubscribing] = useState(null);
+
+  // Get user from localStorage
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -88,10 +92,92 @@ const PricingPage = () => {
       }
     };
     fetchPlans();
+
+    // Load Razorpay script
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
   }, []);
 
-  const handleSubscribe = (plan) => {
-    alert(`Redirecting to payment for ${plan.name}... (Integration required)`);
+  const handleSubscribe = async (plan) => {
+    if (plan.key === 'free') return;
+
+    if (!user.userId) {
+      alert('Please login to subscribe');
+      navigate('/');
+      return;
+    }
+
+    setSubscribing(plan.key);
+
+    try {
+      // Create subscription on backend
+      const response = await creditsAPI.createSubscription(
+        user.userId,
+        plan.key,
+        user.email,
+        user.name
+      );
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to create subscription');
+      }
+
+      // Open Razorpay checkout
+      const options = {
+        key: response.razorpayKeyId,
+        subscription_id: response.subscriptionId,
+        name: 'Velos Pro',
+        description: response.description,
+        handler: async function (paymentResponse) {
+          // Verify payment on backend
+          try {
+            const verifyResponse = await creditsAPI.verifyPayment({
+              razorpay_payment_id: paymentResponse.razorpay_payment_id,
+              razorpay_subscription_id: paymentResponse.razorpay_subscription_id,
+              razorpay_signature: paymentResponse.razorpay_signature,
+              userId: user.userId,
+              planKey: plan.key,
+            });
+
+            if (verifyResponse.success) {
+              alert(`🎉 Successfully subscribed to ${plan.name}! You now have ${verifyResponse.credits.balance} credits.`);
+              navigate('/home');
+            } else {
+              alert('Payment verification failed. Please contact support.');
+            }
+          } catch (error) {
+            console.error('Verification error:', error);
+            alert('Payment verification failed. Please contact support.');
+          }
+        },
+        prefill: {
+          name: user.name || '',
+          email: user.email || '',
+        },
+        theme: {
+          color: '#18181b',
+        },
+        modal: {
+          ondismiss: function () {
+            setSubscribing(null);
+          },
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+    } catch (error) {
+      console.error('Subscription error:', error);
+      alert(error.message || 'Failed to create subscription. Please try again.');
+    } finally {
+      setSubscribing(null);
+    }
   };
 
   if (loading) {
@@ -104,35 +190,35 @@ const PricingPage = () => {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-white/20">
-      
+
       {/* Subtle Gradient Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-gradient-to-b from-white/5 to-transparent blur-[120px] rounded-full opacity-20" />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
-        
+
         {/* Header */}
         <header className="flex items-center justify-between mb-24">
-          <button 
+          <button
             onClick={() => navigate('/home')}
             className="flex items-center gap-2 text-zinc-500 hover:text-white transition-colors text-sm font-medium group"
           >
             <SafeIcon icon={FiChevronLeft} className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
             Back
           </button>
-          
+
           <div className="flex items-center gap-2.5">
-             <div className="w-6 h-6 bg-white rounded flex items-center justify-center">
-                <SafeIcon icon={FiZap} className="text-black w-3.5 h-3.5" />
-             </div>
-             <span className="font-bold text-lg tracking-tight">Velos Pro</span>
+            <div className="w-6 h-6 bg-white rounded flex items-center justify-center">
+              <SafeIcon icon={FiZap} className="text-black w-3.5 h-3.5" />
+            </div>
+            <span className="font-bold text-lg tracking-tight">Velos Pro</span>
           </div>
         </header>
 
         {/* Hero */}
         <div className="text-center max-w-2xl mx-auto mb-20">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl md:text-6xl font-bold mb-6 tracking-tight"
@@ -140,21 +226,21 @@ const PricingPage = () => {
             Simple, transparent <br />
             <span className="text-zinc-500">pricing for creators.</span>
           </motion.h1>
-          
+
           {/* Billing Switch */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
             className="inline-flex items-center p-1 bg-[#18181b] rounded-full border border-white/5"
           >
-            <button 
+            <button
               onClick={() => setBillingCycle('monthly')}
               className={`px-5 py-2 rounded-full text-xs font-semibold transition-all ${billingCycle === 'monthly' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}
             >
               Monthly
             </button>
-            <button 
+            <button
               onClick={() => setBillingCycle('yearly')}
               className={`px-5 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 ${billingCycle === 'yearly' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}
             >
@@ -209,10 +295,22 @@ const PricingPage = () => {
 
                 <button
                   onClick={() => handleSubscribe(plan)}
-                  className={`w-full py-3 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center justify-center gap-2 ${styles.button}`}
+                  disabled={subscribing === plan.key || plan.key === 'free'}
+                  className={`w-full py-3 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center justify-center gap-2 ${styles.button} ${subscribing === plan.key ? 'opacity-50 cursor-wait' : ''}`}
                 >
-                  {plan.key === 'free' ? 'Current Plan' : 'Subscribe'}
-                  {plan.key !== 'free' && <SafeIcon icon={FiArrowRight} className="w-3.5 h-3.5" />}
+                  {subscribing === plan.key ? (
+                    <>
+                      <SafeIcon icon={FiLoader} className="w-3.5 h-3.5 animate-spin" />
+                      Processing...
+                    </>
+                  ) : plan.key === 'free' ? (
+                    'Current Plan'
+                  ) : (
+                    <>
+                      Subscribe
+                      <SafeIcon icon={FiArrowRight} className="w-3.5 h-3.5" />
+                    </>
+                  )}
                 </button>
               </motion.div>
             );
@@ -220,7 +318,7 @@ const PricingPage = () => {
         </div>
 
         {/* Enterprise / Footer */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
@@ -235,12 +333,12 @@ const PricingPage = () => {
               <p className="text-xs text-zinc-500">SOC2 compliant data handling for teams.</p>
             </div>
           </div>
-          
+
           <div className="flex gap-8 opacity-30 grayscale mix-blend-screen">
-             {/* Simple text logos for aesthetic */}
-             <span className="font-bold text-lg tracking-widest">ACME</span>
-             <span className="font-bold text-lg tracking-widest">LAYER</span>
-             <span className="font-bold text-lg tracking-widest">CHEX</span>
+            {/* Simple text logos for aesthetic */}
+            <span className="font-bold text-lg tracking-widest">ACME</span>
+            <span className="font-bold text-lg tracking-widest">LAYER</span>
+            <span className="font-bold text-lg tracking-widest">CHEX</span>
           </div>
         </motion.div>
 
