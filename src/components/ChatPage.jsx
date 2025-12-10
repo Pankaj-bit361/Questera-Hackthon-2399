@@ -187,14 +187,21 @@ const ChatPage = () => {
 
         // Prepare images for edit - include the last image if available
         let imagesToSend = refImagesForApi;
+        let editImageFetched = false;
+
         if (chatResponse.useLastImage && chatResponse.lastImageUrl) {
           // Fetch the last image and convert to base64 for editing
           try {
-            const response = await fetch(chatResponse.lastImageUrl);
+            console.log('🖼️ [EDIT] Fetching image for edit:', chatResponse.lastImageUrl);
+            const response = await fetch(chatResponse.lastImageUrl, { mode: 'cors' });
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
             const blob = await response.blob();
             const reader = new FileReader();
-            const base64Data = await new Promise((resolve) => {
+            const base64Data = await new Promise((resolve, reject) => {
               reader.onloadend = () => resolve(reader.result.split(',')[1]);
+              reader.onerror = reject;
               reader.readAsDataURL(blob);
             });
             imagesToSend = [{
@@ -202,9 +209,31 @@ const ChatPage = () => {
               mimeType: blob.type || 'image/png',
               url: chatResponse.lastImageUrl
             }];
+            editImageFetched = true;
+            console.log('✅ [EDIT] Image fetched successfully, size:', base64Data.length);
           } catch (fetchError) {
-            console.error('Failed to fetch last image for editing:', fetchError);
+            console.error('❌ [EDIT] Failed to fetch last image for editing:', fetchError);
+            // If we can't fetch the image, tell the user
+            const errorMsg = {
+              role: 'assistant',
+              content: "I couldn't access the previous image. Please try clicking on the image you want to edit, or upload it again.",
+            };
+            setMessages(prev => [...prev, errorMsg]);
+            setLoading(false);
+            return;
           }
+        }
+
+        // If edit was requested but no image was found/fetched, inform user
+        if (chatResponse.useLastImage && !editImageFetched && imagesToSend.length === 0) {
+          console.warn('⚠️ [EDIT] No image available for edit operation');
+          const errorMsg = {
+            role: 'assistant',
+            content: "I need an image to edit! Please click on an image in the chat or upload the image you want me to modify.",
+          };
+          setMessages(prev => [...prev, errorMsg]);
+          setLoading(false);
+          return;
         }
 
         // Generate edited image
