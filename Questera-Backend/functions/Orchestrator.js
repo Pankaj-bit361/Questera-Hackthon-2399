@@ -136,7 +136,8 @@ class OrchestratorService {
           break;
       }
 
-      return { status: 200, json: result };
+      // Include the detected intent in the response so frontend can handle it
+      return { status: 200, json: { ...result, intent: intent.intent } };
     } catch (error) {
       console.error('❌ [ORCHESTRATOR] Error:', error);
       return { status: 500, json: { error: error.message } };
