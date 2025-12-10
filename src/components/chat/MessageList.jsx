@@ -131,7 +131,7 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
   };
 
   return (
-    <div className="h-full overflow-y-auto custom-scrollbar px-4 sm:px-8 py-8" ref={scrollRef}>
+    <div className="h-full overflow-y-auto custom-scrollbar px-4 sm:px-8 py-10" ref={scrollRef}>
       <div className="max-w-4xl mx-auto flex flex-col gap-8 pb-32">
 
         {/* Empty State */}
