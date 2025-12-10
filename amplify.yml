@@ -1,0 +1,26 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+  customHeaders:
+    - pattern: '**/*.js'
+      headers:
+        - key: Content-Type
+          value: application/javascript
+    - pattern: '**/*.mjs'
+      headers:
+        - key: Content-Type
+          value: application/javascript
+
