@@ -22,6 +22,9 @@ const SchedulerPage = () => {
   const [stats, setStats] = useState({ scheduled: 0, published: 0, failed: 0 });
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
+  const [editingPost, setEditingPost] = useState(null);
+  const [editCaption, setEditCaption] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userId = user.userId;
@@ -78,6 +81,33 @@ const SchedulerPage = () => {
     } catch (error) {
       console.error('Error cancelling post:', error);
     }
+  };
+
+  const handleEditPost = (post) => {
+    setEditingPost(post);
+    setEditCaption(post.caption || '');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingPost) return;
+    setEditSaving(true);
+    try {
+      const result = await schedulerAPI.updatePost(editingPost.postId, { caption: editCaption });
+      if (result.success) {
+        fetchPosts();
+        setEditingPost(null);
+        setEditCaption('');
+      }
+    } catch (error) {
+      console.error('Error updating post:', error);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPost(null);
+    setEditCaption('');
   };
 
   // Calendar helpers
@@ -185,12 +215,20 @@ const SchedulerPage = () => {
                   </p>
                 </div>
                 {post.status === 'scheduled' && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleCancelPost(post.postId); }}
-                    className="p-1.5 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
-                  >
-                    <SafeIcon icon={FiTrash2} className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleEditPost(post); }}
+                      className="p-1.5 text-purple-400 hover:bg-purple-500/20 rounded-lg transition-colors"
+                    >
+                      <SafeIcon icon={FiEdit2} className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleCancelPost(post.postId); }}
+                      className="p-1.5 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
+                    >
+                      <SafeIcon icon={FiTrash2} className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
@@ -363,6 +401,13 @@ const SchedulerPage = () => {
                     {post.status === 'scheduled' && (
                       <div className="flex gap-2 mt-2 pt-2 border-t border-zinc-800">
                         <button
+                          onClick={() => handleEditPost(post)}
+                          className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors"
+                        >
+                          <SafeIcon icon={FiEdit2} className="w-3 h-3" />
+                          Edit
+                        </button>
+                        <button
                           onClick={() => handleCancelPost(post.postId)}
                           className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                         >
@@ -383,6 +428,88 @@ const SchedulerPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Edit Caption Modal */}
+      <AnimatePresence>
+        {editingPost && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={handleCancelEdit}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[#111] border border-zinc-800 rounded-2xl p-6 w-full max-w-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <SafeIcon icon={FiEdit2} className="w-5 h-5 text-purple-400" />
+                Edit Post Caption
+              </h3>
+
+              {/* Preview */}
+              <div className="flex gap-4 mb-4 p-3 bg-zinc-900 rounded-xl">
+                {editingPost.imageUrl && (
+                  <img src={editingPost.imageUrl} alt="" className="w-20 h-20 object-cover rounded-lg" />
+                )}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <SafeIcon icon={FiInstagram} className="w-4 h-4 text-pink-400" />
+                    <span className="text-sm text-zinc-400">@{editingPost.instagramAccount}</span>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    <SafeIcon icon={FiClock} className="w-3 h-3 inline mr-1" />
+                    Scheduled for {new Date(editingPost.scheduledAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              {/* Caption Input */}
+              <div className="mb-4">
+                <label className="block text-sm text-zinc-400 mb-2">Caption</label>
+                <textarea
+                  value={editCaption}
+                  onChange={(e) => setEditCaption(e.target.value)}
+                  className="w-full h-32 bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 resize-none"
+                  placeholder="Enter your caption..."
+                />
+                <p className="text-xs text-zinc-500 mt-1">{editCaption.length} characters</p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCancelEdit}
+                  className="flex-1 px-4 py-3 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={editSaving}
+                  className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {editSaving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <SafeIcon icon={FiCheck} className="w-4 h-4" />
+                      Save Changes
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
