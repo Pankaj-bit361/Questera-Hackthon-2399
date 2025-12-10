@@ -129,12 +129,21 @@ const ChatPage = () => {
     }));
 
     // Use selected image if available, otherwise fall back to last generated image
+    // IMPORTANT: Find the last image BEFORE adding the new user message to state
     let imageUrlForEdit = selectedImageForEdit?.url || null;
     if (!imageUrlForEdit) {
-      // Fall back to last generated image
-      const lastAssistantMessage = [...messages].reverse().find(m => m.role === 'assistant' && m.imageUrl);
-      imageUrlForEdit = lastAssistantMessage?.imageUrl || null;
+      // Fall back to last generated image - search in reverse
+      const assistantMessages = messages.filter(m => m.role === 'assistant' && m.imageUrl);
+      if (assistantMessages.length > 0) {
+        imageUrlForEdit = assistantMessages[assistantMessages.length - 1].imageUrl;
+      }
     }
+
+    // Debug logging
+    console.log('🔍 [EDIT-DEBUG] Messages count:', messages.length);
+    console.log('🔍 [EDIT-DEBUG] Selected image for edit:', selectedImageForEdit?.url);
+    console.log('🔍 [EDIT-DEBUG] Found last image URL:', imageUrlForEdit);
+    console.log('🔍 [EDIT-DEBUG] Assistant messages with images:', messages.filter(m => m.role === 'assistant' && m.imageUrl).map(m => m.imageUrl));
 
     const tempUserMsg = { role: 'user', content: userPrompt, referenceImages: imagesToUse.map(r => r.preview) };
     setMessages(prev => [...prev, tempUserMsg]);
