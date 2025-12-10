@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
+import { toast } from 'react-toastify';
 import SafeIcon from '../common/SafeIcon';
 import Sidebar from './Sidebar';
 import { API_BASE_URL } from '../config';
@@ -108,7 +109,7 @@ const TemplateManager = () => {
 
   const handleCreateDraft = async () => {
     if (!formData.name || formData.prompts.filter(p => p.trim()).length === 0) {
-      alert('Please enter a name and at least one prompt');
+      toast.warning('Please enter a name and at least one prompt');
       return;
     }
 
@@ -126,16 +127,16 @@ const TemplateManager = () => {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`✅ Draft created! ${data.successCount} images generated.`);
+        toast.success(`Draft created! ${data.successCount} images generated.`);
         setFormData({ name: '', description: '', category: 'portrait', prompts: [''], aspectRatio: '1:1', style: 'photorealistic', isPublic: true });
         setReferenceImages([]);
         setReferencePreviews([]);
         setActiveTab('drafts');
       } else {
-        alert(`❌ Error: ${data.error}`);
+        toast.error(data.error);
       }
     } catch (error) {
-      alert(`❌ Error: ${error.message}`);
+      toast.error(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -151,14 +152,14 @@ const TemplateManager = () => {
       });
       const data = await res.json();
       if (data.success) {
-        alert('✅ Template approved and created!');
+        toast.success('Template approved and created!');
         setSelectedDraft(null);
         fetchDrafts();
       } else {
-        alert(`❌ Error: ${data.error}`);
+        toast.error(data.error);
       }
     } catch (error) {
-      alert(`❌ Error: ${error.message}`);
+      toast.error(error.message);
     } finally {
       setIsLoading(false);
     }
@@ -170,12 +171,12 @@ const TemplateManager = () => {
       const res = await fetch(`${API_BASE_URL}/draft-template/${draftId}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
-        alert('Draft rejected and deleted');
+        toast.info('Draft rejected and deleted');
         setSelectedDraft(null);
         fetchDrafts();
       }
     } catch (error) {
-      alert(`❌ Error: ${error.message}`);
+      toast.error(error.message);
     }
   };
 
@@ -184,10 +185,10 @@ const TemplateManager = () => {
     try {
       const res = await fetch(`${API_BASE_URL}/draft-template/admin/clear-all-templates`, { method: 'DELETE' });
       const data = await res.json();
-      alert(data.message);
+      toast.info(data.message);
       fetchTemplates();
     } catch (error) {
-      alert(`❌ Error: ${error.message}`);
+      toast.error(error.message);
     }
   };
 
@@ -200,7 +201,7 @@ const TemplateManager = () => {
         fetchTemplates();
       }
     } catch (error) {
-      alert(`❌ Error: ${error.message}`);
+      toast.error(error.message);
     }
   };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
+import { toast } from 'react-toastify';
 import SafeIcon from '../common/SafeIcon';
 import { imageAPI, chatAPI, creditsAPI } from '../lib/api';
 
@@ -380,7 +381,7 @@ const ChatPage = () => {
 
   const saveProjectSettings = async () => {
     if (!currentChatId || currentChatId === 'new') {
-      alert('Please generate an image first to create a project.');
+      toast.warning('Please generate an image first to create a project.');
       return;
     }
     setSavingSettings(true);
@@ -409,11 +410,11 @@ const ChatPage = () => {
         // Remove the message from local state
         setMessages(prev => prev.filter((_, i) => i !== idx));
       } else {
-        alert('Failed to delete message: ' + (result.error || 'Unknown error'));
+        toast.error('Failed to delete message: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Failed to delete message:', error);
-      alert('Failed to delete message');
+      toast.error('Failed to delete message');
     }
   };
 

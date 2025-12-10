@@ -311,52 +311,49 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
                   />
 
                   {/* Overlay Actions */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center p-4">
-                    <div className="flex flex-col gap-2 w-full max-w-[200px]">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end justify-center p-4">
+                    <div className="flex flex-wrap gap-2 w-full justify-center">
                       {/* Edit This Button */}
                       <button
                         onClick={() => onSelectImageForEdit?.(msg.imageUrl, idx)}
-                        className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all ${selectedImageForEdit?.url === msg.imageUrl
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
-                          : 'bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md'
+                        className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all ${selectedImageForEdit?.url === msg.imageUrl
+                          ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                          : 'bg-white/10 hover:bg-white/20 text-white backdrop-blur-md border border-white/10'
                           }`}
                       >
-                        <SafeIcon icon={FiRefreshCw} className="w-3.5 h-3.5" />
-                        {selectedImageForEdit?.url === msg.imageUrl ? 'Selected' : 'Edit / Remix'}
+                        <SafeIcon icon={FiRefreshCw} className="w-3 h-3" />
+                        {selectedImageForEdit?.url === msg.imageUrl ? 'Selected' : 'Edit'}
                       </button>
 
                       {/* Download Button */}
                       <button
                         onClick={() => handleDownload(msg.imageUrl)}
-                        className="flex items-center justify-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium border border-white/10 backdrop-blur-md transition-all"
+                        className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-[10px] font-bold uppercase tracking-wide backdrop-blur-md border border-white/10 transition-all"
                       >
-                        <SafeIcon icon={FiDownload} className="w-3.5 h-3.5" />
-                        Download
+                        <SafeIcon icon={FiDownload} className="w-3 h-3" />
+                        Save
                       </button>
 
                       {/* Schedule Button */}
                       <button
                         onClick={() => openScheduleModal(idx, msg.viralContent)}
-                        className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${schedulingStatus[idx] === 'success'
-                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
-                          : 'bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white border-white/10 backdrop-blur-md'
+                        className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all border ${schedulingStatus[idx] === 'success'
+                          ? 'bg-emerald-500 text-white border-transparent'
+                          : 'bg-white/10 hover:bg-white/20 text-white border-white/10 backdrop-blur-md'
                           }`}
                       >
                         {schedulingStatus[idx] === 'success' ? (
-                          <>
-                            <SafeIcon icon={FiCheck} className="w-3.5 h-3.5" />
-                            Scheduled
-                          </>
+                          <SafeIcon icon={FiCheck} className="w-3 h-3" />
                         ) : (
                           <>
-                            <SafeIcon icon={FiCalendar} className="w-3.5 h-3.5" />
-                            Schedule Post
+                            <SafeIcon icon={FiCalendar} className="w-3 h-3" />
+                            Schedule
                           </>
                         )}
                       </button>
 
                       {/* Publish to Instagram Button */}
-                      <div className="relative w-full">
+                      <div className="relative">
                         {(() => {
                           const selectedId = getSelectedAccountForImage(idx);
                           const selectedAcc = getAccountById(selectedId);
@@ -364,41 +361,28 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
 
                           return (
                             <>
-                              <div className="flex w-full">
+                              <div className="flex items-center shadow-lg rounded-lg overflow-hidden">
                                 {/* Main Publish Button */}
                                 <button
                                   onClick={() => handlePublish(msg.imageUrl, idx, selectedId)}
                                   disabled={publishingIdx === idx}
-                                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${publishStatus[idx] === 'success'
-                                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+                                  className={`flex items-center justify-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide transition-all ${publishStatus[idx] === 'success'
+                                    ? 'bg-emerald-500 text-white'
                                     : publishStatus[idx] === 'error'
-                                      ? 'bg-red-500/20 text-red-400 border-red-500/50'
-                                      : 'bg-gradient-to-r from-purple-500/80 to-pink-500/80 hover:from-purple-500 hover:to-pink-500 text-white border-transparent'
-                                    } ${hasMultiple ? 'rounded-r-none border-r-0' : ''}`}
+                                      ? 'bg-red-500 text-white'
+                                      : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white'
+                                    } ${hasMultiple ? 'rounded-l-lg pr-2' : 'rounded-lg'}`}
                                 >
                                   {publishStatus[idx] === 'publishing' ? (
-                                    <>
-                                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                      Wait...
-                                    </>
+                                    <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                   ) : publishStatus[idx] === 'success' ? (
-                                    <>
-                                      <SafeIcon icon={FiCheck} className="w-3.5 h-3.5" />
-                                      Published
-                                    </>
+                                    <SafeIcon icon={FiCheck} className="w-3 h-3" />
                                   ) : publishStatus[idx] === 'error' ? (
-                                    <>
-                                      <SafeIcon icon={FiX} className="w-3.5 h-3.5" />
-                                      Failed
-                                    </>
+                                    <SafeIcon icon={FiX} className="w-3 h-3" />
                                   ) : (
                                     <>
-                                      <SafeIcon icon={FiZap} className="w-3.5 h-3.5" />
-                                      {hasMultiple && selectedAcc ? (
-                                        <span className="truncate max-w-[100px]">@{selectedAcc.username}</span>
-                                      ) : (
-                                        'Publish Now'
-                                      )}
+                                      <SafeIcon icon={FiZap} className="w-3 h-3" />
+                                      Publish
                                     </>
                                   )}
                                 </button>
@@ -407,10 +391,10 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
                                 {hasMultiple && !publishStatus[idx] && (
                                   <button
                                     onClick={() => toggleAccountPicker(idx)}
-                                    className="px-2 bg-pink-500/80 hover:bg-pink-500 text-white rounded-r-lg transition-all border-l border-white/20 flex items-center justify-center"
+                                    className="px-1.5 py-1.5 bg-pink-700 hover:bg-pink-600 text-white transition-all border-l border-white/20 flex items-center justify-center h-full"
                                     title="Change account"
                                   >
-                                    <SafeIcon icon={FiChevronDown} className={`w-3.5 h-3.5 transition-transform ${showAccountPicker === idx ? 'rotate-180' : ''}`} />
+                                    <SafeIcon icon={FiChevronDown} className={`w-3 h-3 transition-transform ${showAccountPicker === idx ? 'rotate-180' : ''}`} />
                                   </button>
                                 )}
                               </div>
@@ -422,37 +406,36 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
                                     initial={{ opacity: 0, y: -10, scale: 0.95 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                                    className="absolute bottom-full mb-2 left-0 w-56 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl z-50 overflow-hidden"
+                                    className="absolute bottom-full mb-2 right-0 w-48 bg-[#18181b] border border-white/10 rounded-xl shadow-xl z-50 overflow-hidden"
                                   >
-                                    <div className="p-2 border-b border-zinc-800">
-                                      <p className="text-xs text-zinc-500 font-medium px-2">Select account to publish</p>
+                                    <div className="p-2 border-b border-white/5">
+                                      <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider px-2">Post to</p>
                                     </div>
-                                    <div className="max-h-48 overflow-y-auto">
+                                    <div className="max-h-32 overflow-y-auto custom-scrollbar">
                                       {instagramAccounts.map((account) => (
                                         <button
                                           key={account.id}
                                           onClick={() => handleSelectAccount(idx, account.id)}
-                                          className={`w-full flex items-center gap-3 p-3 hover:bg-zinc-800 transition-colors text-left ${selectedId === account.id ? 'bg-zinc-800/50' : ''}`}
+                                          className={`w-full flex items-center gap-2 p-2 hover:bg-white/5 transition-colors text-left ${selectedId === account.id ? 'bg-white/5' : ''}`}
                                         >
                                           {account.profilePictureUrl ? (
                                             <img
                                               src={account.profilePictureUrl}
                                               alt={account.username}
-                                              className={`w-8 h-8 rounded-full ${selectedId === account.id ? 'ring-2 ring-pink-500' : ''}`}
+                                              className="w-6 h-6 rounded-full"
                                             />
                                           ) : (
-                                            <div className={`w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center ${selectedId === account.id ? 'ring-2 ring-pink-500' : ''}`}>
-                                              <span className="text-white text-xs font-bold">
-                                                {account.username?.[0]?.toUpperCase() || 'U'}
+                                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                                              <span className="text-white text-[10px] font-bold">
+                                                {account.username?.[0]?.toUpperCase()}
                                               </span>
                                             </div>
                                           )}
                                           <div className="flex-1 min-w-0">
-                                            <p className="text-white text-sm font-medium truncate">@{account.username}</p>
-                                            <p className="text-zinc-500 text-xs truncate">{account.facebookPageName || 'Instagram Business'}</p>
+                                            <p className="text-white text-xs font-medium truncate">@{account.username}</p>
                                           </div>
                                           {selectedId === account.id && (
-                                            <SafeIcon icon={FiCheck} className="w-4 h-4 text-pink-500" />
+                                            <SafeIcon icon={FiCheck} className="w-3 h-3 text-pink-500" />
                                           )}
                                         </button>
                                       ))}

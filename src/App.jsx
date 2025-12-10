@@ -1,5 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import LoginPage from './components/LoginPage';
 import HomePage from './components/HomePage';
 import ChatPage from './components/ChatPage';
@@ -12,18 +14,38 @@ import './App.css';
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/home" element={<HomePage />} />
-        <Route path="/chat/:chatId" element={<ChatPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/pricing" element={<PricingPage />} />
-        <Route path="/scheduler" element={<SchedulerPage />} />
-        <Route path="/templates" element={<TemplateManager />} />
-        <Route path="/instagram/callback" element={<InstagramCallback />} />
-      </Routes>
-    </Router>
+    <>
+      <Router>
+        <Routes>
+          <Route path="/" element={<LoginPage />} />
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/chat/:chatId" element={<ChatPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/scheduler" element={<SchedulerPage />} />
+          <Route path="/templates" element={<TemplateManager />} />
+          <Route path="/instagram/callback" element={<InstagramCallback />} />
+        </Routes>
+      </Router>
+      <ToastContainer
+        position="top-right"
+        autoClose={4000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+        toastStyle={{
+          backgroundColor: '#18181b',
+          color: '#fff',
+          borderRadius: '12px',
+          border: '1px solid rgba(255,255,255,0.1)',
+        }}
+      />
+    </>
   );
 }
 

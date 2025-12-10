@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
+import { toast } from 'react-toastify';
 import SafeIcon from '../common/SafeIcon';
 import { creditsAPI } from '../lib/api';
+import logo from "../"
 
 const { FiCheck, FiX, FiChevronLeft, FiZap, FiStar, FiTrendingUp, FiArrowRight, FiLoader, FiShield } = FiIcons;
 
@@ -108,7 +110,7 @@ const PricingPage = () => {
     if (plan.key === 'free') return;
 
     if (!user.userId) {
-      alert('Please login to subscribe');
+      toast.warning('Please login to subscribe');
       navigate('/');
       return;
     }
@@ -146,14 +148,14 @@ const PricingPage = () => {
             });
 
             if (verifyResponse.success) {
-              alert(`🎉 Successfully subscribed to ${plan.name}! You now have ${verifyResponse.credits.balance} credits.`);
+              toast.success(`🎉 Successfully subscribed to ${plan.name}! You now have ${verifyResponse.credits.balance} credits.`);
               navigate('/home');
             } else {
-              alert('Payment verification failed. Please contact support.');
+              toast.error('Payment verification failed. Please contact support.');
             }
           } catch (error) {
             console.error('Verification error:', error);
-            alert('Payment verification failed. Please contact support.');
+            toast.error('Payment verification failed. Please contact support.');
           }
         },
         prefill: {
@@ -182,7 +184,7 @@ const PricingPage = () => {
       razorpay.open();
     } catch (error) {
       console.error('Subscription error:', error);
-      alert(error.message || 'Failed to create subscription. Please try again.');
+      toast.error(error.message || 'Failed to create subscription. Please try again.');
     } finally {
       setSubscribing(null);
     }
@@ -220,7 +222,7 @@ const PricingPage = () => {
             <div className="w-6 h-6 bg-white rounded flex items-center justify-center">
               <SafeIcon icon={FiZap} className="text-black w-3.5 h-3.5" />
             </div>
-            <span className="font-bold text-lg tracking-tight">Velos Pro</span>
+            <span className="font-bold text-lg tracking-tight">Velos</span>
           </div>
         </header>
 
@@ -235,26 +237,7 @@ const PricingPage = () => {
             <span className="text-zinc-500">pricing for creators.</span>
           </motion.h1>
 
-          {/* Billing Switch */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="inline-flex items-center p-1 bg-[#18181b] rounded-full border border-white/5"
-          >
-            <button
-              onClick={() => setBillingCycle('monthly')}
-              className={`px-5 py-2 rounded-full text-xs font-semibold transition-all ${billingCycle === 'monthly' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setBillingCycle('yearly')}
-              className={`px-5 py-2 rounded-full text-xs font-semibold transition-all flex items-center gap-2 ${billingCycle === 'yearly' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}
-            >
-              Yearly <span className="text-[9px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20">-20%</span>
-            </button>
-          </motion.div>
+      
         </div>
 
         {/* Plans Grid */}
