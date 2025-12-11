@@ -531,7 +531,7 @@ const ChatPage = () => {
               overrides={messageOverrides}
               onUpdateOverride={(key, val) => setMessageOverrides(p => ({ ...p, [key]: val }))}
               referenceImages={referenceImages}
-              onAddImage={(img) => setReferenceImages(p => [...p, img])}
+              onAddImage={(img) => setReferenceImages([img])}
               onRemoveImage={(idx) => setReferenceImages(p => p.filter((_, i) => i !== idx))}
             />
           </div>
