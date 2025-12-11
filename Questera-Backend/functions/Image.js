@@ -63,6 +63,7 @@ class ImageController {
                 userId,
                 imageChatId,
                 images,
+                isEdit, // Flag to indicate this is an edit operation
                 aspectRatio: aspectRatioOverride,
                 imageSize: imageSizeOverride,
                 style: styleOverride,
@@ -245,12 +246,23 @@ class ImageController {
                             mimeType: inlineData.mimeType,
                             url: imageUrl,
                         });
+
+                        // For edit operations, only generate 1 image
+                        if (isEdit && generatedImages.length >= 1) {
+                            console.log('✏️ [GENERATE] Edit operation complete - stopping after 1 image');
+                            break;
+                        }
                     }
 
                     if (chunk.text) {
                         console.log(`💬 [GENERATE] Got text in chunk #${chunkCount}:`, chunk.text.substring(0, 100));
                         textResponse += chunk.text;
                     }
+                }
+
+                // Break outer loop if edit is complete
+                if (isEdit && generatedImages.length >= 1) {
+                    break;
                 }
             }
 

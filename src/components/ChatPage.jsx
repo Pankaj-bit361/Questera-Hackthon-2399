@@ -242,6 +242,7 @@ const ChatPage = () => {
           originalMessage: userPrompt, // Keep original user message for UI display
           userId: user.userId,
           imageChatId: existingChatId || chatResponse.imageChatId,
+          isEdit: true, // Tell backend this is an edit operation
           ...overrides,
           images: imagesToSend.length > 0 ? imagesToSend : undefined,
         });
