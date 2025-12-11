@@ -208,18 +208,20 @@ const ChatPage = () => {
         // Use the edit prompt with the last image as reference
         const promptToUse = chatResponse.prompt || userPrompt;
 
-        // Prepare images for edit - include the last image if available
+        // Prepare images for edit - prioritize user-uploaded reference images
         let imagesToSend = refImagesForApi;
 
-        if (chatResponse.useLastImage && chatResponse.lastImageUrl) {
+        // Only use last generated image if user didn't upload a reference image
+        if (imagesToSend.length === 0 && chatResponse.useLastImage && chatResponse.lastImageUrl) {
           // Pass the URL directly to the backend - it will fetch the image server-side
           // This is more reliable than fetching in the browser (avoids CORS/network issues)
-          console.log('🖼️ [EDIT] Passing image URL to backend for edit:', chatResponse.lastImageUrl);
+          console.log('🖼️ [EDIT] No reference image uploaded, using last generated image:', chatResponse.lastImageUrl);
           imagesToSend = [{
             data: chatResponse.lastImageUrl, // Backend will detect URL and fetch it
             mimeType: 'image/jpeg',
-            url: chatResponse.lastImageUrl
           }];
+        } else if (refImagesForApi.length > 0) {
+          console.log('🖼️ [EDIT] Using user-uploaded reference image for edit');
         }
 
         // If edit was requested but no image URL available, inform user
