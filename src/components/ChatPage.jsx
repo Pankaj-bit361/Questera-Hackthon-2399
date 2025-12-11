@@ -124,8 +124,7 @@ const ChatPage = () => {
     const imagesToUse = initialImages || referenceImages;
     const refImagesForApi = imagesToUse.map(img => ({
       data: img.data,
-      mimeType: img.mimeType,
-      url: img.preview
+      mimeType: img.mimeType
     }));
 
     // Use selected image if available, otherwise fall back to last generated image
