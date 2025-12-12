@@ -3,7 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import SafeIcon from '../common/SafeIcon';
-import { imageAPI, chatAPI, agentAPI, creditsAPI } from '../lib/api';
+import { imageAPI, agentAPI, creditsAPI } from '../lib/api';
 
 // Components
 import Sidebar from './Sidebar';
@@ -79,9 +79,9 @@ const ChatPage = () => {
       if (initialPrompt || initialImages.length > 0) {
         hasInitialized.current = true;
         setLoadingChat(false);
-        // Pass images directly to generateImage to avoid state timing issues
+        // Use Agent for all generation - unified path to avoid duplicate scheduling
         if (initialPrompt) {
-          generateImage(initialPrompt, null, initialImages);
+          generateWithAgent(initialPrompt, null, initialImages);
         }
       } else {
         setLoadingChat(false);
@@ -439,7 +439,7 @@ const ChatPage = () => {
     setLoading(true);
 
     const imagesToUse = initialImages !== null && initialImages !== undefined ? initialImages : referenceImages;
-    const refImagesForApi = imagesToUse.map(img => ({ data: img.data, mimeType: img.mimeType }));
+    let refImagesForApi = imagesToUse.map(img => ({ data: img.data, mimeType: img.mimeType }));
 
     let imageUrlForEdit = selectedImageForEdit?.url || null;
     if (!imageUrlForEdit) {
@@ -447,6 +447,11 @@ const ChatPage = () => {
       if (assistantMessages.length > 0) {
         imageUrlForEdit = assistantMessages[assistantMessages.length - 1].imageUrl;
       }
+    }
+
+    // Filter out reference images that match the image being edited (avoid duplicates)
+    if (imageUrlForEdit) {
+      refImagesForApi = refImagesForApi.filter(ref => ref.data !== imageUrlForEdit);
     }
 
     const tempUserMsg = { role: 'user', content: userPrompt, referenceImages: imagesToUse.map(r => r.preview) };
