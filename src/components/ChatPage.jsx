@@ -439,19 +439,20 @@ const ChatPage = () => {
     setLoading(true);
 
     const imagesToUse = initialImages !== null && initialImages !== undefined ? initialImages : referenceImages;
-    let refImagesForApi = imagesToUse.map(img => ({ data: img.data, mimeType: img.mimeType }));
+    const refImagesForApi = imagesToUse.map(img => ({ data: img.data, mimeType: img.mimeType }));
 
-    let imageUrlForEdit = selectedImageForEdit?.url || null;
-    if (!imageUrlForEdit) {
-      const assistantMessages = messages.filter(m => m.role === 'assistant' && m.imageUrl);
-      if (assistantMessages.length > 0) {
-        imageUrlForEdit = assistantMessages[assistantMessages.length - 1].imageUrl;
+    // lastImageUrl is ONLY needed if user didn't upload reference images
+    // If user uploaded reference images, they explicitly chose what to edit
+    let imageUrlForEdit = null;
+    if (refImagesForApi.length === 0) {
+      // No reference images uploaded - find the last generated image for potential editing
+      imageUrlForEdit = selectedImageForEdit?.url || null;
+      if (!imageUrlForEdit) {
+        const assistantMessages = messages.filter(m => m.role === 'assistant' && m.imageUrl);
+        if (assistantMessages.length > 0) {
+          imageUrlForEdit = assistantMessages[assistantMessages.length - 1].imageUrl;
+        }
       }
-    }
-
-    // Filter out reference images that match the image being edited (avoid duplicates)
-    if (imageUrlForEdit) {
-      refImagesForApi = refImagesForApi.filter(ref => ref.data !== imageUrlForEdit);
     }
 
     const tempUserMsg = { role: 'user', content: userPrompt, referenceImages: imagesToUse.map(r => r.preview) };
@@ -467,7 +468,7 @@ const ChatPage = () => {
         message: userPrompt,
         imageChatId: existingChatId,
         referenceImages: refImagesForApi,
-        lastImageUrl: imageUrlForEdit,
+        lastImageUrl: imageUrlForEdit, // Only set if no reference images
       });
 
       // Update chatId for new chats (any intent)
