@@ -10,6 +10,15 @@ const headers = () => ({
 export const imageAPI = {
   // Generate Image
   generate: async (payload) => {
+    console.log('📤 [API] Sending to /image/generate:', {
+      prompt: payload.prompt?.slice(0, 50) + '...',
+      userId: payload.userId,
+      imageChatId: payload.imageChatId,
+      isEdit: payload.isEdit,
+      hasImages: !!payload.images,
+      imagesCount: payload.images?.length || 0,
+      allKeys: Object.keys(payload),
+    });
     const response = await fetch(`${API_BASE_URL}/image/generate`, {
       method: 'POST',
       headers: headers(),
@@ -73,6 +82,28 @@ export const imageAPI = {
     return response.json();
   }
 };
+
+/**
+ * Agent API - LLM-powered agent that decides which tools to use
+ */
+export const agentAPI = {
+  chat: async (payload) => {
+    console.log('🤖 [AGENT API] Sending to /agent:', {
+      message: payload.message?.slice(0, 50) + '...',
+      userId: payload.userId,
+      imageChatId: payload.imageChatId,
+      hasReferenceImages: !!payload.referenceImages?.length,
+      hasLastImageUrl: !!payload.lastImageUrl,
+    });
+    const response = await fetch(`${API_BASE_URL}/agent`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(payload),
+    });
+    return response.json();
+  },
+};
+
 
 /**
  * Smart Chat API - AI-powered content generation with memory & profiles

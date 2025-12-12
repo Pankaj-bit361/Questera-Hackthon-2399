@@ -3,7 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import SafeIcon from '../common/SafeIcon';
-import { imageAPI, chatAPI, creditsAPI } from '../lib/api';
+import { imageAPI, chatAPI, agentAPI, creditsAPI } from '../lib/api';
 
 // Components
 import Sidebar from './Sidebar';
@@ -120,12 +120,21 @@ const ChatPage = () => {
     if (messageOverrides.imageSize) overrides.imageSize = messageOverrides.imageSize;
     if (messageOverrides.style) overrides.style = messageOverrides.style;
 
-    // Use initialImages if provided (from HomePage navigation), otherwise use referenceImages state
-    const imagesToUse = initialImages || referenceImages;
+    // Use initialImages if provided (from handleSend or HomePage navigation), otherwise use referenceImages state
+    // IMPORTANT: If initialImages is an array (even empty), use it. Only fall back to state if null/undefined.
+    const imagesToUse = initialImages !== null && initialImages !== undefined ? initialImages : referenceImages;
     const refImagesForApi = imagesToUse.map(img => ({
       data: img.data,
       mimeType: img.mimeType
     }));
+
+    console.log('🔍 [GENERATE-START] initialImages:', initialImages?.length ?? 'null/undefined');
+    console.log('🔍 [GENERATE-START] referenceImages state:', referenceImages.length);
+    console.log('🔍 [GENERATE-START] imagesToUse:', imagesToUse.length);
+    console.log('🔍 [GENERATE-START] refImagesForApi:', refImagesForApi);
+    if (refImagesForApi.length > 0) {
+      console.log('🔍 [GENERATE-START] First image data length:', refImagesForApi[0]?.data?.length);
+    }
 
     // Use selected image if available, otherwise fall back to last generated image
     // IMPORTANT: Find the last image BEFORE adding the new user message to state
@@ -144,6 +153,14 @@ const ChatPage = () => {
     console.log('🔍 [EDIT-DEBUG] Found last image URL:', imageUrlForEdit);
     console.log('🔍 [EDIT-DEBUG] Assistant messages with images:', messages.filter(m => m.role === 'assistant' && m.imageUrl).map(m => m.imageUrl));
 
+    // If user selected an image for edit and no new reference images uploaded,
+    // pass the selected image URL as a reference image
+    let finalRefImagesForApi = refImagesForApi;
+    if (selectedImageForEdit?.url && refImagesForApi.length === 0) {
+      console.log('📸 [SMART-CHAT] Adding selected image as reference:', selectedImageForEdit.url);
+      finalRefImagesForApi = [{ data: selectedImageForEdit.url, mimeType: 'image/jpeg' }];
+    }
+
     const tempUserMsg = { role: 'user', content: userPrompt, referenceImages: imagesToUse.map(r => r.preview) };
     setMessages(prev => [...prev, tempUserMsg]);
 
@@ -159,7 +176,7 @@ const ChatPage = () => {
         userId: user.userId,
         message: userPrompt,
         imageChatId: existingChatId,
-        referenceImages: refImagesForApi,
+        referenceImages: finalRefImagesForApi,
         lastImageUrl: imageUrlForEdit, // Pass selected or last image for edit/remix operations
       });
 
@@ -211,6 +228,10 @@ const ChatPage = () => {
         // Prepare images for edit - prioritize user-uploaded reference images
         let imagesToSend = refImagesForApi;
 
+        console.log('🖼️ [EDIT] refImagesForApi length:', refImagesForApi.length);
+        console.log('🖼️ [EDIT] imagesToUse length:', imagesToUse.length);
+        console.log('🖼️ [EDIT] referenceImages state length:', referenceImages.length);
+
         // Only use last generated image if user didn't upload a reference image
         if (imagesToSend.length === 0 && chatResponse.useLastImage && chatResponse.lastImageUrl) {
           // Pass the URL directly to the backend - it will fetch the image server-side
@@ -235,6 +256,9 @@ const ChatPage = () => {
           setLoading(false);
           return;
         }
+
+        console.log('🖼️ [EDIT] Final imagesToSend length:', imagesToSend.length);
+        console.log('🖼️ [EDIT] Sending to /image/generate with images:', imagesToSend.length > 0 ? 'YES' : 'NO');
 
         // Generate edited image
         const data = await imageAPI.generate({
@@ -402,11 +426,116 @@ const ChatPage = () => {
     }
   };
 
+  // Ref to prevent duplicate requests
+  const requestInFlightRef = useRef(false);
+
+  const generateWithAgent = async (userPrompt, existingChatId, initialImages = null) => {
+    // Prevent duplicate requests
+    if (requestInFlightRef.current) {
+      console.log('⚠️ [AGENT] Request already in flight, skipping duplicate');
+      return;
+    }
+    requestInFlightRef.current = true;
+    setLoading(true);
+
+    const imagesToUse = initialImages !== null && initialImages !== undefined ? initialImages : referenceImages;
+    const refImagesForApi = imagesToUse.map(img => ({ data: img.data, mimeType: img.mimeType }));
+
+    let imageUrlForEdit = selectedImageForEdit?.url || null;
+    if (!imageUrlForEdit) {
+      const assistantMessages = messages.filter(m => m.role === 'assistant' && m.imageUrl);
+      if (assistantMessages.length > 0) {
+        imageUrlForEdit = assistantMessages[assistantMessages.length - 1].imageUrl;
+      }
+    }
+
+    const tempUserMsg = { role: 'user', content: userPrompt, referenceImages: imagesToUse.map(r => r.preview) };
+    setMessages(prev => [...prev, tempUserMsg]);
+    setSelectedImageForEdit(null);
+
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (!user.userId) throw new Error('User not logged in');
+
+      const response = await agentAPI.chat({
+        userId: user.userId,
+        message: userPrompt,
+        imageChatId: existingChatId,
+        referenceImages: refImagesForApi,
+        lastImageUrl: imageUrlForEdit,
+      });
+
+      // Update chatId for new chats (any intent)
+      if (!existingChatId && response.imageChatId) {
+        setCurrentChatId(response.imageChatId);
+        setChatTitle(userPrompt.slice(0, 30) + '...');
+        navigate(`/chat/${response.imageChatId}`, { replace: true });
+      }
+
+      if (response.intent === 'conversation' || response.intent === 'accounts') {
+        setMessages(prev => [...prev, { role: 'assistant', content: response.message }]);
+      } else if (response.intent === 'image_generation') {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: response.message || 'Here is your image!',
+          imageUrl: response.imageUrl || (response.images && response.images[0]?.url),
+        }]);
+        if (response.creditsRemaining !== undefined) {
+          setCredits(prev => ({ ...prev, balance: response.creditsRemaining }));
+        } else {
+          fetchCredits();
+        }
+      } else if (response.intent === 'schedule') {
+        setMessages(prev => [...prev, { role: 'assistant', content: response.message, isScheduled: true }]);
+      } else if (response.intent === 'variations') {
+        // Handle multiple variations - each variation as a separate message or all in one
+        if (response.variations && response.variations.length > 0) {
+          // Add all variations as messages
+          const variationMessages = response.variations.map((v, idx) => ({
+            role: 'assistant',
+            content: `Variation ${idx + 1}: ${v.variant}`,
+            imageUrl: v.imageUrl,
+          }));
+          setMessages(prev => [...prev, ...variationMessages]);
+          if (response.creditsRemaining !== undefined) {
+            setCredits(prev => ({ ...prev, balance: response.creditsRemaining }));
+          } else {
+            fetchCredits();
+          }
+        } else {
+          setMessages(prev => [...prev, { role: 'assistant', content: response.message || 'Variations created!' }]);
+        }
+      } else if (response.intent === 'error') {
+        if (response.message?.includes('credit')) {
+          setMessages(prev => [...prev, { role: 'assistant', content: "⚡ You've run out of credits!", isError: true }]);
+        } else {
+          setMessages(prev => [...prev, { role: 'assistant', content: response.message || 'Something went wrong' }]);
+        }
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', content: response.message || 'Done!' }]);
+      }
+
+      setMessageOverrides({ aspectRatio: null, imageSize: null, style: null });
+      setReferenceImages([]);
+    } catch (error) {
+      console.error('Agent error:', error);
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
+    } finally {
+      requestInFlightRef.current = false;
+      setLoading(false);
+    }
+  };
+
+
   const handleSend = () => {
     if (!prompt.trim() || loading) return;
     const userPrompt = prompt.trim();
     setPrompt('');
-    generateImage(userPrompt, currentChatId !== 'new' ? currentChatId : null);
+
+    const currentRefImages = [...referenceImages];
+    console.log('📤 [HANDLE-SEND] Sending with referenceImages:', currentRefImages.length, currentRefImages);
+
+    generateWithAgent(userPrompt, currentChatId !== 'new' ? currentChatId : null, currentRefImages);
   };
 
   const saveProjectSettings = async () => {
@@ -531,7 +660,10 @@ const ChatPage = () => {
               overrides={messageOverrides}
               onUpdateOverride={(key, val) => setMessageOverrides(p => ({ ...p, [key]: val }))}
               referenceImages={referenceImages}
-              onAddImage={(img) => setReferenceImages([img])}
+              onAddImage={(img) => {
+                console.log('📎 [ADD-IMAGE] User uploaded image, mimeType:', img.mimeType, 'dataLength:', img.data?.length);
+                setReferenceImages(prev => [...prev, img]);
+              }}
               onRemoveImage={(idx) => setReferenceImages(p => p.filter((_, i) => i !== idx))}
             />
           </div>
