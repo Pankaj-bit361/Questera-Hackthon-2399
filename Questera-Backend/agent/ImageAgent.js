@@ -53,30 +53,37 @@ IMAGE GENERATION RULES
 ━━━━━━━━━━━━━━━━━━━━━━
 When generating images:
 
-1. Prompt evaluation:
+1. Reference images are OPTIONAL:
+   - Text-to-image: NO reference image needed (e.g. "create a sunset", "generate a cat")
+   - Face/person in scene: Reference image needed for the person's face
+   - Style transfer: Reference image needed for style
+   - NEVER ask for reference image for basic text-to-image requests
+
+2. Prompt evaluation:
    - SHORT or VAGUE prompts (e.g. "a cat", "sunset"):
      → Enhance with subject, environment, lighting, mood, style, composition, quality
    - DETAILED prompts (clear colors, poses, style, environment, composition):
      → Use AS-IS, do NOT rewrite, rephrase, or add details
 
-2. Absolute rules:
+3. Absolute rules:
    - NEVER remove user constraints
    - NEVER override specified colors, styles, or settings
    - NEVER assume artistic style unless missing
    - NEVER add branding, logos, or text unless requested
 
-3. If critical details are missing:
+4. If critical details are missing:
    - Ask ONE clarification question before generating
+   - But do NOT ask for reference image unless the prompt implies personalization
 
 ━━━━━━━━━━━━━━━━━━━━━━
 IMAGE EDITING RULES
 ━━━━━━━━━━━━━━━━━━━━━━
 When editing images:
 
+- REQUIRES an existing image to edit - ask for one if not provided
 - Only modify what the user explicitly requests
 - NEVER add new elements unless asked
 - NEVER apply creative interpretation
-- If no image is provided, ask the user to upload it
 - Be literal and precise
 
 ━━━━━━━━━━━━━━━━━━━━━━
@@ -126,7 +133,7 @@ When in doubt, ask a single clarifying question and wait.`;
 class ImageAgent {
    constructor(options = {}) {
       const provider = options.provider || 'openrouter';
-      const model = options.model || 'google/gemini-2.5-flash-lite-preview-09-2025'
+      const model = options.model || 'google/gemini-2.5-flash-lite-preview-09-2025';
 
       let llm;
       if (provider === 'anthropic') {

@@ -27,9 +27,9 @@ const FAILURE_RESPONSES = {
    },
    NO_REFERENCE_IMAGE: {
       code: 'IMAGE_GEN_004',
-      message: "I need a reference image to work with.",
+      message: "I need a reference image for this personalization.",
       action: 'request_image',
-      userMessage: "Please upload the image you'd like me to use as a reference."
+      userMessage: "For personalized images (like putting your face in a scene), please upload a reference photo."
    },
 
    // ━━━━━━━━━━━━━━━━━━━━━━
@@ -133,13 +133,13 @@ class FailureHandler {
 
    static fromError(error) {
       const message = error?.message?.toLowerCase() || '';
-      
+
       if (message.includes('rate limit')) return this.format('RATE_LIMITED');
       if (message.includes('timeout')) return this.format('IMAGE_TIMEOUT');
       if (message.includes('credit')) return this.format('CREDITS_EXHAUSTED');
       if (message.includes('blocked') || message.includes('safety')) return this.format('IMAGE_CONTENT_BLOCKED');
       if (message.includes('unavailable')) return this.format('SERVICE_UNAVAILABLE');
-      
+
       return this.format('UNKNOWN_ERROR', error?.message);
    }
 }
