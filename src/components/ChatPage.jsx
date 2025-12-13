@@ -3,7 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import SafeIcon from '../common/SafeIcon';
-import { imageAPI, agentAPI, creditsAPI } from '../lib/api';
+import { imageAPI, agentAPI, creditsAPI, chatAPI } from '../lib/api';
 
 // Components
 import Sidebar from './Sidebar';
