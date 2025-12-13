@@ -18,7 +18,8 @@ class InstagramController {
 
       // Facebook OAuth scopes for Instagram Business
       // Added business_management to access Business Portfolio assets
-      const scope = 'pages_show_list,instagram_basic,instagram_manage_comments,instagram_content_publish,pages_read_engagement,business_management';
+      // Added instagram_manage_insights for analytics (impressions, reach, engagement, saves)
+      const scope = 'pages_show_list,instagram_basic,instagram_manage_comments,instagram_content_publish,pages_read_engagement,business_management,instagram_manage_insights';
 
       // Use Facebook OAuth dialog
       const oauthUrl = `https://www.facebook.com/${this.apiVersion}/dialog/oauth?` +

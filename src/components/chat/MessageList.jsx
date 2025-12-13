@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../common/SafeIcon';
 import { schedulerAPI } from '../../lib/api';
+import ThinkingSteps from './ThinkingSteps';
 
 import { API_BASE_URL } from '../../config';
 
@@ -251,6 +252,16 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
 
             {/* Content Container */}
             <div className={`flex flex-col gap-3 max-w-[85%] lg:max-w-[70%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+
+              {/* Cognitive Layer - Thinking Steps (Assistant only) */}
+              {msg.role === 'assistant' && msg.cognitive && (
+                <ThinkingSteps
+                  steps={msg.cognitive.thinkingSteps}
+                  decisions={msg.cognitive.decisions}
+                  suggestions={msg.cognitive.suggestions}
+                  persona={msg.cognitive.persona}
+                />
+              )}
 
               {/* Text Bubble */}
               {msg.content && (

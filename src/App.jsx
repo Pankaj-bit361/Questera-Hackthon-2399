@@ -10,6 +10,8 @@ import PricingPage from './components/PricingPage';
 import SchedulerPage from './components/SchedulerPage';
 import TemplateManager from './components/TemplateManager';
 import InstagramCallback from './components/InstagramCallback';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsOfService from './components/TermsOfService';
 import './App.css';
 
 function App() {
@@ -25,6 +27,8 @@ function App() {
           <Route path="/scheduler" element={<SchedulerPage />} />
           <Route path="/templates" element={<TemplateManager />} />
           <Route path="/instagram/callback" element={<InstagramCallback />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
         </Routes>
       </Router>
       <ToastContainer

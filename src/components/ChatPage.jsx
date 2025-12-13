@@ -478,13 +478,17 @@ const ChatPage = () => {
         navigate(`/chat/${response.imageChatId}`, { replace: true });
       }
 
+      // Extract cognitive layer from response (thinking steps, decisions, suggestions)
+      const cognitive = response.cognitive || null;
+
       if (response.intent === 'conversation' || response.intent === 'accounts') {
-        setMessages(prev => [...prev, { role: 'assistant', content: response.message }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: response.message, cognitive }]);
       } else if (response.intent === 'image_generation') {
         setMessages(prev => [...prev, {
           role: 'assistant',
           content: response.message || 'Here is your image!',
           imageUrl: response.imageUrl || (response.images && response.images[0]?.url),
+          cognitive, // Add cognitive layer to message
         }]);
         if (response.creditsRemaining !== undefined) {
           setCredits(prev => ({ ...prev, balance: response.creditsRemaining }));
@@ -492,15 +496,16 @@ const ChatPage = () => {
           fetchCredits();
         }
       } else if (response.intent === 'schedule') {
-        setMessages(prev => [...prev, { role: 'assistant', content: response.message, isScheduled: true }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: response.message, isScheduled: true, cognitive }]);
       } else if (response.intent === 'variations') {
         // Handle multiple variations - each variation as a separate message or all in one
         if (response.variations && response.variations.length > 0) {
-          // Add all variations as messages
+          // Add all variations as messages (cognitive only on first)
           const variationMessages = response.variations.map((v, idx) => ({
             role: 'assistant',
             content: `Variation ${idx + 1}: ${v.variant}`,
             imageUrl: v.imageUrl,
+            cognitive: idx === 0 ? cognitive : null,
           }));
           setMessages(prev => [...prev, ...variationMessages]);
           if (response.creditsRemaining !== undefined) {
@@ -509,7 +514,7 @@ const ChatPage = () => {
             fetchCredits();
           }
         } else {
-          setMessages(prev => [...prev, { role: 'assistant', content: response.message || 'Variations created!' }]);
+          setMessages(prev => [...prev, { role: 'assistant', content: response.message || 'Variations created!', cognitive }]);
         }
       } else if (response.intent === 'error') {
         if (response.message?.includes('credit')) {
@@ -518,7 +523,7 @@ const ChatPage = () => {
           setMessages(prev => [...prev, { role: 'assistant', content: response.message || 'Something went wrong' }]);
         }
       } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: response.message || 'Done!' }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: response.message || 'Done!', cognitive }]);
       }
 
       setMessageOverrides({ aspectRatio: null, imageSize: null, style: null });

@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import Sidebar from './Sidebar';
 import { API_BASE_URL } from '../config';
-import { agentAPI } from '../lib/api';
 
 
-const { FiZap, FiArrowRight, FiUpload, FiGrid, FiImage, FiLayout, FiEye, FiX, FiLoader, FiDownload, FiMessageSquare } = FiIcons;
+const { FiZap, FiArrowRight, FiUpload, FiGrid, FiImage, FiEye, FiX } = FiIcons;
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -20,11 +19,6 @@ const HomePage = () => {
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [viewingImage, setViewingImage] = useState(null); // For image preview modal
   const [uploadedImages, setUploadedImages] = useState([]); // For multiple reference images
-
-  // New: Generation results displayed on homepage
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedResults, setGeneratedResults] = useState([]); // Array of {prompt, message, imageUrl, chatId}
-  const [currentChatId, setCurrentChatId] = useState(null);
 
   // Fetch templates from database on mount
   useEffect(() => {
@@ -56,72 +50,16 @@ const HomePage = () => {
     fetchTemplates();
   }, []);
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!prompt.trim() && uploadedImages.length === 0) return;
-    if (isGenerating) return;
 
-    const userPrompt = prompt.trim();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-
-    if (!user.userId) {
-      // If not logged in, redirect to chat page (which will handle auth)
-      navigate('/chat/new', { state: { prompt, referenceImages: uploadedImages } });
-      return;
-    }
-
-    setIsGenerating(true);
-
-    // Add user's prompt to results immediately
-    setGeneratedResults(prev => [...prev, {
-      role: 'user',
-      content: userPrompt,
-      images: uploadedImages.map(img => img.preview)
-    }]);
-
-    // Clear prompt after sending
-    setPrompt('');
-
-    try {
-      // Prepare reference images for API
-      const refImagesForApi = uploadedImages.map(img => ({
-        data: img.data,
-        mimeType: img.mimeType
-      }));
-
-      const response = await agentAPI.chat({
-        userId: user.userId,
-        message: userPrompt,
-        imageChatId: currentChatId,
-        referenceImages: refImagesForApi,
-      });
-
-      // Update chatId for subsequent messages
-      if (response.imageChatId && !currentChatId) {
-        setCurrentChatId(response.imageChatId);
+    // Always redirect to chat page with prompt and reference images
+    navigate('/chat/new', {
+      state: {
+        prompt: prompt.trim(),
+        referenceImages: uploadedImages
       }
-
-      // Add AI response to results
-      const aiResult = {
-        role: 'assistant',
-        content: response.message || 'Image generated!',
-        imageUrl: response.imageUrl,
-        chatId: response.imageChatId,
-        intent: response.intent
-      };
-
-      setGeneratedResults(prev => [...prev, aiResult]);
-      setUploadedImages([]); // Clear uploaded images after generation
-
-    } catch (error) {
-      console.error('Generation error:', error);
-      setGeneratedResults(prev => [...prev, {
-        role: 'assistant',
-        content: 'Sorry, something went wrong. Please try again.',
-        isError: true
-      }]);
-    } finally {
-      setIsGenerating(false);
-    }
+    });
   };
 
   const handleKeyDown = (e) => {
@@ -129,21 +67,6 @@ const HomePage = () => {
       e.preventDefault();
       handleGenerate();
     }
-  };
-
-  const handleContinueInChat = () => {
-    if (currentChatId) {
-      navigate(`/chat/${currentChatId}`);
-    }
-  };
-
-  const handleDownloadImage = (imageUrl) => {
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = `generated-${Date.now()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   const handleTemplateClick = (template) => {
@@ -289,23 +212,10 @@ const HomePage = () => {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={handleGenerate}
-                    disabled={isGenerating}
-                    className={`px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors ${isGenerating
-                        ? 'bg-zinc-600 text-zinc-300 cursor-not-allowed'
-                        : 'bg-white text-black hover:bg-zinc-200'
-                      }`}
+                    className="px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors bg-white text-black hover:bg-zinc-200"
                   >
-                    {isGenerating ? (
-                      <>
-                        <SafeIcon icon={FiLoader} className="w-4 h-4 animate-spin" />
-                        <span>Generating...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Generate</span>
-                        <SafeIcon icon={FiArrowRight} className="w-4 h-4" />
-                      </>
-                    )}
+                    <span>Generate</span>
+                    <SafeIcon icon={FiArrowRight} className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -313,106 +223,6 @@ const HomePage = () => {
 
             <div className="absolute -inset-1 bg-gradient-to-r from-white/20 via-white/10 to-white/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-30 transition-opacity duration-500 -z-10"></div>
           </motion.div>
-
-          {/* Generated Results Section */}
-          {generatedResults.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="w-full mt-8 space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-zinc-400">🎨 Generated Results</h3>
-                {currentChatId && (
-                  <button
-                    onClick={handleContinueInChat}
-                    className="text-sm text-zinc-400 hover:text-white flex items-center gap-2 transition-colors"
-                  >
-                    <SafeIcon icon={FiMessageSquare} className="w-4 h-4" />
-                    Continue in Chat
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-4">
-                {generatedResults.map((result, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className={`p-4 rounded-xl border ${result.role === 'user'
-                        ? 'bg-white/5 border-white/10 ml-8'
-                        : 'bg-zinc-900/50 border-white/10 mr-8'
-                      }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${result.role === 'user' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
-                        }`}>
-                        {result.role === 'user' ? '👤' : '🤖'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-zinc-300 whitespace-pre-wrap">{result.content}</p>
-
-                        {/* Show user's uploaded images */}
-                        {result.images && result.images.length > 0 && (
-                          <div className="flex gap-2 mt-3 flex-wrap">
-                            {result.images.map((img, i) => (
-                              <img key={i} src={img} alt="Reference" className="w-20 h-20 object-cover rounded-lg border border-white/10" />
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Show generated image */}
-                        {result.imageUrl && (
-                          <div className="mt-3 relative group/img">
-                            <img
-                              src={result.imageUrl}
-                              alt="Generated"
-                              className="max-w-full rounded-lg border border-white/10 cursor-pointer hover:border-white/30 transition-colors"
-                              onClick={() => setViewingImage({ image: result.imageUrl, prompt: result.content })}
-                            />
-                            <div className="absolute top-2 right-2 opacity-0 group-hover/img:opacity-100 transition-opacity flex gap-2">
-                              <button
-                                onClick={() => handleDownloadImage(result.imageUrl)}
-                                className="p-2 bg-black/70 rounded-lg hover:bg-black/90 transition-colors"
-                                title="Download"
-                              >
-                                <SafeIcon icon={FiDownload} className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {result.isError && (
-                          <div className="mt-2 text-red-400 text-xs">⚠️ Error occurred</div>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-
-                {/* Loading indicator */}
-                {isGenerating && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="p-4 rounded-xl bg-zinc-900/50 border border-white/10 mr-8"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                        🤖
-                      </div>
-                      <div className="flex items-center gap-2 text-zinc-400">
-                        <SafeIcon icon={FiLoader} className="w-4 h-4 animate-spin" />
-                        <span className="text-sm">Generating your image...</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-            </motion.div>
-          )}
 
           {/* Templates Section */}
           <motion.div
@@ -502,8 +312,8 @@ const HomePage = () => {
 
       <footer className="fixed bottom-4 right-6 text-xs text-zinc-700 z-30 pointer-events-none">
         <div className="pointer-events-auto flex gap-4">
-          <a href="#" className="hover:text-zinc-500 transition-colors">Privacy</a>
-          <a href="#" className="hover:text-zinc-500 transition-colors">Terms</a>
+          <a href="/privacy-policy" className="hover:text-zinc-500 transition-colors">Privacy</a>
+          <a href="/terms-of-service" className="hover:text-zinc-500 transition-colors">Terms</a>
         </div>
       </footer>
 

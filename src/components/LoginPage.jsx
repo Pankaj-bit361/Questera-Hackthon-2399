@@ -311,7 +311,7 @@ const LoginPage = () => {
 
             <p className="pt-8 text-center text-xs text-gray-400 leading-relaxed">
               By continuing,you agree to Velos's <br />
-              <a href="#" className="underline hover:text-gray-600 mx-1">Terms of Service</a> and <a href="#" className="underline hover:text-gray-600 mx-1">Privacy Policy</a>.
+              <a href="/terms-of-service" className="underline hover:text-gray-600 mx-1">Terms of Service</a> and <a href="/privacy-policy" className="underline hover:text-gray-600 mx-1">Privacy Policy</a>.
             </p>
           </div>
         </div>
