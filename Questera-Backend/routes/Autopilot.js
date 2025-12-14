@@ -241,8 +241,8 @@ autopilotRouter.put('/memory/:userId/:chatId', async (req, res) => {
 
     // Update brand info
     if (brand) {
-      if (brand.niche || brand.topics) {
-        const topics = brand.topics || brand.niche;
+      if (brand.niche || brand.topics || brand.topicsAllowed) {
+        const topics = brand.topicsAllowed || brand.topics || brand.niche;
         memory.brand.topicsAllowed = Array.isArray(topics)
           ? topics
           : topics.split(',').map(t => t.trim());
