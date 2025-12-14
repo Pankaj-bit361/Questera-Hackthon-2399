@@ -10,9 +10,10 @@ import Sidebar from './Sidebar';
 import MessageList from './chat/MessageList';
 import ChatInput from './chat/ChatInput';
 import ProjectSettings from './chat/ProjectSettings';
+import AutopilotSettings from './chat/AutopilotSettings';
 import { DEFAULT_PROJECT_SETTINGS } from './chat/constants';
 
-const { FiMenu, FiSettings, FiShare2, FiCheck, FiChevronLeft } = FiIcons;
+const { FiMenu, FiSettings, FiShare2, FiCheck, FiChevronLeft, FiZap } = FiIcons;
 
 const ChatPage = () => {
   const { chatId } = useParams();
@@ -27,6 +28,7 @@ const ChatPage = () => {
   const [loadingChat, setLoadingChat] = useState(true);
   const [currentChatId, setCurrentChatId] = useState(chatId);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
+  const [showAutopilotSettings, setShowAutopilotSettings] = useState(false);
   const [chatTitle, setChatTitle] = useState('New Creation');
   const [shareCopied, setShareCopied] = useState(false);
 
@@ -636,6 +638,13 @@ const ChatPage = () => {
               <span className="hidden sm:inline">{shareCopied ? 'Copied' : 'Share'}</span>
             </button>
             <button
+              onClick={() => setShowAutopilotSettings(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-full bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-xs font-bold text-yellow-400 hover:from-yellow-500/30 hover:to-orange-500/30 transition-all backdrop-blur-md border border-yellow-500/20 hover:border-yellow-500/40"
+            >
+              <SafeIcon icon={FiZap} className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Autopilot</span>
+            </button>
+            <button
               onClick={() => setShowProjectSettings(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-xs font-bold hover:bg-zinc-200 transition-all shadow-lg shadow-white/5"
             >
@@ -688,6 +697,13 @@ const ChatPage = () => {
           onUpdate={(key, val) => setProjectSettings(p => ({ ...p, [key]: val }))}
           onSave={saveProjectSettings}
           saving={savingSettings}
+        />
+
+        {/* Autopilot Settings */}
+        <AutopilotSettings
+          isOpen={showAutopilotSettings}
+          onClose={() => setShowAutopilotSettings(false)}
+          chatId={currentChatId}
         />
 
       </div>

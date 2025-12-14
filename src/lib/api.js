@@ -358,3 +358,89 @@ export const analyticsAPI = {
     return response.json();
   },
 };
+
+/**
+ * Autopilot API - Autonomous social media management
+ */
+export const autopilotAPI = {
+  // Get autopilot config
+  getConfig: async (userId, chatId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/config/${userId}/${chatId}`, {
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Update autopilot config
+  updateConfig: async (userId, chatId, config) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/config/${userId}/${chatId}`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(config),
+    });
+    return response.json();
+  },
+
+  // Get autopilot memory (brand info)
+  getMemory: async (userId, chatId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/memory/${userId}/${chatId}`, {
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Update autopilot memory (brand info)
+  updateMemory: async (userId, chatId, brandInfo) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/memory/${userId}/${chatId}`, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify({ brand: brandInfo }),
+    });
+    return response.json();
+  },
+
+  // Toggle autopilot on/off
+  toggle: async (userId, chatId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/toggle/${userId}/${chatId}`, {
+      method: 'POST',
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Get full status
+  getStatus: async (userId, chatId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/status/${userId}/${chatId}`, {
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Run autopilot manually
+  run: async (userId, chatId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/run/${userId}/${chatId}`, {
+      method: 'POST',
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Pause autopilot
+  pause: async (userId, chatId, hours = 24) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/pause/${userId}/${chatId}`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ hours }),
+    });
+    return response.json();
+  },
+
+  // Resume autopilot
+  resume: async (userId, chatId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/resume/${userId}/${chatId}`, {
+      method: 'POST',
+      headers: headers(),
+    });
+    return response.json();
+  },
+};
