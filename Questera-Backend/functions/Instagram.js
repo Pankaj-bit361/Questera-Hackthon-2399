@@ -25,14 +25,15 @@ class InstagramController {
       let oauthUrl;
 
       if (type === 'basic') {
-        // Instagram Login for Business API (NEW - replaced Basic Display API)
+        // Instagram Login for Business API (like Buffer uses)
         // Works for Business/Creator accounts WITHOUT requiring Facebook Page
-        // Uses instagram.com OAuth directly (like Buffer does)
         // IMPORTANT: Uses Instagram App ID, not Facebook App ID!
-        const scope = 'business_basic,business_manage_comments,business_content_publish';
+        // Scopes must use 'instagram_business_*' format (not 'business_*')
+        const scope = 'instagram_business_basic,instagram_business_manage_comments,instagram_business_content_publish';
 
         oauthUrl = `https://www.instagram.com/oauth/authorize?` +
-          `client_id=${this.basicAppId}` +
+          `force_reauth=true` +
+          `&client_id=${this.basicAppId}` +
           `&redirect_uri=${encodeURIComponent(this.basicRedirectUri)}` +
           `&response_type=code` +
           `&scope=${scope}` +
@@ -41,6 +42,7 @@ class InstagramController {
         console.log('🔐 [INSTAGRAM] Generated Instagram Login for Business OAuth URL');
         console.log('🔐 [INSTAGRAM] Using Instagram App ID:', this.basicAppId);
         console.log('🔐 [INSTAGRAM] Redirect URI:', this.basicRedirectUri);
+        console.log('🔐 [INSTAGRAM] Scopes:', scope);
       } else {
         // Meta Graph API via Facebook OAuth (full features)
         const scope = 'pages_show_list,instagram_basic,instagram_manage_comments,instagram_content_publish,pages_read_engagement,business_management,instagram_manage_insights';
