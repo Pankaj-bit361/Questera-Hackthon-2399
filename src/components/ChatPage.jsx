@@ -551,6 +551,13 @@ const ChatPage = () => {
     generateWithAgent(userPrompt, currentChatId !== 'new' ? currentChatId : null, currentRefImages);
   };
 
+  // Handle Quick Action suggestion clicks
+  const handleSuggestionClick = (suggestion) => {
+    if (loading) return;
+    // Send the suggestion as a new message
+    generateWithAgent(suggestion, currentChatId !== 'new' ? currentChatId : null, []);
+  };
+
   const saveProjectSettings = async () => {
     if (!currentChatId || currentChatId === 'new') {
       toast.warning('Please generate an image first to create a project.');
@@ -666,6 +673,7 @@ const ChatPage = () => {
             selectedImageForEdit={selectedImageForEdit}
             onSelectImageForEdit={(url, idx) => setSelectedImageForEdit({ url, idx })}
             onClearSelectedImage={() => setSelectedImageForEdit(null)}
+            onSuggestionClick={handleSuggestionClick}
           />
         </div>
 

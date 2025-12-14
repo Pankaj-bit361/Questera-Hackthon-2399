@@ -16,7 +16,7 @@ const PERSONA_STYLES = {
   reviewer: { emoji: '🛡️', name: 'Reviewer AI', gradient: 'from-indigo-500 to-purple-500' }
 };
 
-const ThinkingSteps = ({ steps, decisions, suggestions, persona, isExpanded = true }) => {
+const ThinkingSteps = ({ steps, decisions, suggestions, persona, isExpanded = true, onSuggestionClick }) => {
   if (!steps || steps.length === 0) return null;
 
   const personaStyle = PERSONA_STYLES[persona] || PERSONA_STYLES.strategist;
@@ -97,7 +97,8 @@ const ThinkingSteps = ({ steps, decisions, suggestions, persona, isExpanded = tr
               {suggestions.slice(0, 3).map((suggestion, idx) => (
                 <button
                   key={idx}
-                  className="px-3 py-1.5 text-xs bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-zinc-200 rounded-lg transition-all border border-white/5"
+                  onClick={() => onSuggestionClick?.(suggestion)}
+                  className="px-3 py-1.5 text-xs bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-zinc-200 rounded-lg transition-all border border-white/5 cursor-pointer"
                 >
                   {suggestion}
                 </button>

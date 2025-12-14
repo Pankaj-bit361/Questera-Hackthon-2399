@@ -9,7 +9,7 @@ import { API_BASE_URL } from '../../config';
 
 const { FiUser, FiZap, FiDownload, FiRefreshCw, FiCheck, FiX, FiChevronDown, FiTrash2, FiCopy, FiCalendar, FiClock } = FiIcons;
 
-const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit, onSelectImageForEdit, onClearSelectedImage }) => {
+const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit, onSelectImageForEdit, onClearSelectedImage, onSuggestionClick }) => {
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
   const [publishingIdx, setPublishingIdx] = useState(null);
@@ -260,6 +260,7 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
                   decisions={msg.cognitive.decisions}
                   suggestions={msg.cognitive.suggestions}
                   persona={msg.cognitive.persona}
+                  onSuggestionClick={onSuggestionClick}
                 />
               )}
 
