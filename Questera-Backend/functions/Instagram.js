@@ -510,12 +510,27 @@ class InstagramController {
 
       console.log('✅ [INSTAGRAM] Image published! Media ID:', publishData.id);
 
+      // Fetch the permalink for the published media
+      let permalink = null;
+      try {
+        const mediaInfoUrl = `https://graph.facebook.com/${this.apiVersion}/${publishData.id}?fields=permalink&access_token=${accessToken}`;
+        const mediaInfoResponse = await fetch(mediaInfoUrl);
+        const mediaInfo = await mediaInfoResponse.json();
+        if (mediaInfo.permalink) {
+          permalink = mediaInfo.permalink;
+          console.log('✅ [INSTAGRAM] Permalink:', permalink);
+        }
+      } catch (e) {
+        console.log('⚠️ [INSTAGRAM] Could not fetch permalink:', e.message);
+      }
+
       return {
         status: 200,
         json: {
           success: true,
           message: 'Image published to Instagram!',
           mediaId: publishData.id,
+          permalink: permalink,
           username: instagramUsername,
         },
       };

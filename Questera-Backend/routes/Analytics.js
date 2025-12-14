@@ -99,7 +99,7 @@ analyticsRouter.get('/debug/:userId', async (req, res) => {
     const Instagram = require('../models/instagram');
 
     const posts = await ScheduledPost.find({ userId, status: 'published' })
-      .select('postId imageUrl caption status publishedAt publishedMediaId engagement')
+      .select('postId imageUrl caption status publishedAt publishedMediaId platformPostUrl engagement')
       .limit(10);
 
     // Check both models
@@ -124,8 +124,10 @@ analyticsRouter.get('/debug/:userId', async (req, res) => {
       postsCount: posts.length,
       posts: posts.map(p => ({
         postId: p.postId,
+        caption: p.caption?.substring(0, 60),
         hasMediaId: !!p.publishedMediaId,
         publishedMediaId: p.publishedMediaId,
+        platformPostUrl: p.platformPostUrl,
         publishedAt: p.publishedAt,
         engagement: p.engagement,
       })),
@@ -152,6 +154,7 @@ analyticsRouter.get('/test-instagram/:userId/:mediaId', async (req, res) => {
     }
 
     const accessToken = instagramAccount.accessToken;
+    const igBusinessId = instagramAccount.instagramBusinessAccountId;
 
     // Test 1: Get basic media info
     const mediaUrl = `https://graph.facebook.com/v20.0/${mediaId}?fields=id,like_count,comments_count,permalink,timestamp,media_type&access_token=${accessToken}`;
@@ -163,11 +166,18 @@ analyticsRouter.get('/test-instagram/:userId/:mediaId', async (req, res) => {
     const insightsResponse = await fetch(insightsUrl);
     const insightsData = await insightsResponse.json();
 
+    // Test 3: Get all recent media from this account to compare IDs
+    const recentMediaUrl = `https://graph.facebook.com/v20.0/${igBusinessId}/media?fields=id,caption,like_count,comments_count,permalink&limit=5&access_token=${accessToken}`;
+    const recentMediaResponse = await fetch(recentMediaUrl);
+    const recentMediaData = await recentMediaResponse.json();
+
     return res.status(200).json({
       success: true,
-      mediaId,
+      testingMediaId: mediaId,
+      igBusinessAccountId: igBusinessId,
       mediaApiResponse: mediaData,
       insightsApiResponse: insightsData,
+      recentMediaFromAccount: recentMediaData,
     });
   } catch (error) {
     console.error('[ANALYTICS] Test Instagram Error:', error);
@@ -175,5 +185,82 @@ analyticsRouter.get('/test-instagram/:userId/:mediaId', async (req, res) => {
   }
 });
 
-module.exports = analyticsRouter;
+/**
+ * POST /analytics/fix-media-ids/:userId
+ * One-time fix: Match existing posts to correct Instagram media IDs
+ */
+analyticsRouter.post('/fix-media-ids/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const ScheduledPost = require('../models/scheduledPost');
+    const Instagram = require('../models/instagram');
 
+    const instagramAccount = await Instagram.findOne({ userId, isConnected: true });
+    if (!instagramAccount?.accessToken) {
+      return res.status(400).json({ error: 'No Instagram access token found' });
+    }
+
+    const accessToken = instagramAccount.accessToken;
+    const igBusinessId = instagramAccount.instagramBusinessAccountId;
+
+    // Fetch all recent media from Instagram (up to 100)
+    const mediaListUrl = `https://graph.facebook.com/v20.0/${igBusinessId}/media?fields=id,caption,permalink,timestamp&limit=100&access_token=${accessToken}`;
+    const mediaListResponse = await fetch(mediaListUrl);
+    const mediaListData = await mediaListResponse.json();
+
+    if (mediaListData.error) {
+      return res.status(400).json({ error: mediaListData.error.message });
+    }
+
+    const instagramMedia = mediaListData.data || [];
+    console.log(`[FIX] Found ${instagramMedia.length} posts on Instagram`);
+
+    // Get all published posts without correct permalink
+    const posts = await ScheduledPost.find({
+      userId,
+      status: 'published',
+      $or: [
+        { platformPostUrl: { $exists: false } },
+        { platformPostUrl: null },
+        { platformPostUrl: '' }
+      ]
+    });
+
+    console.log(`[FIX] Found ${posts.length} posts needing fix`);
+
+    const fixed = [];
+    for (const post of posts) {
+      // Match by timestamp (within 30 minutes to be more lenient)
+      const postTime = new Date(post.publishedAt).getTime();
+      const igMedia = instagramMedia.find(m => {
+        if (!m.timestamp) return false;
+        const igTime = new Date(m.timestamp).getTime();
+        const diff = Math.abs(postTime - igTime);
+        return diff < 30 * 60 * 1000; // Within 30 minutes
+      });
+
+      if (igMedia) {
+        post.publishedMediaId = igMedia.id;
+        post.platformPostUrl = igMedia.permalink;
+        await post.save();
+        fixed.push({
+          postId: post.postId,
+          newMediaId: igMedia.id,
+          permalink: igMedia.permalink,
+        });
+        console.log(`[FIX] Fixed ${post.postId}: ${igMedia.permalink}`);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Fixed ${fixed.length} out of ${posts.length} posts`,
+      fixed,
+    });
+  } catch (error) {
+    console.error('[ANALYTICS] Fix Media IDs Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = analyticsRouter;
