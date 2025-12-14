@@ -315,6 +315,7 @@ class AnalyticsService {
         }
 
         // Then try to get insights (reach, impressions, saved)
+        // Note: Instagram insights require the post to be at least 24-48 hours old
         const insightsUrl = `https://graph.facebook.com/v20.0/${post.publishedMediaId}/insights?` +
           `metric=impressions,reach,saved&access_token=${accessToken}`;
 
@@ -325,12 +326,16 @@ class AnalyticsService {
         let impressions = 0;
         let saves = 0;
 
-        if (insightsData.data && !insightsData.error) {
+        if (insightsData.error) {
+          // Log the error for debugging but don't fail the whole update
+          console.log(`[ANALYTICS] Insights error for ${post.postId}: ${insightsData.error.message}`);
+        } else if (insightsData.data) {
           insightsData.data.forEach(m => {
             if (m.name === 'reach') reach = m.values?.[0]?.value || 0;
             if (m.name === 'impressions') impressions = m.values?.[0]?.value || 0;
             if (m.name === 'saved') saves = m.values?.[0]?.value || 0;
           });
+          console.log(`[ANALYTICS] Insights for ${post.postId}: reach=${reach}, impressions=${impressions}, saves=${saves}`);
         }
 
         post.engagement = {
