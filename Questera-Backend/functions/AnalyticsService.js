@@ -254,55 +254,94 @@ class AnalyticsService {
    * Refresh engagement data for recent posts
    */
   async refreshEngagement(userId) {
-    const Instagram = require('../models/instagram');
+    const SocialAccount = require('../models/socialAccount');
 
-    // Get user's Instagram credentials
-    const instagram = await Instagram.findOne({ userId, isConnected: true });
-    if (!instagram) {
+    // Get user's Instagram social account
+    const socialAccount = await SocialAccount.findOne({
+      userId,
+      platform: 'instagram',
+      isActive: true
+    });
+
+    if (!socialAccount) {
       throw new Error('Instagram not connected');
     }
 
-    // Get recent published posts
+    const accessToken = socialAccount.facebookPageAccessToken || socialAccount.accessToken;
+
+    // Get recent published posts (extend to 30 days for more data)
     const posts = await ScheduledPost.find({
       userId,
       status: 'published',
-      publishedMediaId: { $exists: true },
-      publishedAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }, // Last 7 days
+      publishedMediaId: { $exists: true, $ne: null },
+      publishedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, // Last 30 days
     });
 
+    console.log(`[ANALYTICS] Refreshing engagement for ${posts.length} posts`);
+
     const updated = [];
+    const errors = [];
+
     for (const post of posts) {
       try {
-        // Fetch insights from Instagram
-        const insightsUrl = `https://graph.facebook.com/v20.0/${post.publishedMediaId}/insights?` +
-          `metric=engagement,impressions,reach,saved&access_token=${instagram.accessToken}`;
+        // First try to get basic media info (likes, comments)
+        const mediaUrl = `https://graph.facebook.com/v20.0/${post.publishedMediaId}?` +
+          `fields=like_count,comments_count,permalink&access_token=${accessToken}`;
 
-        const response = await fetch(insightsUrl);
-        const data = await response.json();
+        const mediaResponse = await fetch(mediaUrl);
+        const mediaData = await mediaResponse.json();
 
-        if (data.data) {
-          const metrics = {};
-          data.data.forEach(m => {
-            metrics[m.name] = m.values?.[0]?.value || 0;
-          });
+        let likes = 0;
+        let comments = 0;
 
-          post.engagement = {
-            ...post.engagement,
-            likes: metrics.engagement || post.engagement?.likes,
-            reach: metrics.reach,
-            impressions: metrics.impressions,
-            saves: metrics.saved,
-            lastUpdated: new Date(),
-          };
-          await post.save();
-          updated.push(post.postId);
+        if (!mediaData.error) {
+          likes = mediaData.like_count || 0;
+          comments = mediaData.comments_count || 0;
         }
+
+        // Then try to get insights (reach, impressions, saved)
+        const insightsUrl = `https://graph.facebook.com/v20.0/${post.publishedMediaId}/insights?` +
+          `metric=impressions,reach,saved&access_token=${accessToken}`;
+
+        const insightsResponse = await fetch(insightsUrl);
+        const insightsData = await insightsResponse.json();
+
+        let reach = 0;
+        let impressions = 0;
+        let saves = 0;
+
+        if (insightsData.data && !insightsData.error) {
+          insightsData.data.forEach(m => {
+            if (m.name === 'reach') reach = m.values?.[0]?.value || 0;
+            if (m.name === 'impressions') impressions = m.values?.[0]?.value || 0;
+            if (m.name === 'saved') saves = m.values?.[0]?.value || 0;
+          });
+        }
+
+        post.engagement = {
+          likes,
+          comments,
+          reach,
+          impressions,
+          saves,
+          lastUpdated: new Date(),
+        };
+        await post.save();
+        updated.push(post.postId);
+
+        console.log(`[ANALYTICS] Updated ${post.postId}: ${likes} likes, ${comments} comments, ${reach} reach`);
       } catch (error) {
-        console.error(`Failed to refresh engagement for ${post.postId}:`, error);
+        console.error(`[ANALYTICS] Failed to refresh ${post.postId}:`, error.message);
+        errors.push({ postId: post.postId, error: error.message });
       }
     }
 
-    return { updated: updated.length, postIds: updated };
+    return {
+      updated: updated.length,
+      postIds: updated,
+      errors: errors.length,
+      total: posts.length
+    };
   }
 
   /**
