@@ -547,6 +547,133 @@ class InstagramController {
   }
 
   /**
+   * Publish an image as Instagram Story
+   * Stories require media_type: 'STORIES'
+   */
+  async publishStory(req) {
+    try {
+      const { userId, imageUrl, accountId } = req.body;
+
+      if (!userId || !imageUrl) {
+        return { status: 400, json: { error: 'userId and imageUrl are required' } };
+      }
+
+      console.log('📖 [INSTAGRAM] Publishing Story...');
+
+      const instagram = await Instagram.findOne({ userId });
+      if (!instagram) {
+        return { status: 404, json: { error: 'No Instagram accounts found for this user' } };
+      }
+
+      // Find the account
+      let account;
+      if (accountId) {
+        account = instagram.accounts?.find(acc => acc.instagramBusinessAccountId === accountId);
+      }
+      if (!account && instagram.accounts?.length > 0) {
+        account = instagram.accounts[0];
+      }
+      if (!account) {
+        account = {
+          instagramBusinessAccountId: instagram.instagramBusinessAccountId,
+          accessToken: instagram.accessToken,
+          instagramUsername: instagram.instagramUsername,
+        };
+      }
+
+      const { instagramBusinessAccountId, accessToken, instagramUsername } = account;
+
+      console.log('📖 [INSTAGRAM] Story Image URL:', imageUrl);
+      console.log('📖 [INSTAGRAM] Account ID:', instagramBusinessAccountId);
+
+      const baseUrl = `https://graph.facebook.com/${this.apiVersion}`;
+
+      // Step 1: Create Story container with media_type: STORIES
+      const containerUrl = `${baseUrl}/${instagramBusinessAccountId}/media`;
+      const containerParams = new URLSearchParams({
+        image_url: imageUrl,
+        media_type: 'STORIES',
+        access_token: accessToken,
+      });
+
+      console.log('📖 [INSTAGRAM] Creating Story container...');
+
+      const containerResponse = await fetch(`${containerUrl}?${containerParams}`, {
+        method: 'POST',
+      });
+      const containerData = await containerResponse.json();
+
+      if (containerData.error) {
+        console.error('❌ [INSTAGRAM] Story container creation failed:', containerData.error);
+        return { status: 400, json: { error: containerData.error.message, details: containerData.error } };
+      }
+
+      const containerId = containerData.id;
+      console.log('✅ [INSTAGRAM] Story container created:', containerId);
+
+      // Step 2: Wait for container to be ready
+      let ready = false;
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      while (!ready && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const statusUrl = `${baseUrl}/${containerId}?fields=status_code&access_token=${accessToken}`;
+        const statusResponse = await fetch(statusUrl);
+        const statusData = await statusResponse.json();
+
+        console.log('📖 [INSTAGRAM] Story container status:', statusData.status_code);
+
+        if (statusData.status_code === 'FINISHED') {
+          ready = true;
+        } else if (statusData.status_code === 'ERROR') {
+          return { status: 400, json: { error: 'Story processing failed' } };
+        }
+
+        attempts++;
+      }
+
+      if (!ready) {
+        return { status: 400, json: { error: 'Story processing timed out' } };
+      }
+
+      // Step 3: Publish the Story
+      const publishUrl = `${baseUrl}/${instagramBusinessAccountId}/media_publish`;
+      const publishParams = new URLSearchParams({
+        creation_id: containerId,
+        access_token: accessToken,
+      });
+
+      const publishResponse = await fetch(`${publishUrl}?${publishParams}`, {
+        method: 'POST',
+      });
+      const publishData = await publishResponse.json();
+
+      if (publishData.error) {
+        console.error('❌ [INSTAGRAM] Story publish failed:', publishData.error);
+        return { status: 400, json: { error: publishData.error.message, details: publishData.error } };
+      }
+
+      console.log('✅ [INSTAGRAM] Story published! Media ID:', publishData.id);
+
+      return {
+        status: 200,
+        json: {
+          success: true,
+          message: 'Story published to Instagram!',
+          mediaId: publishData.id,
+          type: 'story',
+          username: instagramUsername,
+        },
+      };
+    } catch (error) {
+      console.error('❌ [INSTAGRAM] Error publishing story:', error);
+      return { status: 500, json: { error: error.message } };
+    }
+  }
+
+  /**
    * Refresh access token before it expires
    * Facebook Page tokens from pages_show_list are long-lived and don't expire
    * But we can refresh the user token if needed

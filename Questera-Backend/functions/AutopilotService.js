@@ -446,20 +446,125 @@ The prompt should be 2-3 sentences describing the exact visual scene, style, lig
   }
 
   /**
-   * Create a story based on plan
+   * Create a story based on plan - generates image and schedules for publishing
    */
   async createStory(storyPlan, config) {
-    // Stories are simpler - just log for now
-    // Full story implementation would require story-specific generation
     const scheduledAt = this.parseTime(storyPlan.time);
 
-    console.log(`[AUTOPILOT] Story planned for ${scheduledAt}: ${storyPlan.type}`);
+    console.log(`[AUTOPILOT] Creating story for ${config.userId}, scheduled at ${scheduledAt}`);
+
+    // Get brand info for story context
+    const memory = await AutopilotMemory.findOne({ userId: config.userId, chatId: config.chatId });
+    const brandInfo = memory?.brandInfo || {};
+
+    // Generate a story-appropriate prompt (9:16 aspect ratio, bold text overlay style)
+    const storyPrompt = await this.generateStoryPrompt(storyPlan, brandInfo);
+
+    // Step 1: Create a content job for story
+    const ContentJob = require('../models/contentJob');
+    const contentJob = await ContentJob.create({
+      userId: config.userId,
+      type: 'single',
+      status: 'pending',
+      userRequest: `Autopilot Story: ${storyPlan.type}`,
+      inputBrief: {
+        concept: storyPlan.content || storyPlan.type,
+        style: 'instagram story',
+        tone: brandInfo.tone || 'engaging',
+        aspectRatio: '9:16', // Story aspect ratio
+      },
+      prompts: [storyPrompt],
+      progress: { total: 1, completed: 0, failed: 0 },
+    });
+
+    // Step 2: Generate the story image
+    const { results } = await this.imageOrchestrator.executeJob(contentJob.jobId);
+
+    if (!results || results.length === 0) {
+      throw new Error('Story image generation failed');
+    }
+
+    const imageUrl = results[0].imageUrl;
+    console.log(`[AUTOPILOT] Story image generated: ${imageUrl}`);
+
+    // Step 3: Get Instagram account
+    const Instagram = require('../models/instagram');
+    const instagramData = await Instagram.findOne({ userId: config.userId });
+
+    if (!instagramData) {
+      throw new Error('No Instagram account connected');
+    }
+
+    const account = instagramData.accounts?.[0] || instagramData;
+    const accountId = account.instagramBusinessAccountId;
+
+    // Step 4: Schedule the story post
+    const ScheduledPost = require('../models/scheduledPost');
+    const storyPost = await ScheduledPost.create({
+      userId: config.userId,
+      accountId: accountId,
+      platform: 'instagram',
+      postType: 'story',
+      imageUrl: imageUrl,
+      caption: '', // Stories don't have captions
+      scheduledAt: scheduledAt,
+      status: 'scheduled',
+      metadata: {
+        autopilot: true,
+        chatId: config.chatId,
+        storyType: storyPlan.type,
+      },
+    });
+
+    console.log(`[AUTOPILOT] Story scheduled: ${storyPost.postId} at ${scheduledAt}`);
 
     return {
       type: storyPlan.type,
+      postId: storyPost.postId,
+      imageUrl: imageUrl,
       scheduledAt,
-      status: 'planned', // Stories need manual creation for now
+      status: 'scheduled',
     };
+  }
+
+  /**
+   * Generate a story-specific prompt
+   */
+  async generateStoryPrompt(storyPlan, brandInfo) {
+    const storyType = storyPlan.type || 'engagement';
+    const content = storyPlan.content || '';
+    const visualStyle = brandInfo.visualStyle || 'modern, bold';
+
+    const systemPrompt = `You are a creative director for Instagram Stories.
+Generate a prompt for an AI image generator to create a vertical (9:16) Instagram Story image.
+Stories should be eye-catching, bold, and designed to drive quick engagement.`;
+
+    const userPrompt = `Create a story image prompt for:
+Story Type: ${storyType}
+Content: ${content}
+Brand Style: ${visualStyle}
+
+The image should:
+- Be designed for vertical 9:16 format
+- Be bold and attention-grabbing
+- Work well with text overlays
+- Match the brand style
+
+Return ONLY the image generation prompt, nothing else.`;
+
+    try {
+      const response = await this.openRouterProvider.generateChatCompletion({
+        systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+        temperature: 0.8,
+        maxTokens: 200,
+      });
+
+      return response.content;
+    } catch (error) {
+      console.error('[AUTOPILOT] Story prompt generation error:', error.message);
+      return `An eye-catching Instagram Story image, vertical 9:16 format, ${storyType} style, ${visualStyle}, bold colors, perfect for social media story.`;
+    }
   }
 
   parseTime(timeStr) {
