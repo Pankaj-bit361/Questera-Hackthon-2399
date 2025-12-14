@@ -25,19 +25,20 @@ class InstagramController {
       let oauthUrl;
 
       if (type === 'basic') {
-        // Instagram Basic Display API OAuth
-        // Scopes: user_profile, user_media (read-only)
-        // Note: Instagram Basic Display API is deprecated but still works for personal accounts
-        // For production, use Instagram Login for Business (requires FB Page anyway)
-        const scope = 'user_profile,user_media';
-        oauthUrl = `https://api.instagram.com/oauth/authorize?` +
-          `client_id=${this.basicAppId}` +
-          `&redirect_uri=${encodeURIComponent(this.basicRedirectUri)}` +
-          `&scope=${scope}` +
+        // Instagram Login for Business API (NEW - replaced Basic Display API)
+        // Works for Business/Creator accounts WITHOUT requiring Facebook Page
+        // Uses instagram.com OAuth directly (like Buffer does)
+        const scope = 'business_basic,business_manage_comments,business_content_publish';
+
+        oauthUrl = `https://www.instagram.com/oauth/authorize?` +
+          `client_id=${this.appId}` +
+          `&redirect_uri=${encodeURIComponent(this.redirectUri)}` +
           `&response_type=code` +
+          `&scope=${scope}` +
           `&state=${state}`;
 
-        console.log('🔐 [INSTAGRAM] Generated Basic Display API OAuth URL');
+        console.log('🔐 [INSTAGRAM] Generated Instagram Login for Business OAuth URL');
+        console.log('🔐 [INSTAGRAM] Scopes:', scope);
       } else {
         // Meta Graph API via Facebook OAuth (full features)
         const scope = 'pages_show_list,instagram_basic,instagram_manage_comments,instagram_content_publish,pages_read_engagement,business_management,instagram_manage_insights';
@@ -638,20 +639,22 @@ class InstagramController {
   }
 
   /**
-   * Handle Instagram Basic Display API callback
-   * For users without Facebook Page - limited features (post images only)
+   * Handle Instagram Login for Business API callback
+   * For Business/Creator accounts - works WITHOUT Facebook Page
+   * Uses graph.instagram.com endpoints
    */
   async handleBasicCallback(code, userId) {
     try {
-      console.log('🔐 [INSTAGRAM] Exchanging code for access token (Basic Display API)...');
+      console.log('🔐 [INSTAGRAM] Exchanging code for access token (Instagram Login for Business)...');
 
       // Step 1: Exchange code for short-lived access token
+      // Instagram Login for Business uses the same endpoint as Basic Display
       const tokenUrl = 'https://api.instagram.com/oauth/access_token';
       const tokenBody = new URLSearchParams({
-        client_id: this.basicAppId,
-        client_secret: this.basicAppSecret,
+        client_id: this.appId,
+        client_secret: this.appSecret,
         grant_type: 'authorization_code',
-        redirect_uri: this.basicRedirectUri,
+        redirect_uri: this.redirectUri,
         code,
       });
 
@@ -662,52 +665,59 @@ class InstagramController {
       });
       const tokenData = await tokenResponse.json();
 
+      console.log('🔐 [INSTAGRAM] Token response:', JSON.stringify(tokenData, null, 2));
+
       if (!tokenData.access_token) {
-        console.error('❌ [INSTAGRAM] Basic token exchange failed:', tokenData);
+        console.error('❌ [INSTAGRAM] Token exchange failed:', tokenData);
         return { status: 400, json: { error: 'Failed to get access token', details: tokenData } };
       }
 
-      console.log('✅ [INSTAGRAM] Got short-lived Basic access token');
+      console.log('✅ [INSTAGRAM] Got short-lived access token, user_id:', tokenData.user_id);
 
       // Step 2: Exchange for long-lived token (60 days)
       const longLivedUrl = `https://graph.instagram.com/access_token?` +
         `grant_type=ig_exchange_token` +
-        `&client_secret=${this.basicAppSecret}` +
+        `&client_secret=${this.appSecret}` +
         `&access_token=${tokenData.access_token}`;
 
       const longLivedResponse = await fetch(longLivedUrl);
       const longLivedData = await longLivedResponse.json();
+
+      console.log('🔐 [INSTAGRAM] Long-lived token response:', JSON.stringify(longLivedData, null, 2));
+
       const accessToken = longLivedData.access_token || tokenData.access_token;
       const expiresIn = longLivedData.expires_in || 5184000; // 60 days default
 
-      console.log('✅ [INSTAGRAM] Got long-lived Basic access token');
+      console.log('✅ [INSTAGRAM] Got long-lived access token');
 
-      // Step 3: Get user profile
-      const profileUrl = `https://graph.instagram.com/me?fields=id,username,account_type&access_token=${accessToken}`;
+      // Step 3: Get user profile using Instagram Graph API
+      const profileUrl = `https://graph.instagram.com/me?fields=id,username,account_type,name,profile_picture_url&access_token=${accessToken}`;
       const profileResponse = await fetch(profileUrl);
       const profile = await profileResponse.json();
+
+      console.log('🔐 [INSTAGRAM] Profile response:', JSON.stringify(profile, null, 2));
 
       if (!profile.id || !profile.username) {
         console.error('❌ [INSTAGRAM] Failed to get user profile:', profile);
         return { status: 400, json: { error: 'Failed to get Instagram profile' } };
       }
 
-      console.log('✅ [INSTAGRAM] Got profile:', profile.username);
+      console.log('✅ [INSTAGRAM] Got profile:', profile.username, '| Type:', profile.account_type);
 
       // Step 4: Save to database with 'basic' connection type
       let userDoc = await Instagram.findOne({ userId });
 
       const newAccount = {
         instagramBusinessAccountId: profile.id,
-        facebookPageId: null, // No FB Page for basic
+        facebookPageId: null, // No FB Page for Instagram Login for Business
         facebookPageName: null,
         accessToken: accessToken,
         instagramUsername: profile.username,
-        instagramName: profile.username,
-        profilePictureUrl: null, // Basic API doesn't provide this easily
+        instagramName: profile.name || profile.username,
+        profilePictureUrl: profile.profile_picture_url || null,
         isConnected: true,
         connectedAt: new Date(),
-        connectionType: 'basic', // Important: Track connection type for feature gating
+        connectionType: 'basic', // Track connection type for feature gating
         tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
       };
 
