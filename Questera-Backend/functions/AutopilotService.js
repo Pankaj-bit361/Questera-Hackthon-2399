@@ -115,7 +115,17 @@ class AutopilotService {
    */
   async observeAccount(userId, memory) {
     try {
-      // Get analytics data
+      // FIRST: Refresh engagement data from Instagram API
+      // This ensures we have the latest likes, comments, saves, reach
+      console.log('[AUTOPILOT] Refreshing analytics from Instagram...');
+      try {
+        const refreshResult = await this.analyticsService.refreshEngagement(userId);
+        console.log(`[AUTOPILOT] Refreshed ${refreshResult.updated} posts with latest Instagram data`);
+      } catch (refreshError) {
+        console.log('[AUTOPILOT] Analytics refresh failed (will use cached data):', refreshError.message);
+      }
+
+      // Get analytics data (now with fresh data)
       const dashboard = await this.analyticsService.getDashboard(userId, 7);
 
       // Get recent posts performance
