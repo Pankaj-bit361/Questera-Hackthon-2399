@@ -94,8 +94,10 @@ const AutopilotSettings = ({ isOpen, onClose, chatId }) => {
     try {
       const result = await autopilotAPI.toggle(userId, chatId);
       if (result.success) {
-        setConfig(result.config);
-        toast.success(result.config.enabled ? '🤖 Autopilot enabled!' : 'Autopilot disabled');
+        // API returns { success, enabled, message } or { success, config }
+        const isEnabled = result.enabled ?? result.config?.enabled;
+        setConfig(prev => ({ ...prev, enabled: isEnabled }));
+        toast.success(isEnabled ? '🤖 Autopilot enabled!' : 'Autopilot disabled');
       }
     } catch (error) {
       toast.error('Failed to toggle autopilot');
