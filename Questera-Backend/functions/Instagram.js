@@ -475,18 +475,32 @@ class InstagramController {
         }
       }
 
-      const { instagramBusinessAccountId, accessToken, instagramUsername } = account;
+      const { instagramBusinessAccountId, accessToken, instagramUsername, connectionType } = account;
 
       console.log('📸 [INSTAGRAM] Publishing image to Instagram...');
       console.log('📸 [INSTAGRAM] Image URL:', imageUrl);
+      console.log('📸 [INSTAGRAM] Account type:', connectionType || 'graph');
+      console.log('📸 [INSTAGRAM] Account ID:', instagramBusinessAccountId);
+
+      // Determine which API to use based on connection type
+      // 'basic' = Instagram Login for Business → uses graph.instagram.com
+      // 'graph' = Facebook Page connection → uses graph.facebook.com
+      const isBasicAccount = connectionType === 'basic';
+      const baseUrl = isBasicAccount
+        ? 'https://graph.instagram.com'
+        : `https://graph.facebook.com/${this.apiVersion}`;
+
+      console.log('📸 [INSTAGRAM] Using base URL:', baseUrl);
 
       // Step 1: Create media container
-      const containerUrl = `https://graph.facebook.com/${this.apiVersion}/${instagramBusinessAccountId}/media`;
+      const containerUrl = `${baseUrl}/${instagramBusinessAccountId}/media`;
       const containerParams = new URLSearchParams({
         image_url: imageUrl,
         caption: caption || 'Created with Velos AI ✨',
         access_token: accessToken,
       });
+
+      console.log('📸 [INSTAGRAM] Container URL:', containerUrl);
 
       const containerResponse = await fetch(`${containerUrl}?${containerParams}`, {
         method: 'POST',
@@ -495,7 +509,7 @@ class InstagramController {
 
       if (containerData.error) {
         console.error('❌ [INSTAGRAM] Container creation failed:', containerData.error);
-        return { status: 400, json: { error: containerData.error.message } };
+        return { status: 400, json: { error: containerData.error.message, details: containerData.error } };
       }
 
       const containerId = containerData.id;
@@ -509,7 +523,7 @@ class InstagramController {
       while (!ready && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
 
-        const statusUrl = `https://graph.facebook.com/${this.apiVersion}/${containerId}?fields=status_code&access_token=${accessToken}`;
+        const statusUrl = `${baseUrl}/${containerId}?fields=status_code&access_token=${accessToken}`;
         const statusResponse = await fetch(statusUrl);
         const statusData = await statusResponse.json();
 
@@ -529,7 +543,7 @@ class InstagramController {
       }
 
       // Step 3: Publish the container
-      const publishUrl = `https://graph.facebook.com/${this.apiVersion}/${instagramBusinessAccountId}/media_publish`;
+      const publishUrl = `${baseUrl}/${instagramBusinessAccountId}/media_publish`;
       const publishParams = new URLSearchParams({
         creation_id: containerId,
         access_token: accessToken,
@@ -542,7 +556,7 @@ class InstagramController {
 
       if (publishData.error) {
         console.error('❌ [INSTAGRAM] Publish failed:', publishData.error);
-        return { status: 400, json: { error: publishData.error.message } };
+        return { status: 400, json: { error: publishData.error.message, details: publishData.error } };
       }
 
       console.log('✅ [INSTAGRAM] Image published! Media ID:', publishData.id);
@@ -550,7 +564,7 @@ class InstagramController {
       // Fetch the permalink for the published media
       let permalink = null;
       try {
-        const mediaInfoUrl = `https://graph.facebook.com/${this.apiVersion}/${publishData.id}?fields=permalink&access_token=${accessToken}`;
+        const mediaInfoUrl = `${baseUrl}/${publishData.id}?fields=permalink&access_token=${accessToken}`;
         const mediaInfoResponse = await fetch(mediaInfoUrl);
         const mediaInfo = await mediaInfoResponse.json();
         if (mediaInfo.permalink) {

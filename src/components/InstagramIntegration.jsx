@@ -185,8 +185,11 @@ const InstagramIntegration = ({ userId }) => {
                 </svg>
               </div>
               <div className="flex-1">
-                <span className="font-semibold text-white">No, just Instagram</span>
-                <p className="text-zinc-400 text-xs mt-1">Basic access: Post images & schedule posts only</p>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-white">No, just Instagram</span>
+                  <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded">BETA</span>
+                </div>
+                <p className="text-zinc-400 text-xs mt-1">Post images only (no Reels/Stories)</p>
                 <div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-500">
                   <span className="flex items-center gap-1">
                     <SafeIcon icon={FiLock} className="w-3 h-3" />
@@ -282,11 +285,11 @@ const InstagramIntegration = ({ userId }) => {
                           <p className="text-white font-medium text-sm truncate">@{account.username}</p>
                           {/* Connection type badge */}
                           {account.connectionType === 'basic' ? (
-                            <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[9px] font-bold rounded">
+                            <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[9px] font-bold rounded" title="Images only - upgrade for Reels & Stories">
                               BASIC
                             </span>
                           ) : (
-                            <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 text-[9px] font-bold rounded">
+                            <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[9px] font-bold rounded">
                               PRO
                             </span>
                           )}
@@ -294,7 +297,7 @@ const InstagramIntegration = ({ userId }) => {
                         <p className="text-zinc-500 text-xs truncate">
                           {account.connectionType === 'basic'
                             ? 'Images only • Upgrade for Reels & Stories'
-                            : (account.facebookPageName || 'Full access enabled')}
+                            : (account.facebookPageName || '✓ Full publishing enabled')}
                         </p>
                       </div>
                       {/* Remove individual account */}
