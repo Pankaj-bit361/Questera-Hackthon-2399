@@ -679,47 +679,78 @@ class InstagramController {
 
       console.log('✅ [INSTAGRAM] Got short-lived access token, user_id:', tokenData.user_id);
 
-      // Step 2: Exchange for long-lived token (60 days)
-      const longLivedUrl = `https://graph.instagram.com/access_token?` +
-        `grant_type=ig_exchange_token` +
-        `&client_secret=${this.basicAppSecret}` +
-        `&access_token=${tokenData.access_token}`;
-
-      const longLivedResponse = await fetch(longLivedUrl);
-      const longLivedData = await longLivedResponse.json();
-
-      console.log('🔐 [INSTAGRAM] Long-lived token response:', JSON.stringify(longLivedData, null, 2));
-
-      const accessToken = longLivedData.access_token || tokenData.access_token;
-      const expiresIn = longLivedData.expires_in || 5184000; // 60 days default
-
-      console.log('✅ [INSTAGRAM] Got long-lived access token');
-
-      // Step 3: Get user profile using Instagram Graph API
-      // For Instagram Login for Business, use the user_id from token response
+      // For Instagram Login for Business, use short-lived token directly
+      // Long-lived token exchange uses different endpoint for this API
+      const accessToken = tokenData.access_token;
       const igUserId = tokenData.user_id;
+      const expiresIn = 3600; // Short-lived token = 1 hour (will need refresh)
 
-      // Try with minimal fields first (Instagram Login for Business has limited fields)
-      const profileUrl = `https://graph.instagram.com/${igUserId}?fields=user_id,username&access_token=${accessToken}`;
+      // Step 2: Try to get long-lived token (may fail for Instagram Login for Business)
+      let longLivedToken = accessToken;
+      try {
+        const longLivedUrl = `https://graph.instagram.com/access_token?` +
+          `grant_type=ig_exchange_token` +
+          `&client_secret=${this.basicAppSecret}` +
+          `&access_token=${accessToken}`;
+
+        const longLivedResponse = await fetch(longLivedUrl);
+        const longLivedData = await longLivedResponse.json();
+        console.log('🔐 [INSTAGRAM] Long-lived token response:', JSON.stringify(longLivedData, null, 2));
+
+        if (longLivedData.access_token) {
+          longLivedToken = longLivedData.access_token;
+          console.log('✅ [INSTAGRAM] Got long-lived access token');
+        } else {
+          console.log('⚠️ [INSTAGRAM] Long-lived token not available, using short-lived');
+        }
+      } catch (e) {
+        console.log('⚠️ [INSTAGRAM] Long-lived token exchange failed, using short-lived:', e.message);
+      }
+
+      // Step 3: Get user profile - Instagram Login for Business uses /me endpoint
       console.log('🔐 [INSTAGRAM] Fetching profile for user_id:', igUserId);
 
-      const profileResponse = await fetch(profileUrl);
-      const profile = await profileResponse.json();
+      // Try /me endpoint first (recommended for Instagram Login for Business)
+      let profile = { id: igUserId, username: null };
 
-      console.log('🔐 [INSTAGRAM] Profile response:', JSON.stringify(profile, null, 2));
+      try {
+        const profileUrl = `https://graph.instagram.com/me?access_token=${longLivedToken}`;
+        const profileResponse = await fetch(profileUrl);
+        const profileData = await profileResponse.json();
+        console.log('🔐 [INSTAGRAM] /me response:', JSON.stringify(profileData, null, 2));
 
-      if (profile.error) {
-        console.error('❌ [INSTAGRAM] Instagram API error:', profile.error);
-        return { status: 400, json: { error: 'Failed to get Instagram profile', details: profile.error } };
+        if (profileData.username) {
+          profile = profileData;
+        } else if (profileData.error) {
+          console.log('⚠️ [INSTAGRAM] /me endpoint failed:', profileData.error.message);
+        }
+      } catch (e) {
+        console.log('⚠️ [INSTAGRAM] /me endpoint error:', e.message);
       }
 
+      // If /me didn't work, try with user_id (for older API versions)
       if (!profile.username) {
-        console.error('❌ [INSTAGRAM] No username in profile:', profile);
-        return { status: 400, json: { error: 'Failed to get Instagram profile', details: profile } };
+        try {
+          const profileUrl2 = `https://graph.instagram.com/v18.0/${igUserId}?fields=id,username&access_token=${longLivedToken}`;
+          const profileResponse2 = await fetch(profileUrl2);
+          const profileData2 = await profileResponse2.json();
+          console.log('🔐 [INSTAGRAM] /{user_id} response:', JSON.stringify(profileData2, null, 2));
+
+          if (profileData2.username) {
+            profile = profileData2;
+          }
+        } catch (e) {
+          console.log('⚠️ [INSTAGRAM] /{user_id} endpoint error:', e.message);
+        }
       }
 
-      // Use user_id from token response if not in profile
-      profile.id = profile.id || profile.user_id || igUserId;
+      // If still no username, create a placeholder (we have user_id from token)
+      if (!profile.username) {
+        console.log('⚠️ [INSTAGRAM] Could not get username, using user_id as placeholder');
+        profile.username = `instagram_user_${igUserId}`;
+      }
+
+      profile.id = profile.id || igUserId;
 
       console.log('✅ [INSTAGRAM] Got profile:', profile.username, '| Type:', profile.account_type);
 
