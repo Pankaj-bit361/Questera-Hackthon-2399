@@ -143,7 +143,7 @@ When in doubt, ask a single clarifying question and wait.`;
 class ImageAgent {
    constructor(options = {}) {
       const provider = options.provider || 'openrouter';
-      const model = options.model || 'google/gemini-2.5-flash-lite-preview-09-2025';
+      const model = options.model || 'x-ai/grok-4.1-fast';
 
       let llm;
       if (provider === 'anthropic') {

@@ -63,7 +63,7 @@ const CONFIDENCE_THRESHOLD = 0.8;
 class RouterAgent {
    constructor(options = {}) {
       this.llm = new OpenRouterProvider({
-         model: options.model || 'google/gemini-2.5-flash-lite-preview-09-2025'
+         model: options.model || 'x-ai/grok-4.1-fast'
       });
    }
 
