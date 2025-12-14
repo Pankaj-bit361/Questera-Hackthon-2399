@@ -5,57 +5,29 @@ class InstagramController {
     this.appId = process.env.INSTAGRAM_APP_ID;
     this.appSecret = process.env.INSTAGRAM_APP_SECRET;
     this.redirectUri = process.env.INSTAGRAM_REDIRECT_URI;
-    // Instagram Basic Display API credentials (for users without FB Page)
-    this.basicAppId = process.env.INSTAGRAM_BASIC_APP_ID || process.env.INSTAGRAM_APP_ID;
-    this.basicAppSecret = process.env.INSTAGRAM_BASIC_APP_SECRET || process.env.INSTAGRAM_APP_SECRET;
-    this.basicRedirectUri = process.env.INSTAGRAM_BASIC_REDIRECT_URI || process.env.INSTAGRAM_REDIRECT_URI;
     this.apiVersion = 'v20.0';
   }
 
   /**
    * Get OAuth URL for user to connect Instagram
-   * Supports two types:
-   * - 'graph' (default): Meta Graph API via Facebook OAuth (full features, requires FB Page)
-   * - 'basic': Instagram Basic Display API (limited features, no FB Page needed)
+   * Uses Meta Graph API via Facebook OAuth (full features, requires FB Page)
    */
   getOAuthUrl(req, res) {
     try {
-      const type = req.query?.type || 'graph'; // 'graph' or 'basic'
-      const state = `${type}_${Math.random().toString(36).substring(7)}`;
-      let oauthUrl;
+      const state = `graph_${Math.random().toString(36).substring(7)}`;
 
-      if (type === 'basic') {
-        // Instagram Login for Business API (like Buffer uses)
-        // Works for Business/Creator accounts WITHOUT requiring Facebook Page
-        // IMPORTANT: Uses Instagram App ID, not Facebook App ID!
-        // Scopes must use 'instagram_business_*' format (not 'business_*')
-        const scope = 'instagram_business_basic,instagram_business_manage_comments,instagram_business_content_publish';
+      // Meta Graph API via Facebook OAuth (full features)
+      const scope = 'pages_show_list,instagram_basic,instagram_manage_comments,instagram_content_publish,pages_read_engagement,business_management,instagram_manage_insights';
+      const oauthUrl = `https://www.facebook.com/${this.apiVersion}/dialog/oauth?` +
+        `client_id=${this.appId}` +
+        `&redirect_uri=${encodeURIComponent(this.redirectUri)}` +
+        `&scope=${scope}` +
+        `&response_type=code` +
+        `&state=${state}`;
 
-        oauthUrl = `https://www.instagram.com/oauth/authorize?` +
-          `client_id=${this.basicAppId}` +
-          `&redirect_uri=${encodeURIComponent(this.basicRedirectUri)}` +
-          `&response_type=code` +
-          `&scope=${scope}` +
-          `&state=${state}`;
+      console.log('🔐 [INSTAGRAM] Generated Graph API OAuth URL');
 
-        console.log('🔐 [INSTAGRAM] Generated Instagram Login for Business OAuth URL');
-        console.log('🔐 [INSTAGRAM] Using Instagram App ID:', this.basicAppId);
-        console.log('🔐 [INSTAGRAM] Redirect URI:', this.basicRedirectUri);
-        console.log('🔐 [INSTAGRAM] Scopes:', scope);
-      } else {
-        // Meta Graph API via Facebook OAuth (full features)
-        const scope = 'pages_show_list,instagram_basic,instagram_manage_comments,instagram_content_publish,pages_read_engagement,business_management,instagram_manage_insights';
-        oauthUrl = `https://www.facebook.com/${this.apiVersion}/dialog/oauth?` +
-          `client_id=${this.appId}` +
-          `&redirect_uri=${encodeURIComponent(this.redirectUri)}` +
-          `&scope=${scope}` +
-          `&response_type=code` +
-          `&state=${state}`;
-
-        console.log('🔐 [INSTAGRAM] Generated Graph API OAuth URL');
-      }
-
-      return { status: 200, json: { success: true, oauthUrl, state, type } };
+      return { status: 200, json: { success: true, oauthUrl, state, type: 'graph' } };
     } catch (error) {
       console.error('❌ [INSTAGRAM] Error generating OAuth URL:', error);
       return { status: 500, json: { error: error.message } };
@@ -64,7 +36,7 @@ class InstagramController {
 
   /**
    * Handle OAuth callback and exchange code for token
-   * Supports both Graph API and Basic Display API flows based on state prefix
+   * Uses Facebook Graph API flow
    */
   async handleCallback(req, res) {
     try {
@@ -74,16 +46,6 @@ class InstagramController {
         return { status: 400, json: { error: 'Code and userId are required' } };
       }
 
-      // Determine OAuth type from state prefix
-      const oauthType = state?.startsWith('basic_') ? 'basic' : 'graph';
-      console.log(`🔐 [INSTAGRAM] OAuth type: ${oauthType}`);
-
-      // Handle Instagram Basic Display API flow
-      if (oauthType === 'basic') {
-        return await this.handleBasicCallback(code, userId);
-      }
-
-      // Continue with Graph API flow (default)
       console.log('🔐 [INSTAGRAM] Exchanging code for access token (Graph API)...');
 
       // Step 1: Exchange code for short-lived access token via Facebook Graph API
@@ -475,130 +437,17 @@ class InstagramController {
         }
       }
 
-      const { instagramBusinessAccountId, accessToken, instagramUsername, connectionType } = account;
+      const { instagramBusinessAccountId, accessToken, instagramUsername } = account;
 
       console.log('📸 [INSTAGRAM] Publishing image to Instagram...');
       console.log('📸 [INSTAGRAM] Image URL:', imageUrl);
-      console.log('📸 [INSTAGRAM] Account type:', connectionType || 'graph');
       console.log('📸 [INSTAGRAM] Account ID:', instagramBusinessAccountId);
 
-      const isBasicAccount = connectionType === 'basic';
-
-      // ----- BASIC: Instagram Login for Business (graph.instagram.com, uses /me) -----
-      // According to Meta dev threads and working examples, the content publishing
-      // flow for "API with Instagram Login" is:
-      //   1) POST   https://graph.instagram.com/me/media
-      //   2) GET    https://graph.instagram.com/{container_id}
-      //   3) POST   https://graph.instagram.com/me/media_publish
-      // and *not* /{INSTAGRAM_ACCOUNT_ID}/media.
-
-      let containerId;
-
-      if (isBasicAccount) {
-        const baseUrl = 'https://graph.instagram.com';
-        console.log('📸 [INSTAGRAM] Using BASIC flow via', baseUrl);
-
-        // Step 1 (BASIC): Create media container via /me/media
-        const containerUrl = `${baseUrl}/me/media`;
-        const containerParams = new URLSearchParams({
-          image_url: imageUrl,
-          caption: caption || 'Created with Velos AI ✨',
-          access_token: accessToken,
-        });
-
-        console.log('📸 [INSTAGRAM] BASIC container URL:', containerUrl);
-
-        const containerResponse = await fetch(`${containerUrl}?${containerParams}`, {
-          method: 'POST',
-        });
-        const containerData = await containerResponse.json();
-
-        if (containerData.error) {
-          console.error('❌ [INSTAGRAM] BASIC container creation failed:', containerData.error);
-          return { status: 400, json: { error: containerData.error.message, details: containerData.error } };
-        }
-
-        containerId = containerData.id;
-        console.log('✅ [INSTAGRAM] BASIC media container created:', containerId);
-
-        // Step 2 (BASIC): Poll container status via /{container_id}
-        let ready = false;
-        let attempts = 0;
-        const maxAttempts = 10;
-
-        while (!ready && attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-
-          const statusUrl = `${baseUrl}/${containerId}?fields=status_code&access_token=${accessToken}`;
-          const statusResponse = await fetch(statusUrl);
-          const statusData = await statusResponse.json();
-
-          console.log('📸 [INSTAGRAM] BASIC container status:', statusData.status_code);
-
-          if (statusData.status_code === 'FINISHED') {
-            ready = true;
-          } else if (statusData.status_code === 'ERROR') {
-            return { status: 400, json: { error: 'Media processing failed' } };
-          }
-
-          attempts++;
-        }
-
-        if (!ready) {
-          return { status: 400, json: { error: 'Media processing timed out' } };
-        }
-
-        // Step 3 (BASIC): Publish via /me/media_publish
-        const publishUrl = `${baseUrl}/me/media_publish`;
-        const publishParams = new URLSearchParams({
-          creation_id: containerId,
-          access_token: accessToken,
-        });
-
-        const publishResponse = await fetch(`${publishUrl}?${publishParams}`, {
-          method: 'POST',
-        });
-        const publishData = await publishResponse.json();
-
-        if (publishData.error) {
-          console.error('❌ [INSTAGRAM] BASIC publish failed:', publishData.error);
-          return { status: 400, json: { error: publishData.error.message, details: publishData.error } };
-        }
-
-        console.log('✅ [INSTAGRAM] BASIC image published! Media ID:', publishData.id);
-
-        // Fetch the permalink for the published media
-        let permalink = null;
-        try {
-          const mediaInfoUrl = `${baseUrl}/${publishData.id}?fields=permalink&access_token=${accessToken}`;
-          const mediaInfoResponse = await fetch(mediaInfoUrl);
-          const mediaInfo = await mediaInfoResponse.json();
-          if (mediaInfo.permalink) {
-            permalink = mediaInfo.permalink;
-            console.log('✅ [INSTAGRAM] BASIC permalink:', permalink);
-          }
-        } catch (e) {
-          console.log('⚠️ [INSTAGRAM] BASIC: Could not fetch permalink:', e.message);
-        }
-
-        return {
-          status: 200,
-          json: {
-            success: true,
-            message: 'Image published to Instagram (BASIC)',
-            mediaId: publishData.id,
-            permalink,
-            accountType: 'basic',
-            username: instagramUsername,
-          },
-        };
-      }
-
-      // ----- PRO: Facebook Graph API flow (existing behavior) -----
+      // Facebook Graph API flow
       const baseUrl = `https://graph.facebook.com/${this.apiVersion}`;
-      console.log('📸 [INSTAGRAM] Using PRO flow via', baseUrl);
+      console.log('📸 [INSTAGRAM] Using Facebook Graph API via', baseUrl);
 
-      // Step 1 (PRO): Create media container
+      // Step 1: Create media container
       const containerUrl = `${baseUrl}/${instagramBusinessAccountId}/media`;
       const containerParams = new URLSearchParams({
         image_url: imageUrl,
@@ -606,7 +455,7 @@ class InstagramController {
         access_token: accessToken,
       });
 
-      console.log('📸 [INSTAGRAM] PRO container URL:', containerUrl);
+      console.log('📸 [INSTAGRAM] Container URL:', containerUrl);
 
       const containerResponse = await fetch(`${containerUrl}?${containerParams}`, {
         method: 'POST',
@@ -614,14 +463,14 @@ class InstagramController {
       const containerData = await containerResponse.json();
 
       if (containerData.error) {
-        console.error('❌ [INSTAGRAM] PRO container creation failed:', containerData.error);
+        console.error('❌ [INSTAGRAM] Container creation failed:', containerData.error);
         return { status: 400, json: { error: containerData.error.message, details: containerData.error } };
       }
 
-      containerId = containerData.id;
-      console.log('✅ [INSTAGRAM] PRO media container created:', containerId);
+      const containerId = containerData.id;
+      console.log('✅ [INSTAGRAM] Media container created:', containerId);
 
-      // Step 2 (PRO): Wait for container to be ready
+      // Step 2: Wait for container to be ready
       let ready = false;
       let attempts = 0;
       const maxAttempts = 10;
@@ -633,7 +482,7 @@ class InstagramController {
         const statusResponse = await fetch(statusUrl);
         const statusData = await statusResponse.json();
 
-        console.log('📸 [INSTAGRAM] PRO container status:', statusData.status_code);
+        console.log('📸 [INSTAGRAM] Container status:', statusData.status_code);
 
         if (statusData.status_code === 'FINISHED') {
           ready = true;
@@ -648,7 +497,7 @@ class InstagramController {
         return { status: 400, json: { error: 'Media processing timed out' } };
       }
 
-      // Step 3 (PRO): Publish the container
+      // Step 3: Publish the container
       const publishUrl = `${baseUrl}/${instagramBusinessAccountId}/media_publish`;
       const publishParams = new URLSearchParams({
         creation_id: containerId,
@@ -661,11 +510,11 @@ class InstagramController {
       const publishData = await publishResponse.json();
 
       if (publishData.error) {
-        console.error('❌ [INSTAGRAM] PRO publish failed:', publishData.error);
+        console.error('❌ [INSTAGRAM] Publish failed:', publishData.error);
         return { status: 400, json: { error: publishData.error.message, details: publishData.error } };
       }
 
-      console.log('✅ [INSTAGRAM] PRO image published! Media ID:', publishData.id);
+      console.log('✅ [INSTAGRAM] Image published! Media ID:', publishData.id);
 
       // Fetch the permalink for the published media
       let permalink = null;
@@ -675,10 +524,10 @@ class InstagramController {
         const mediaInfo = await mediaInfoResponse.json();
         if (mediaInfo.permalink) {
           permalink = mediaInfo.permalink;
-          console.log('✅ [INSTAGRAM] PRO permalink:', permalink);
+          console.log('✅ [INSTAGRAM] Permalink:', permalink);
         }
       } catch (e) {
-        console.log('⚠️ [INSTAGRAM] PRO: Could not fetch permalink:', e.message);
+        console.log('⚠️ [INSTAGRAM] Could not fetch permalink:', e.message);
       }
 
       return {
@@ -761,196 +610,6 @@ class InstagramController {
     }
   }
 
-  /**
-   * Handle Instagram Login for Business API callback
-   * For Business/Creator accounts - works WITHOUT Facebook Page
-   * Uses graph.instagram.com endpoints
-   */
-  async handleBasicCallback(code, userId) {
-    try {
-      console.log('🔐 [INSTAGRAM] Exchanging code for access token (Instagram Login for Business)...');
-
-      // Step 1: Exchange code for short-lived access token
-      // Instagram Login for Business uses Instagram App credentials (not Facebook App!)
-      const tokenUrl = 'https://api.instagram.com/oauth/access_token';
-      const tokenBody = new URLSearchParams({
-        client_id: this.basicAppId,
-        client_secret: this.basicAppSecret,
-        grant_type: 'authorization_code',
-        redirect_uri: this.basicRedirectUri,
-        code,
-      });
-
-      console.log('🔐 [INSTAGRAM] Exchanging code with Instagram App ID:', this.basicAppId);
-
-      const tokenResponse = await fetch(tokenUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: tokenBody,
-      });
-      const tokenData = await tokenResponse.json();
-
-      console.log('🔐 [INSTAGRAM] Token response:', JSON.stringify(tokenData, null, 2));
-
-      if (!tokenData.access_token) {
-        console.error('❌ [INSTAGRAM] Token exchange failed:', tokenData);
-        return { status: 400, json: { error: 'Failed to get access token', details: tokenData } };
-      }
-
-      console.log('✅ [INSTAGRAM] Got short-lived access token, user_id:', tokenData.user_id);
-
-      // For Instagram Login for Business, use short-lived token directly
-      // Long-lived token exchange uses different endpoint for this API
-      const accessToken = tokenData.access_token;
-      const igUserId = tokenData.user_id;
-      const expiresIn = 3600; // Short-lived token = 1 hour (will need refresh)
-
-      // Step 2: Try to get long-lived token (may fail for Instagram Login for Business)
-      let longLivedToken = accessToken;
-      try {
-        const longLivedUrl = `https://graph.instagram.com/access_token?` +
-          `grant_type=ig_exchange_token` +
-          `&client_secret=${this.basicAppSecret}` +
-          `&access_token=${accessToken}`;
-
-        const longLivedResponse = await fetch(longLivedUrl);
-        const longLivedData = await longLivedResponse.json();
-        console.log('🔐 [INSTAGRAM] Long-lived token response:', JSON.stringify(longLivedData, null, 2));
-
-        if (longLivedData.access_token) {
-          longLivedToken = longLivedData.access_token;
-          console.log('✅ [INSTAGRAM] Got long-lived access token');
-        } else {
-          console.log('⚠️ [INSTAGRAM] Long-lived token not available, using short-lived');
-        }
-      } catch (e) {
-        console.log('⚠️ [INSTAGRAM] Long-lived token exchange failed, using short-lived:', e.message);
-      }
-
-      // Step 3: Get user profile - Instagram Login for Business uses /me endpoint
-      console.log('🔐 [INSTAGRAM] Fetching profile for user_id:', igUserId);
-
-      // Try /me endpoint first (recommended for Instagram Login for Business)
-      let profile = { id: igUserId, username: null };
-
-      try {
-        const profileUrl = `https://graph.instagram.com/me?access_token=${longLivedToken}`;
-        const profileResponse = await fetch(profileUrl);
-        const profileData = await profileResponse.json();
-        console.log('🔐 [INSTAGRAM] /me response:', JSON.stringify(profileData, null, 2));
-
-        if (profileData.username) {
-          profile = profileData;
-        } else if (profileData.error) {
-          console.log('⚠️ [INSTAGRAM] /me endpoint failed:', profileData.error.message);
-        }
-      } catch (e) {
-        console.log('⚠️ [INSTAGRAM] /me endpoint error:', e.message);
-      }
-
-      // If /me didn't work, try with user_id (for older API versions)
-      if (!profile.username) {
-        try {
-          const profileUrl2 = `https://graph.instagram.com/v18.0/${igUserId}?fields=id,username&access_token=${longLivedToken}`;
-          const profileResponse2 = await fetch(profileUrl2);
-          const profileData2 = await profileResponse2.json();
-          console.log('🔐 [INSTAGRAM] /{user_id} response:', JSON.stringify(profileData2, null, 2));
-
-          if (profileData2.username) {
-            profile = profileData2;
-          }
-        } catch (e) {
-          console.log('⚠️ [INSTAGRAM] /{user_id} endpoint error:', e.message);
-        }
-      }
-
-      // If still no username, create a placeholder (we have user_id from token)
-      if (!profile.username) {
-        console.log('⚠️ [INSTAGRAM] Could not get username, using user_id as placeholder');
-        profile.username = `instagram_user_${igUserId}`;
-      }
-
-      profile.id = profile.id || igUserId;
-
-      console.log('✅ [INSTAGRAM] Got profile:', profile.username, '| Type:', profile.account_type);
-
-      // Step 4: Save to database with 'basic' connection type
-      let userDoc = await Instagram.findOne({ userId });
-
-      const newAccount = {
-        instagramBusinessAccountId: profile.id,
-        facebookPageId: null, // No FB Page for Instagram Login for Business
-        facebookPageName: null,
-        accessToken: accessToken,
-        instagramUsername: profile.username,
-        instagramName: profile.name || profile.username,
-        profilePictureUrl: profile.profile_picture_url || null,
-        isConnected: true,
-        connectedAt: new Date(),
-        connectionType: 'basic', // Track connection type for feature gating
-        tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
-      };
-
-      if (!userDoc) {
-        userDoc = await Instagram.create({
-          userId,
-          accounts: [newAccount],
-          ...newAccount,
-          lastTokenRefresh: new Date(),
-        });
-      } else {
-        // Initialize or update accounts array
-        if (!userDoc.accounts || !Array.isArray(userDoc.accounts)) {
-          userDoc.accounts = [];
-        }
-
-        // Check if account already exists
-        const existingIdx = userDoc.accounts.findIndex(
-          acc => acc.instagramBusinessAccountId === profile.id
-        );
-
-        if (existingIdx >= 0) {
-          userDoc.accounts[existingIdx] = newAccount;
-        } else {
-          userDoc.accounts.push(newAccount);
-        }
-
-        // Update legacy fields
-        userDoc.instagramBusinessAccountId = newAccount.instagramBusinessAccountId;
-        userDoc.accessToken = newAccount.accessToken;
-        userDoc.instagramUsername = newAccount.instagramUsername;
-        userDoc.isConnected = true;
-        userDoc.lastTokenRefresh = new Date();
-
-        await userDoc.save();
-      }
-
-      console.log('✅ [INSTAGRAM] Basic account connected:', profile.username);
-
-      return {
-        status: 200,
-        json: {
-          success: true,
-          message: 'Instagram connected successfully (Basic mode)',
-          connectedAccounts: [{
-            username: profile.username,
-            name: profile.username,
-            profilePictureUrl: null,
-            connectionType: 'basic',
-          }],
-          connectionType: 'basic',
-          limitations: [
-            'Reels publishing requires Facebook Page',
-            'Stories publishing requires Facebook Page',
-            'Insights/Analytics requires Facebook Page',
-          ],
-        },
-      };
-    } catch (error) {
-      console.error('❌ [INSTAGRAM] Basic callback error:', error);
-      return { status: 500, json: { error: error.message } };
-    }
-  }
 }
 
 module.exports = InstagramController;

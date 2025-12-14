@@ -4,7 +4,7 @@ import SafeIcon from '../common/SafeIcon';
 
 import { API_BASE_URL } from '../config';
 
-const { FiCheck, FiX, FiLoader, FiExternalLink, FiCamera, FiMessageCircle, FiTrendingUp, FiPlus, FiTrash2, FiLock } = FiIcons;
+const { FiCheck, FiX, FiLoader, FiExternalLink, FiCamera, FiMessageCircle, FiTrendingUp, FiPlus, FiTrash2 } = FiIcons;
 
 const InstagramIntegration = ({ userId }) => {
   const [accounts, setAccounts] = useState([]);
@@ -53,33 +53,6 @@ const InstagramIntegration = ({ userId }) => {
       sessionStorage.setItem('instagram_oauth_type', 'graph'); // Meta Graph API
 
       const response = await fetch(`${API_BASE_URL}/instagram/oauth-url?type=graph`);
-      const data = await response.json();
-
-      if (data.success && data.oauthUrl) {
-        sessionStorage.setItem('instagram_oauth_state', data.state);
-        window.location.href = data.oauthUrl;
-      } else {
-        setError('Failed to get OAuth URL');
-        setConnecting(false);
-      }
-    } catch (err) {
-      console.error('Error connecting to Instagram:', err);
-      setError('Failed to connect. Please try again.');
-      setConnecting(false);
-    }
-  };
-
-  // Connect with Instagram only (Basic Display API - limited features)
-  const handleConnectWithInstagram = async () => {
-    try {
-      setConnecting(true);
-      setError('');
-      setShowConnectionModal(false);
-
-      sessionStorage.setItem('instagram_oauth_userId', userId);
-      sessionStorage.setItem('instagram_oauth_type', 'basic'); // Instagram Basic API
-
-      const response = await fetch(`${API_BASE_URL}/instagram/oauth-url?type=basic`);
       const data = await response.json();
 
       if (data.success && data.oauthUrl) {
@@ -173,48 +146,10 @@ const InstagramIntegration = ({ userId }) => {
             </div>
           </button>
 
-          {/* Option 2: Instagram Only (Limited Features) */}
-          <button
-            onClick={handleConnectWithInstagram}
-            className="w-full p-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-xl text-left transition-all group"
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-white">No, just Instagram</span>
-                  <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] font-bold rounded">BETA</span>
-                </div>
-                <p className="text-zinc-400 text-xs mt-1">Post images only (no Reels/Stories)</p>
-                <div className="flex items-center gap-2 mt-2 text-[10px] text-zinc-500">
-                  <span className="flex items-center gap-1">
-                    <SafeIcon icon={FiLock} className="w-3 h-3" />
-                    Reels
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <SafeIcon icon={FiLock} className="w-3 h-3" />
-                    Stories
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <SafeIcon icon={FiLock} className="w-3 h-3" />
-                    Insights
-                  </span>
-                </div>
-              </div>
-              <SafeIcon icon={FiExternalLink} className="w-4 h-4 text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-          </button>
         </div>
 
         {/* Footer */}
         <div className="space-y-3">
-          <p className="text-zinc-500 text-xs text-center">
-            You can upgrade to full access anytime by connecting a Facebook Page
-          </p>
           <button
             onClick={() => setShowConnectionModal(false)}
             className="w-full py-2 text-zinc-400 hover:text-white text-sm transition-colors"
@@ -283,21 +218,12 @@ const InstagramIntegration = ({ userId }) => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="text-white font-medium text-sm truncate">@{account.username}</p>
-                          {/* Connection type badge */}
-                          {account.connectionType === 'basic' ? (
-                            <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[9px] font-bold rounded" title="Images only - upgrade for Reels & Stories">
-                              BASIC
-                            </span>
-                          ) : (
-                            <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[9px] font-bold rounded">
-                              PRO
-                            </span>
-                          )}
+                          <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[9px] font-bold rounded">
+                            CONNECTED
+                          </span>
                         </div>
                         <p className="text-zinc-500 text-xs truncate">
-                          {account.connectionType === 'basic'
-                            ? 'Images only • Upgrade for Reels & Stories'
-                            : (account.facebookPageName || '✓ Full publishing enabled')}
+                          {account.facebookPageName || '✓ Full publishing enabled'}
                         </p>
                       </div>
                       {/* Remove individual account */}
