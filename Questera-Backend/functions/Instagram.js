@@ -482,17 +482,123 @@ class InstagramController {
       console.log('📸 [INSTAGRAM] Account type:', connectionType || 'graph');
       console.log('📸 [INSTAGRAM] Account ID:', instagramBusinessAccountId);
 
-      // Determine which API to use based on connection type
-      // 'basic' = Instagram Login for Business → uses graph.instagram.com
-      // 'graph' = Facebook Page connection → uses graph.facebook.com
       const isBasicAccount = connectionType === 'basic';
-      const baseUrl = isBasicAccount
-        ? 'https://graph.instagram.com'
-        : `https://graph.facebook.com/${this.apiVersion}`;
 
-      console.log('📸 [INSTAGRAM] Using base URL:', baseUrl);
+      // ----- BASIC: Instagram Login for Business (graph.instagram.com, uses /me) -----
+      // According to Meta dev threads and working examples, the content publishing
+      // flow for "API with Instagram Login" is:
+      //   1) POST   https://graph.instagram.com/me/media
+      //   2) GET    https://graph.instagram.com/{container_id}
+      //   3) POST   https://graph.instagram.com/me/media_publish
+      // and *not* /{INSTAGRAM_ACCOUNT_ID}/media.
 
-      // Step 1: Create media container
+      let containerId;
+
+      if (isBasicAccount) {
+        const baseUrl = 'https://graph.instagram.com';
+        console.log('📸 [INSTAGRAM] Using BASIC flow via', baseUrl);
+
+        // Step 1 (BASIC): Create media container via /me/media
+        const containerUrl = `${baseUrl}/me/media`;
+        const containerParams = new URLSearchParams({
+          image_url: imageUrl,
+          caption: caption || 'Created with Velos AI ✨',
+          access_token: accessToken,
+        });
+
+        console.log('📸 [INSTAGRAM] BASIC container URL:', containerUrl);
+
+        const containerResponse = await fetch(`${containerUrl}?${containerParams}`, {
+          method: 'POST',
+        });
+        const containerData = await containerResponse.json();
+
+        if (containerData.error) {
+          console.error('❌ [INSTAGRAM] BASIC container creation failed:', containerData.error);
+          return { status: 400, json: { error: containerData.error.message, details: containerData.error } };
+        }
+
+        containerId = containerData.id;
+        console.log('✅ [INSTAGRAM] BASIC media container created:', containerId);
+
+        // Step 2 (BASIC): Poll container status via /{container_id}
+        let ready = false;
+        let attempts = 0;
+        const maxAttempts = 10;
+
+        while (!ready && attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+
+          const statusUrl = `${baseUrl}/${containerId}?fields=status_code&access_token=${accessToken}`;
+          const statusResponse = await fetch(statusUrl);
+          const statusData = await statusResponse.json();
+
+          console.log('📸 [INSTAGRAM] BASIC container status:', statusData.status_code);
+
+          if (statusData.status_code === 'FINISHED') {
+            ready = true;
+          } else if (statusData.status_code === 'ERROR') {
+            return { status: 400, json: { error: 'Media processing failed' } };
+          }
+
+          attempts++;
+        }
+
+        if (!ready) {
+          return { status: 400, json: { error: 'Media processing timed out' } };
+        }
+
+        // Step 3 (BASIC): Publish via /me/media_publish
+        const publishUrl = `${baseUrl}/me/media_publish`;
+        const publishParams = new URLSearchParams({
+          creation_id: containerId,
+          access_token: accessToken,
+        });
+
+        const publishResponse = await fetch(`${publishUrl}?${publishParams}`, {
+          method: 'POST',
+        });
+        const publishData = await publishResponse.json();
+
+        if (publishData.error) {
+          console.error('❌ [INSTAGRAM] BASIC publish failed:', publishData.error);
+          return { status: 400, json: { error: publishData.error.message, details: publishData.error } };
+        }
+
+        console.log('✅ [INSTAGRAM] BASIC image published! Media ID:', publishData.id);
+
+        // Fetch the permalink for the published media
+        let permalink = null;
+        try {
+          const mediaInfoUrl = `${baseUrl}/${publishData.id}?fields=permalink&access_token=${accessToken}`;
+          const mediaInfoResponse = await fetch(mediaInfoUrl);
+          const mediaInfo = await mediaInfoResponse.json();
+          if (mediaInfo.permalink) {
+            permalink = mediaInfo.permalink;
+            console.log('✅ [INSTAGRAM] BASIC permalink:', permalink);
+          }
+        } catch (e) {
+          console.log('⚠️ [INSTAGRAM] BASIC: Could not fetch permalink:', e.message);
+        }
+
+        return {
+          status: 200,
+          json: {
+            success: true,
+            message: 'Image published to Instagram (BASIC)',
+            mediaId: publishData.id,
+            permalink,
+            accountType: 'basic',
+            username: instagramUsername,
+          },
+        };
+      }
+
+      // ----- PRO: Facebook Graph API flow (existing behavior) -----
+      const baseUrl = `https://graph.facebook.com/${this.apiVersion}`;
+      console.log('📸 [INSTAGRAM] Using PRO flow via', baseUrl);
+
+      // Step 1 (PRO): Create media container
       const containerUrl = `${baseUrl}/${instagramBusinessAccountId}/media`;
       const containerParams = new URLSearchParams({
         image_url: imageUrl,
@@ -500,7 +606,7 @@ class InstagramController {
         access_token: accessToken,
       });
 
-      console.log('📸 [INSTAGRAM] Container URL:', containerUrl);
+      console.log('📸 [INSTAGRAM] PRO container URL:', containerUrl);
 
       const containerResponse = await fetch(`${containerUrl}?${containerParams}`, {
         method: 'POST',
@@ -508,14 +614,14 @@ class InstagramController {
       const containerData = await containerResponse.json();
 
       if (containerData.error) {
-        console.error('❌ [INSTAGRAM] Container creation failed:', containerData.error);
+        console.error('❌ [INSTAGRAM] PRO container creation failed:', containerData.error);
         return { status: 400, json: { error: containerData.error.message, details: containerData.error } };
       }
 
-      const containerId = containerData.id;
-      console.log('✅ [INSTAGRAM] Media container created:', containerId);
+      containerId = containerData.id;
+      console.log('✅ [INSTAGRAM] PRO media container created:', containerId);
 
-      // Step 2: Wait for container to be ready (poll status)
+      // Step 2 (PRO): Wait for container to be ready
       let ready = false;
       let attempts = 0;
       const maxAttempts = 10;
@@ -527,7 +633,7 @@ class InstagramController {
         const statusResponse = await fetch(statusUrl);
         const statusData = await statusResponse.json();
 
-        console.log('📸 [INSTAGRAM] Container status:', statusData.status_code);
+        console.log('📸 [INSTAGRAM] PRO container status:', statusData.status_code);
 
         if (statusData.status_code === 'FINISHED') {
           ready = true;
@@ -542,7 +648,7 @@ class InstagramController {
         return { status: 400, json: { error: 'Media processing timed out' } };
       }
 
-      // Step 3: Publish the container
+      // Step 3 (PRO): Publish the container
       const publishUrl = `${baseUrl}/${instagramBusinessAccountId}/media_publish`;
       const publishParams = new URLSearchParams({
         creation_id: containerId,
@@ -555,11 +661,11 @@ class InstagramController {
       const publishData = await publishResponse.json();
 
       if (publishData.error) {
-        console.error('❌ [INSTAGRAM] Publish failed:', publishData.error);
+        console.error('❌ [INSTAGRAM] PRO publish failed:', publishData.error);
         return { status: 400, json: { error: publishData.error.message, details: publishData.error } };
       }
 
-      console.log('✅ [INSTAGRAM] Image published! Media ID:', publishData.id);
+      console.log('✅ [INSTAGRAM] PRO image published! Media ID:', publishData.id);
 
       // Fetch the permalink for the published media
       let permalink = null;
@@ -569,10 +675,10 @@ class InstagramController {
         const mediaInfo = await mediaInfoResponse.json();
         if (mediaInfo.permalink) {
           permalink = mediaInfo.permalink;
-          console.log('✅ [INSTAGRAM] Permalink:', permalink);
+          console.log('✅ [INSTAGRAM] PRO permalink:', permalink);
         }
       } catch (e) {
-        console.log('⚠️ [INSTAGRAM] Could not fetch permalink:', e.message);
+        console.log('⚠️ [INSTAGRAM] PRO: Could not fetch permalink:', e.message);
       }
 
       return {
