@@ -254,20 +254,35 @@ class AnalyticsService {
    * Refresh engagement data for recent posts
    */
   async refreshEngagement(userId) {
+    const Instagram = require('../models/instagram');
     const SocialAccount = require('../models/socialAccount');
 
-    // Get user's Instagram social account
-    const socialAccount = await SocialAccount.findOne({
-      userId,
-      platform: 'instagram',
-      isActive: true
-    });
+    // Try to find Instagram connection - check both models for backward compatibility
+    let accessToken = null;
 
-    if (!socialAccount) {
-      throw new Error('Instagram not connected');
+    // First try the Instagram model (primary connection)
+    const instagramAccount = await Instagram.findOne({ userId, isConnected: true });
+    if (instagramAccount?.accessToken) {
+      accessToken = instagramAccount.accessToken;
+      console.log('[ANALYTICS] Found Instagram connection via Instagram model');
     }
 
-    const accessToken = socialAccount.facebookPageAccessToken || socialAccount.accessToken;
+    // Fallback to SocialAccount model
+    if (!accessToken) {
+      const socialAccount = await SocialAccount.findOne({
+        userId,
+        platform: 'instagram',
+        isActive: true
+      });
+      if (socialAccount) {
+        accessToken = socialAccount.facebookPageAccessToken || socialAccount.accessToken;
+        console.log('[ANALYTICS] Found Instagram connection via SocialAccount model');
+      }
+    }
+
+    if (!accessToken) {
+      throw new Error('Instagram not connected. Please connect your Instagram account in Settings.');
+    }
 
     // Get recent published posts (extend to 30 days for more data)
     const posts = await ScheduledPost.find({
