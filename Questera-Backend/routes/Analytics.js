@@ -96,10 +96,15 @@ analyticsRouter.get('/debug/:userId', async (req, res) => {
     const { userId } = req.params;
     const ScheduledPost = require('../models/scheduledPost');
     const SocialAccount = require('../models/socialAccount');
+    const Instagram = require('../models/instagram');
 
     const posts = await ScheduledPost.find({ userId, status: 'published' })
       .select('postId imageUrl caption status publishedAt publishedMediaId engagement')
       .limit(10);
+
+    // Check both models
+    const instagramAccount = await Instagram.findOne({ userId, isConnected: true })
+      .select('instagramUsername instagramBusinessAccountId isConnected accessToken');
 
     const socialAccount = await SocialAccount.findOne({
       userId,
@@ -109,6 +114,12 @@ analyticsRouter.get('/debug/:userId', async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      instagramAccount: instagramAccount ? {
+        username: instagramAccount.instagramUsername,
+        businessId: instagramAccount.instagramBusinessAccountId,
+        isConnected: instagramAccount.isConnected,
+        hasAccessToken: !!instagramAccount.accessToken,
+      } : null,
       socialAccount,
       postsCount: posts.length,
       posts: posts.map(p => ({
