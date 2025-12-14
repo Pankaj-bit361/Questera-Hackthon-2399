@@ -661,7 +661,7 @@ const ChatPage = () => {
         </div>
 
         {/* Input Area - Fixed Bottom with Gradient Fade */}
-        <div className="relative z-30 px-4 sm:px-6 md:px-8 pb-4 pt-12 bg-gradient-to-t from-[#050505] via-[#050505] to-transparent">
+        <div className="relative z-30 px-4 sm:px-6 md:px-8 pb-4 pt-2 bg-gradient-to-t from-[#050505] via-[#050505] to-transparent">
           <div className="max-w-4xl mx-auto">
             <ChatInput
               prompt={prompt}

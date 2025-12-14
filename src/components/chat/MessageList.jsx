@@ -464,7 +464,7 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
               )}
 
               {/* Viral Content - Hashtags & Caption for Instagram */}
-              {msg.role === 'assistant' && msg.viralContent && (
+              {msg.role === 'assistant' && msg.viralContent && (msg.viralContent.description || msg.viralContent.hashtagString || msg.viralContent.callToAction) && (
                 <div className="mt-3 p-4 bg-zinc-900/50 rounded-2xl border border-white/5 backdrop-blur-sm">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-lg">🔥</span>
