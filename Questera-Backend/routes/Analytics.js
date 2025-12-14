@@ -76,13 +76,51 @@ analyticsRouter.post('/refresh/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const result = await analyticsService.refreshEngagement(userId);
-    return res.status(200).json({ 
-      success: true, 
+    return res.status(200).json({
+      success: true,
       message: `Updated ${result.updated} posts`,
       ...result,
     });
   } catch (error) {
     console.error('[ANALYTICS] Refresh Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /analytics/debug/:userId
+ * Debug endpoint to check post data
+ */
+analyticsRouter.get('/debug/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const ScheduledPost = require('../models/scheduledPost');
+    const SocialAccount = require('../models/socialAccount');
+
+    const posts = await ScheduledPost.find({ userId, status: 'published' })
+      .select('postId imageUrl caption status publishedAt publishedMediaId engagement')
+      .limit(10);
+
+    const socialAccount = await SocialAccount.findOne({
+      userId,
+      platform: 'instagram',
+      isActive: true
+    }).select('platformUsername instagramBusinessAccountId isActive');
+
+    return res.status(200).json({
+      success: true,
+      socialAccount,
+      postsCount: posts.length,
+      posts: posts.map(p => ({
+        postId: p.postId,
+        hasMediaId: !!p.publishedMediaId,
+        publishedMediaId: p.publishedMediaId,
+        publishedAt: p.publishedAt,
+        engagement: p.engagement,
+      })),
+    });
+  } catch (error) {
+    console.error('[ANALYTICS] Debug Error:', error);
     return res.status(500).json({ error: error.message });
   }
 });
