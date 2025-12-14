@@ -696,16 +696,30 @@ class InstagramController {
       console.log('✅ [INSTAGRAM] Got long-lived access token');
 
       // Step 3: Get user profile using Instagram Graph API
-      const profileUrl = `https://graph.instagram.com/me?fields=id,username,account_type,name,profile_picture_url&access_token=${accessToken}`;
+      // For Instagram Login for Business, use the user_id from token response
+      const igUserId = tokenData.user_id;
+
+      // Try with minimal fields first (Instagram Login for Business has limited fields)
+      const profileUrl = `https://graph.instagram.com/${igUserId}?fields=user_id,username&access_token=${accessToken}`;
+      console.log('🔐 [INSTAGRAM] Fetching profile for user_id:', igUserId);
+
       const profileResponse = await fetch(profileUrl);
       const profile = await profileResponse.json();
 
       console.log('🔐 [INSTAGRAM] Profile response:', JSON.stringify(profile, null, 2));
 
-      if (!profile.id || !profile.username) {
-        console.error('❌ [INSTAGRAM] Failed to get user profile:', profile);
-        return { status: 400, json: { error: 'Failed to get Instagram profile' } };
+      if (profile.error) {
+        console.error('❌ [INSTAGRAM] Instagram API error:', profile.error);
+        return { status: 400, json: { error: 'Failed to get Instagram profile', details: profile.error } };
       }
+
+      if (!profile.username) {
+        console.error('❌ [INSTAGRAM] No username in profile:', profile);
+        return { status: 400, json: { error: 'Failed to get Instagram profile', details: profile } };
+      }
+
+      // Use user_id from token response if not in profile
+      profile.id = profile.id || profile.user_id || igUserId;
 
       console.log('✅ [INSTAGRAM] Got profile:', profile.username, '| Type:', profile.account_type);
 
