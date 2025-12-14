@@ -265,7 +265,20 @@ autopilotRouter.put('/memory/:userId/:chatId', async (req, res) => {
 
     await memory.save();
 
-    const brandComplete = memory.brand.targetAudience && memory.brand.topicsAllowed?.length > 0;
+    // Brand is complete if we have the 3 required fields (topics is optional)
+    const brandComplete = !!(
+      memory.brand.targetAudience?.trim() &&
+      memory.brand.visualStyle?.trim() &&
+      memory.brand.tone?.trim()
+    );
+
+    console.log('[AUTOPILOT] Brand saved:', {
+      topics: memory.brand.topicsAllowed,
+      targetAudience: !!memory.brand.targetAudience,
+      visualStyle: !!memory.brand.visualStyle,
+      tone: !!memory.brand.tone,
+      brandComplete
+    });
 
     return res.status(200).json({
       success: true,
@@ -273,7 +286,7 @@ autopilotRouter.put('/memory/:userId/:chatId', async (req, res) => {
       brandComplete,
       message: brandComplete
         ? 'Brand info saved successfully! Autopilot is ready to run.'
-        : 'Brand info partially saved. Please provide target audience and topics.',
+        : 'Brand info partially saved. Please complete all required fields.',
     });
   } catch (error) {
     console.error('[AUTOPILOT] Update Memory Error:', error);
@@ -294,10 +307,9 @@ autopilotRouter.get('/status/:userId/:chatId', async (req, res) => {
 
     // Check if brand info is complete
     const brandComplete = !!(
-      memory?.brand?.targetAudience &&
-      memory?.brand?.topicsAllowed?.length > 0 &&
-      memory?.brand?.visualStyle &&
-      memory?.brand?.tone
+      memory?.brand?.targetAudience?.trim() &&
+      memory?.brand?.visualStyle?.trim() &&
+      memory?.brand?.tone?.trim()
     );
 
     return res.status(200).json({
@@ -527,4 +539,6 @@ autopilotRouter.get('/images/:userId/:chatId', async (req, res) => {
 });
 
 module.exports = autopilotRouter;
+
+
 
