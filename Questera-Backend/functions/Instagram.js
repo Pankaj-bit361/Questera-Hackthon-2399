@@ -32,8 +32,7 @@ class InstagramController {
         const scope = 'instagram_business_basic,instagram_business_manage_comments,instagram_business_content_publish';
 
         oauthUrl = `https://www.instagram.com/oauth/authorize?` +
-          `force_reauth=true` +
-          `&client_id=${this.basicAppId}` +
+          `client_id=${this.basicAppId}` +
           `&redirect_uri=${encodeURIComponent(this.basicRedirectUri)}` +
           `&response_type=code` +
           `&scope=${scope}` +
