@@ -128,13 +128,26 @@ Now create an engaging image and/or content for this brand based on the original
 
                // Store the generated image URL for the next step
                // Tool returns: { success, imageUrl, images: [...] } directly (not nested under data)
-               const imageUrl = toolResult.images?.[0] || toolResult.imageUrl || toolResult.data?.images?.[0] || toolResult.data?.imageUrl;
+               // images[0] can be either a string URL or an object { mimeType, url }
+               let imageUrl = toolResult.images?.[0] || toolResult.imageUrl || toolResult.data?.images?.[0] || toolResult.data?.imageUrl;
+
+               // Handle case where imageUrl is an object like { mimeType: 'image/jpeg', url: '...' }
+               if (imageUrl && typeof imageUrl === 'object' && imageUrl.url) {
+                  imageUrl = imageUrl.url;
+               }
+
                context.generatedImageUrl = imageUrl;
                console.log('🔗 [EXECUTOR] Generated imageUrl for posting:', imageUrl);
 
+               // CRITICAL: Tell LLM to use THIS EXACT URL, not the old lastImageUrl
                messages.push({
                   role: 'user',
-                  content: `Image generated successfully: ${imageUrl}. Now proceed to post this image to the user's Instagram as requested. Use the schedule_post tool.`
+                  content: `Image generated successfully!
+
+CRITICAL: Use this EXACT newly generated image URL for posting (do NOT use any other URL):
+imageUrl: ${imageUrl}
+
+Now call schedule_post with this EXACT imageUrl. Do NOT use lastImageUrl or any other image.`
                });
 
                continue;
