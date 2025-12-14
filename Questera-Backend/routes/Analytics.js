@@ -136,5 +136,44 @@ analyticsRouter.get('/debug/:userId', async (req, res) => {
   }
 });
 
+/**
+ * GET /analytics/test-instagram/:userId/:mediaId
+ * Test endpoint to check raw Instagram API response
+ */
+analyticsRouter.get('/test-instagram/:userId/:mediaId', async (req, res) => {
+  try {
+    const { userId, mediaId } = req.params;
+    const Instagram = require('../models/instagram');
+
+    const instagramAccount = await Instagram.findOne({ userId, isConnected: true });
+
+    if (!instagramAccount?.accessToken) {
+      return res.status(400).json({ error: 'No Instagram access token found' });
+    }
+
+    const accessToken = instagramAccount.accessToken;
+
+    // Test 1: Get basic media info
+    const mediaUrl = `https://graph.facebook.com/v20.0/${mediaId}?fields=id,like_count,comments_count,permalink,timestamp,media_type&access_token=${accessToken}`;
+    const mediaResponse = await fetch(mediaUrl);
+    const mediaData = await mediaResponse.json();
+
+    // Test 2: Get insights
+    const insightsUrl = `https://graph.facebook.com/v20.0/${mediaId}/insights?metric=impressions,reach,saved&access_token=${accessToken}`;
+    const insightsResponse = await fetch(insightsUrl);
+    const insightsData = await insightsResponse.json();
+
+    return res.status(200).json({
+      success: true,
+      mediaId,
+      mediaApiResponse: mediaData,
+      insightsApiResponse: insightsData,
+    });
+  } catch (error) {
+    console.error('[ANALYTICS] Test Instagram Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = analyticsRouter;
 
