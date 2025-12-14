@@ -5,7 +5,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { imageAPI, creditsAPI } from '../lib/api';
 
-const { FiPlus, FiSearch, FiMessageSquare, FiSettings, FiLogOut, FiZap, FiUser, FiCalendar, FiLayout } = FiIcons;
+const { FiPlus, FiSearch, FiMessageSquare, FiSettings, FiLogOut, FiZap, FiUser, FiCalendar, FiLayout, FiTrendingUp } = FiIcons;
 
 const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
   const navigate = useNavigate();
@@ -189,6 +189,14 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
                 >
                   <SafeIcon icon={FiCalendar} className="w-4 h-4 text-purple-400" />
                   <span className="text-[13px] font-medium">Scheduler</span>
+                </button>
+
+                <button
+                  onClick={() => navigate('/analytics')}
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-[#18181b] rounded-lg transition-colors ${location.pathname === '/analytics' ? 'bg-[#18181b] text-white' : ''}`}
+                >
+                  <SafeIcon icon={FiTrendingUp} className="w-4 h-4 text-emerald-400" />
+                  <span className="text-[13px] font-medium">Analytics</span>
                 </button>
 
                 <button

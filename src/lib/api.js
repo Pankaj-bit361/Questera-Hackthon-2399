@@ -312,3 +312,49 @@ export const schedulerAPI = {
     return response.json();
   },
 };
+
+/**
+ * Analytics API - Track performance, engagement, and growth
+ */
+export const analyticsAPI = {
+  // Get full dashboard
+  getDashboard: async (userId, days = 30) => {
+    const response = await fetch(`${API_BASE_URL}/analytics/dashboard/${userId}?days=${days}`, {
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Get best posting times
+  getBestTimes: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/analytics/best-times/${userId}`, {
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Get content analysis (hashtags, post types)
+  getContentAnalysis: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/analytics/content/${userId}`, {
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Get growth metrics
+  getGrowthMetrics: async (userId, days = 30) => {
+    const response = await fetch(`${API_BASE_URL}/analytics/growth/${userId}?days=${days}`, {
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Refresh engagement data from Instagram
+  refreshEngagement: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/analytics/refresh/${userId}`, {
+      method: 'POST',
+      headers: headers(),
+    });
+    return response.json();
+  },
+};
