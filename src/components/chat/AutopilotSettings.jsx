@@ -12,6 +12,7 @@ const ONBOARDING_STEPS = [
   { key: 'targetAudience', label: 'Who is your target audience?', placeholder: 'e.g., 18-35 entrepreneurs, fitness enthusiasts, working moms...' },
   { key: 'visualStyle', label: 'What visual style fits your brand?', placeholder: 'e.g., minimalist, bold colors, dark aesthetic, warm tones...' },
   { key: 'tone', label: 'What tone do you use in captions?', placeholder: 'e.g., professional, casual & funny, inspiring, educational...' },
+  { key: 'images', label: 'Add your reference images (optional)', isImageStep: true },
 ];
 
 const AutopilotSettings = ({ isOpen, onClose, chatId }) => {
@@ -196,7 +197,9 @@ const AutopilotSettings = ({ isOpen, onClose, chatId }) => {
                 </div>
               ) : showOnboarding ? (
                 <OnboardingFlow brandInfo={brandInfo} setBrandInfo={setBrandInfo} currentStep={currentStep}
-                  setCurrentStep={setCurrentStep} onSave={handleSaveBrand} saving={saving} />
+                  setCurrentStep={setCurrentStep} onSave={handleSaveBrand} saving={saving}
+                  referenceImages={referenceImages} onImageUpload={handleImageUpload}
+                  onDeleteImage={handleDeleteImage} uploadingType={uploadingType} />
               ) : (
                 <AutopilotControls config={config} brandInfo={brandInfo} brandComplete={brandComplete}
                   onToggle={handleToggle} onRunNow={handleRunNow} running={running}
@@ -212,10 +215,15 @@ const AutopilotSettings = ({ isOpen, onClose, chatId }) => {
   );
 };
 
-const OnboardingFlow = ({ brandInfo, setBrandInfo, currentStep, setCurrentStep, onSave, saving }) => {
+const OnboardingFlow = ({ brandInfo, setBrandInfo, currentStep, setCurrentStep, onSave, saving,
+  referenceImages, onImageUpload, onDeleteImage, uploadingType }) => {
   const step = ONBOARDING_STEPS[currentStep];
   const isLastStep = currentStep === ONBOARDING_STEPS.length - 1;
-  const allFilled = Object.values(brandInfo).every(v => v.trim());
+  const textStepsComplete = brandInfo.topics && brandInfo.targetAudience && brandInfo.visualStyle && brandInfo.tone;
+
+  const personalInputRef = React.useRef(null);
+  const productInputRef = React.useRef(null);
+  const styleInputRef = React.useRef(null);
 
   return (
     <div className="space-y-6">
@@ -234,13 +242,100 @@ const OnboardingFlow = ({ brandInfo, setBrandInfo, currentStep, setCurrentStep, 
         ))}
       </div>
 
-      {/* Current Question */}
-      <div className="space-y-3">
-        <label className="text-sm font-medium text-white">{step.label}</label>
-        <textarea value={brandInfo[step.key]} onChange={(e) => setBrandInfo(prev => ({ ...prev, [step.key]: e.target.value }))}
-          placeholder={step.placeholder}
-          className="w-full h-24 bg-[#1c1c1e] text-white text-sm border border-white/10 rounded-xl p-3 outline-none focus:border-yellow-500/50 resize-none placeholder-zinc-600" />
-      </div>
+      {/* Current Question or Image Upload */}
+      {step.isImageStep ? (
+        <div className="space-y-4">
+          <label className="text-sm font-medium text-white">{step.label}</label>
+          <p className="text-xs text-zinc-500">Upload your photo, product images, or style references for personalized AI content</p>
+
+          {/* Personal Photo */}
+          <div className="bg-[#1c1c1e] border border-white/10 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <SafeIcon icon={FiUser} className="w-4 h-4 text-yellow-400" />
+                <span className="text-sm text-white">Your Photo</span>
+              </div>
+              <input type="file" ref={personalInputRef} onChange={(e) => onImageUpload(e, 'personal')} accept="image/*" className="hidden" />
+              <button onClick={() => personalInputRef.current?.click()} disabled={uploadingType === 'personal'}
+                className="text-xs px-3 py-1 rounded-lg bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30">
+                {uploadingType === 'personal' ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+            {referenceImages.personalReference?.url && (
+              <div className="relative inline-block">
+                <img src={referenceImages.personalReference.url} alt="Personal" className="w-16 h-16 object-cover rounded-lg" />
+                <button onClick={() => onDeleteImage('personal', referenceImages.personalReference.url)}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                  <SafeIcon icon={FiX} className="w-3 h-3 text-white" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Product Images */}
+          <div className="bg-[#1c1c1e] border border-white/10 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <SafeIcon icon={FiPackage} className="w-4 h-4 text-blue-400" />
+                <span className="text-sm text-white">Product Images</span>
+              </div>
+              <input type="file" ref={productInputRef} onChange={(e) => onImageUpload(e, 'product')} accept="image/*" multiple className="hidden" />
+              <button onClick={() => productInputRef.current?.click()} disabled={uploadingType === 'product'}
+                className="text-xs px-3 py-1 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30">
+                {uploadingType === 'product' ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+            {referenceImages.productImages?.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {referenceImages.productImages.map((img, i) => (
+                  <div key={i} className="relative">
+                    <img src={img.url} alt={`Product ${i + 1}`} className="w-14 h-14 object-cover rounded-lg" />
+                    <button onClick={() => onDeleteImage('product', img.url)}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                      <SafeIcon icon={FiX} className="w-3 h-3 text-white" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Style References */}
+          <div className="bg-[#1c1c1e] border border-white/10 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <SafeIcon icon={FiImage} className="w-4 h-4 text-purple-400" />
+                <span className="text-sm text-white">Style References</span>
+              </div>
+              <input type="file" ref={styleInputRef} onChange={(e) => onImageUpload(e, 'style')} accept="image/*" multiple className="hidden" />
+              <button onClick={() => styleInputRef.current?.click()} disabled={uploadingType === 'style'}
+                className="text-xs px-3 py-1 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30">
+                {uploadingType === 'style' ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+            {referenceImages.styleReferences?.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {referenceImages.styleReferences.map((img, i) => (
+                  <div key={i} className="relative">
+                    <img src={img.url} alt={`Style ${i + 1}`} className="w-14 h-14 object-cover rounded-lg" />
+                    <button onClick={() => onDeleteImage('style', img.url)}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                      <SafeIcon icon={FiX} className="w-3 h-3 text-white" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <label className="text-sm font-medium text-white">{step.label}</label>
+          <textarea value={brandInfo[step.key]} onChange={(e) => setBrandInfo(prev => ({ ...prev, [step.key]: e.target.value }))}
+            placeholder={step.placeholder}
+            className="w-full h-24 bg-[#1c1c1e] text-white text-sm border border-white/10 rounded-xl p-3 outline-none focus:border-yellow-500/50 resize-none placeholder-zinc-600" />
+        </div>
+      )}
 
       {/* Navigation */}
       <div className="flex gap-3">
@@ -251,14 +346,14 @@ const OnboardingFlow = ({ brandInfo, setBrandInfo, currentStep, setCurrentStep, 
           </button>
         )}
         {isLastStep ? (
-          <button onClick={onSave} disabled={!allFilled || saving}
+          <button onClick={onSave} disabled={!textStepsComplete || saving}
             className="flex-1 py-3 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
             {saving ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : (
               <><SafeIcon icon={FiCheck} className="w-4 h-4" /> Complete Setup</>
             )}
           </button>
         ) : (
-          <button onClick={() => setCurrentStep(currentStep + 1)} disabled={!brandInfo[step.key].trim()}
+          <button onClick={() => setCurrentStep(currentStep + 1)} disabled={!step.isImageStep && !brandInfo[step.key]?.trim()}
             className="flex-1 py-3 rounded-xl bg-white text-black font-semibold disabled:opacity-50">
             Next
           </button>
