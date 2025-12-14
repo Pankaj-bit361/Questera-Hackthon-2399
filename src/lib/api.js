@@ -443,4 +443,32 @@ export const autopilotAPI = {
     });
     return response.json();
   },
+
+  // Get reference images
+  getImages: async (userId, chatId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/images/${userId}/${chatId}`, {
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Upload reference images (products, style, personal)
+  uploadImages: async (userId, chatId, images, type = 'product') => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/images/${userId}/${chatId}`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ images, type }),
+    });
+    return response.json();
+  },
+
+  // Delete a reference image
+  deleteImage: async (userId, chatId, type, url) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/images/${userId}/${chatId}`, {
+      method: 'DELETE',
+      headers: headers(),
+      body: JSON.stringify({ type, url }),
+    });
+    return response.json();
+  },
 };

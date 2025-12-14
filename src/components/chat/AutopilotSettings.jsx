@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../common/SafeIcon';
 import { autopilotAPI } from '../../lib/api';
 import { toast } from 'react-toastify';
 
-const { FiX, FiZap, FiPlay, FiPause, FiSettings, FiCheck, FiAlertCircle } = FiIcons;
+const { FiX, FiZap, FiPlay, FiPause, FiSettings, FiCheck, FiAlertCircle, FiImage, FiUpload, FiTrash2, FiUser, FiPackage } = FiIcons;
 
 const ONBOARDING_STEPS = [
   { key: 'topics', label: 'What topics do you post about?', placeholder: 'e.g., fitness, tech tips, lifestyle, travel photography...' },
@@ -23,6 +23,12 @@ const AutopilotSettings = ({ isOpen, onClose, chatId }) => {
   const [brandInfo, setBrandInfo] = useState({ topics: '', targetAudience: '', visualStyle: '', tone: '' });
   const [currentStep, setCurrentStep] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [referenceImages, setReferenceImages] = useState({
+    productImages: [],
+    styleReferences: [],
+    personalReference: { url: null },
+  });
+  const [uploadingType, setUploadingType] = useState(null);
 
   const userId = localStorage.getItem('userId');
 
@@ -35,7 +41,10 @@ const AutopilotSettings = ({ isOpen, onClose, chatId }) => {
   const fetchStatus = async () => {
     setLoading(true);
     try {
-      const status = await autopilotAPI.getStatus(userId, chatId);
+      const [status, imagesRes] = await Promise.all([
+        autopilotAPI.getStatus(userId, chatId),
+        autopilotAPI.getImages(userId, chatId),
+      ]);
       if (status.success) {
         setConfig(status.config);
         setMemory(status.memory);
@@ -48,6 +57,9 @@ const AutopilotSettings = ({ isOpen, onClose, chatId }) => {
           });
         }
         setShowOnboarding(!status.brandComplete);
+      }
+      if (imagesRes.success) {
+        setReferenceImages(imagesRes.referenceImages);
       }
     } catch (error) {
       console.error('Failed to fetch autopilot status:', error);
@@ -105,6 +117,49 @@ const AutopilotSettings = ({ isOpen, onClose, chatId }) => {
     }
   };
 
+  const handleImageUpload = async (e, type) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    setUploadingType(type);
+    try {
+      const images = await Promise.all(files.map(file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = reader.result.split(',')[1];
+          resolve({ data: base64, mimeType: file.type || 'image/png', name: file.name });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      })));
+
+      const result = await autopilotAPI.uploadImages(userId, chatId, images, type);
+      if (result.success) {
+        setReferenceImages(result.referenceImages);
+        toast.success(`${type === 'personal' ? 'Profile photo' : 'Image'} uploaded!`);
+      } else {
+        toast.error('Failed to upload image');
+      }
+    } catch (error) {
+      toast.error('Failed to upload image');
+    } finally {
+      setUploadingType(null);
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteImage = async (type, url) => {
+    try {
+      const result = await autopilotAPI.deleteImage(userId, chatId, type, url);
+      if (result.success) {
+        setReferenceImages(result.referenceImages);
+        toast.success('Image deleted');
+      }
+    } catch (error) {
+      toast.error('Failed to delete image');
+    }
+  };
+
   const brandComplete = brandInfo.topics && brandInfo.targetAudience && brandInfo.visualStyle && brandInfo.tone;
 
   return (
@@ -145,7 +200,9 @@ const AutopilotSettings = ({ isOpen, onClose, chatId }) => {
               ) : (
                 <AutopilotControls config={config} brandInfo={brandInfo} brandComplete={brandComplete}
                   onToggle={handleToggle} onRunNow={handleRunNow} running={running}
-                  onEditBrand={() => setShowOnboarding(true)} />
+                  onEditBrand={() => setShowOnboarding(true)}
+                  referenceImages={referenceImages} onImageUpload={handleImageUpload}
+                  onDeleteImage={handleDeleteImage} uploadingType={uploadingType} />
               )}
             </div>
           </motion.div>
@@ -211,8 +268,12 @@ const OnboardingFlow = ({ brandInfo, setBrandInfo, currentStep, setCurrentStep, 
   );
 };
 
-const AutopilotControls = ({ config, brandInfo, brandComplete, onToggle, onRunNow, running, onEditBrand }) => {
+const AutopilotControls = ({ config, brandInfo, brandComplete, onToggle, onRunNow, running, onEditBrand,
+  referenceImages, onImageUpload, onDeleteImage, uploadingType }) => {
   const isEnabled = config?.enabled;
+  const productInputRef = React.useRef(null);
+  const styleInputRef = React.useRef(null);
+  const personalInputRef = React.useRef(null);
 
   return (
     <div className="space-y-6">
@@ -255,6 +316,88 @@ const AutopilotControls = ({ config, brandInfo, brandComplete, onToggle, onRunNo
           <div><span className="text-zinc-500">Audience:</span> <span className="text-white">{brandInfo.targetAudience || '—'}</span></div>
           <div><span className="text-zinc-500">Style:</span> <span className="text-white">{brandInfo.visualStyle || '—'}</span></div>
           <div><span className="text-zinc-500">Tone:</span> <span className="text-white">{brandInfo.tone || '—'}</span></div>
+        </div>
+      </div>
+
+      {/* Reference Images Section */}
+      <div className="space-y-4">
+        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Reference Images</label>
+
+        {/* Personal Reference */}
+        <div className="bg-[#1c1c1e] rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm text-white">
+            <SafeIcon icon={FiUser} className="w-4 h-4 text-purple-400" />
+            Your Photo <span className="text-zinc-500 text-xs">(for personalized AI images)</span>
+          </div>
+          <input type="file" accept="image/*" ref={personalInputRef} className="hidden" onChange={(e) => onImageUpload(e, 'personal')} />
+          {referenceImages?.personalReference?.url ? (
+            <div className="relative group">
+              <img src={referenceImages.personalReference.url} alt="Personal" className="w-16 h-16 rounded-xl object-cover" />
+              <button onClick={() => onDeleteImage('personal', referenceImages.personalReference.url)}
+                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <SafeIcon icon={FiTrash2} className="w-3 h-3 text-white" />
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => personalInputRef.current?.click()} disabled={uploadingType === 'personal'}
+              className="w-full py-3 border border-dashed border-zinc-600 rounded-xl text-zinc-400 text-sm hover:border-purple-500 hover:text-purple-400 transition-all flex items-center justify-center gap-2">
+              {uploadingType === 'personal' ? <div className="w-4 h-4 border-2 border-zinc-600 border-t-purple-400 rounded-full animate-spin" /> : (
+                <><SafeIcon icon={FiUpload} className="w-4 h-4" /> Upload Photo</>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Product Images */}
+        <div className="bg-[#1c1c1e] rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm text-white">
+            <SafeIcon icon={FiPackage} className="w-4 h-4 text-blue-400" />
+            Product Images <span className="text-zinc-500 text-xs">(optional)</span>
+          </div>
+          <input type="file" accept="image/*" multiple ref={productInputRef} className="hidden" onChange={(e) => onImageUpload(e, 'product')} />
+          <div className="flex flex-wrap gap-2">
+            {referenceImages?.productImages?.map((img, i) => (
+              <div key={i} className="relative group">
+                <img src={img.url} alt={img.name || 'Product'} className="w-14 h-14 rounded-lg object-cover" />
+                <button onClick={() => onDeleteImage('product', img.url)}
+                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <SafeIcon icon={FiTrash2} className="w-2.5 h-2.5 text-white" />
+                </button>
+              </div>
+            ))}
+            <button onClick={() => productInputRef.current?.click()} disabled={uploadingType === 'product'}
+              className="w-14 h-14 border border-dashed border-zinc-600 rounded-lg flex items-center justify-center text-zinc-500 hover:border-blue-500 hover:text-blue-400 transition-all">
+              {uploadingType === 'product' ? <div className="w-4 h-4 border-2 border-zinc-600 border-t-blue-400 rounded-full animate-spin" /> : (
+                <SafeIcon icon={FiUpload} className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Style References */}
+        <div className="bg-[#1c1c1e] rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm text-white">
+            <SafeIcon icon={FiImage} className="w-4 h-4 text-green-400" />
+            Style References <span className="text-zinc-500 text-xs">(aesthetic examples)</span>
+          </div>
+          <input type="file" accept="image/*" multiple ref={styleInputRef} className="hidden" onChange={(e) => onImageUpload(e, 'style')} />
+          <div className="flex flex-wrap gap-2">
+            {referenceImages?.styleReferences?.map((img, i) => (
+              <div key={i} className="relative group">
+                <img src={img.url} alt={img.name || 'Style'} className="w-14 h-14 rounded-lg object-cover" />
+                <button onClick={() => onDeleteImage('style', img.url)}
+                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <SafeIcon icon={FiTrash2} className="w-2.5 h-2.5 text-white" />
+                </button>
+              </div>
+            ))}
+            <button onClick={() => styleInputRef.current?.click()} disabled={uploadingType === 'style'}
+              className="w-14 h-14 border border-dashed border-zinc-600 rounded-lg flex items-center justify-center text-zinc-500 hover:border-green-500 hover:text-green-400 transition-all">
+              {uploadingType === 'style' ? <div className="w-4 h-4 border-2 border-zinc-600 border-t-green-400 rounded-full animate-spin" /> : (
+                <SafeIcon icon={FiUpload} className="w-4 h-4" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 

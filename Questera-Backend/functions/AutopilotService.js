@@ -278,7 +278,11 @@ class AutopilotService {
     const prompt = await this.generateImagePrompt(postPlan, memory);
     console.log(`[AUTOPILOT] Generated prompt: ${prompt.slice(0, 100)}...`);
 
-    // Step 2: Create a content job
+    // Step 2: Collect reference images from memory
+    const referenceImages = this.collectReferenceImages(memory);
+    console.log(`[AUTOPILOT] Using ${referenceImages.length} reference image(s)`);
+
+    // Step 3: Create a content job
     const contentJob = await ContentJob.create({
       userId: config.userId,
       type: 'single',
@@ -295,8 +299,8 @@ class AutopilotService {
 
     console.log(`[AUTOPILOT] Created content job: ${contentJob.jobId}`);
 
-    // Step 3: Generate the image
-    const { results } = await this.imageOrchestrator.executeJob(contentJob.jobId, []);
+    // Step 4: Generate the image with reference images
+    const { results } = await this.imageOrchestrator.executeJob(contentJob.jobId, referenceImages);
 
     if (!results || results.length === 0) {
       throw new Error('Image generation failed - no results');
@@ -349,11 +353,27 @@ class AutopilotService {
    */
   async generateImagePrompt(postPlan, memory) {
     const brandInfo = memory.brand || {};
+    const refImages = memory.referenceImages || {};
     const topics = brandInfo.topicsAllowed?.join(', ') || 'lifestyle content';
     const theme = postPlan.theme || 'lifestyle';
     const format = postPlan.format || 'image';
     const hookStyle = postPlan.hookStyle || 'value';
     const goal = postPlan.goal || 'engagement';
+
+    // Check what reference images are available
+    const hasPersonal = !!refImages.personalReference?.url;
+    const hasProducts = refImages.productImages?.length > 0;
+    const hasStyleRefs = refImages.styleReferences?.length > 0;
+
+    // Build reference context for the prompt
+    let referenceContext = '';
+    if (hasPersonal || hasProducts || hasStyleRefs) {
+      referenceContext = '\nREFERENCE IMAGES AVAILABLE:';
+      if (hasPersonal) referenceContext += '\n- Personal photo of the creator (incorporate this person into the scene)';
+      if (hasProducts) referenceContext += `\n- ${refImages.productImages.length} product image(s) (feature the products naturally)`;
+      if (hasStyleRefs) referenceContext += '\n- Style reference images (match this aesthetic)';
+      referenceContext += '\n\nIMPORTANT: The AI will receive these reference images. Design the prompt to naturally incorporate them.';
+    }
 
     // Use LLM to generate a creative, specific prompt
     const systemPrompt = `You are an expert social media content creator and AI image prompt engineer.
@@ -364,7 +384,8 @@ IMPORTANT RULES:
 2. Include the brand's niche/topics naturally in the image concept
 3. Make it visually striking and scroll-stopping
 4. Consider the theme and hook style for maximum impact
-5. Output ONLY the image prompt, nothing else`;
+5. If personal/product references are available, design the scene to feature them naturally
+6. Output ONLY the image prompt, nothing else`;
 
     const userPrompt = `Create a detailed AI image generation prompt for this social media post:
 
@@ -373,6 +394,7 @@ BRAND CONTEXT:
 - Target Audience: ${brandInfo.targetAudience || 'general audience'}
 - Visual Style: ${brandInfo.visualStyle || 'modern and clean'}
 - Brand Tone: ${brandInfo.tone || 'friendly'}
+${referenceContext}
 
 POST REQUIREMENTS:
 - Theme: ${theme}
@@ -383,6 +405,8 @@ POST REQUIREMENTS:
 ${postPlan.promptSuggestion ? `Agent suggestion: ${postPlan.promptSuggestion}` : ''}
 
 Generate a detailed, specific image prompt that will create a visually stunning, on-brand image for Instagram.
+${hasPersonal ? 'The image should feature the person from the reference photo in a natural, on-brand setting.' : ''}
+${hasProducts ? 'Feature the products naturally in the scene.' : ''}
 The prompt should be 2-3 sentences describing the exact visual scene, style, lighting, and mood.`;
 
     try {
@@ -440,6 +464,51 @@ The prompt should be 2-3 sentences describing the exact visual scene, style, lig
     }
 
     return scheduled;
+  }
+
+  /**
+   * Collect reference images from memory for image generation
+   * Returns array of { data: base64 or url, mimeType: string }
+   */
+  collectReferenceImages(memory) {
+    const images = [];
+    const refImages = memory.referenceImages;
+
+    if (!refImages) return images;
+
+    // Add personal reference (highest priority for personalized content)
+    if (refImages.personalReference?.url) {
+      images.push({
+        url: refImages.personalReference.url,
+        mimeType: 'image/png',
+        type: 'personal',
+      });
+    }
+
+    // Add product images (pick 1-2 random ones to avoid overloading)
+    if (refImages.productImages?.length > 0) {
+      const shuffled = [...refImages.productImages].sort(() => Math.random() - 0.5);
+      const selected = shuffled.slice(0, 2);
+      selected.forEach(img => {
+        images.push({
+          url: img.url,
+          mimeType: 'image/png',
+          type: 'product',
+        });
+      });
+    }
+
+    // Add style references (pick 1 random one for style guidance)
+    if (refImages.styleReferences?.length > 0) {
+      const randomStyle = refImages.styleReferences[Math.floor(Math.random() * refImages.styleReferences.length)];
+      images.push({
+        url: randomStyle.url,
+        mimeType: 'image/png',
+        type: 'style',
+      });
+    }
+
+    return images;
   }
 }
 
