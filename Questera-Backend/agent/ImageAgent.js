@@ -3,6 +3,7 @@ const ToolRegistry = require('./ToolRegistry');
 const { OpenRouterProvider, AnthropicProvider } = require('./LLMProvider');
 const { allTools } = require('./tools');
 const ImageMessage = require('../models/imageMessage');
+const AutopilotMemory = require('../models/autopilotMemory');
 
 
 const SYSTEM_PROMPT = `You are a multi-capability AI assistant for image generation and social media management.
@@ -63,25 +64,35 @@ IMAGE GENERATION RULES
 ━━━━━━━━━━━━━━━━━━━━━━
 When generating images:
 
-1. Reference images are OPTIONAL:
+1. BRAND CONTEXT IS CRITICAL:
+   - If [BRAND CONTEXT] is provided in the message, you MUST respect it
+   - Match the visual style, tone, and topics from the brand profile
+   - Do NOT generate generic "marketing" or "SaaS" style unless that IS the brand
+   - If brand says "cinematic, mysterious" → create atmospheric, story-driven visuals
+   - If brand says "educational" → create informative, clear visuals
+   - NEVER add text overlays, CTAs, or "swipe up" unless the brand style calls for it
+
+2. Reference images are OPTIONAL:
    - Text-to-image: NO reference image needed (e.g. "create a sunset", "generate a cat")
    - Face/person in scene: Reference image needed for the person's face
    - Style transfer: Reference image needed for style
    - NEVER ask for reference image for basic text-to-image requests
 
-2. Prompt evaluation:
+3. Prompt evaluation:
    - SHORT or VAGUE prompts (e.g. "a cat", "sunset"):
      → Enhance with subject, environment, lighting, mood, style, composition, quality
+     → Use brand context to guide the enhancement (cinematic vs playful vs professional)
    - DETAILED prompts (clear colors, poses, style, environment, composition):
      → Use AS-IS, do NOT rewrite, rephrase, or add details
 
-3. Absolute rules:
+4. Absolute rules:
    - NEVER remove user constraints
    - NEVER override specified colors, styles, or settings
-   - NEVER assume artistic style unless missing
-   - NEVER add branding, logos, or text unless requested
+   - NEVER assume artistic style unless missing (use brand context first)
+   - NEVER add branding, logos, or text overlays unless requested
+   - NEVER generate "Swipe up", CTAs, or promotional text unless explicitly requested
 
-4. If critical details are missing:
+5. If critical details are missing:
    - Ask ONE clarification question before generating
    - But do NOT ask for reference image unless the prompt implies personalization
 
@@ -189,6 +200,50 @@ class ImageAgent {
       }
    }
 
+   /**
+    * Fetch brand profile from AutopilotMemory for the user
+    */
+   async getBrandProfile(userId, chatId) {
+      try {
+         // Try to find autopilot memory for any chat (brand is user-level)
+         const memory = await AutopilotMemory.findOne({ userId }).sort({ updatedAt: -1 }).lean();
+         if (memory?.brand) {
+            return memory.brand;
+         }
+      } catch (error) {
+         console.error('⚠️ [AGENT] Error fetching brand profile:', error.message);
+      }
+      return null;
+   }
+
+   /**
+    * Build brand context string for LLM
+    */
+   buildBrandContext(brand) {
+      if (!brand) return '';
+
+      const parts = [];
+
+      if (brand.topicsAllowed?.length > 0) {
+         parts.push(`Topics/Niche: ${brand.topicsAllowed.join(', ')}`);
+      }
+      if (brand.targetAudience) {
+         parts.push(`Target Audience: ${brand.targetAudience}`);
+      }
+      if (brand.visualStyle) {
+         parts.push(`Visual Style: ${brand.visualStyle}`);
+      }
+      if (brand.tone) {
+         parts.push(`Tone: ${brand.tone}`);
+      }
+
+      if (parts.length === 0) return '';
+
+      return `\n\n[BRAND CONTEXT - IMPORTANT: Generate content that matches this brand identity]
+${parts.join('\n')}
+[/BRAND CONTEXT]`;
+   }
+
    async run(input) {
       const { userId, chatId, message, referenceImages, lastImageUrl, routerIntent } = input;
 
@@ -201,19 +256,32 @@ class ImageAgent {
 
       const history = await this.getRecentHistory(chatId, 30);
 
+      // Fetch brand profile for context-aware generation
+      const brandProfile = await this.getBrandProfile(userId, chatId);
+      const brandContext = this.buildBrandContext(brandProfile);
+
+      if (brandProfile) {
+         console.log('🎨 [AGENT] Brand profile loaded:', brandProfile.topicsAllowed?.join(', ') || 'no topics');
+      }
+
       const context = {
          userId,
          chatId,
          referenceImages,
          lastImageUrl,
          history,
-         routerIntent // Pass router's classification to executor
+         routerIntent, // Pass router's classification to executor
+         brandProfile   // Pass brand profile to tools if needed
       };
 
-      // Build message with router hint if available
+      // Build message with router hint AND brand context if available
       let enhancedMessage = message;
       if (routerIntent) {
          enhancedMessage = `[ROUTER_INTENT: ${routerIntent}]\n${message}`;
+      }
+      // Add brand context for image generation intents
+      if (brandContext && (routerIntent === 'generate_image' || routerIntent === 'generate_and_post')) {
+         enhancedMessage = `${enhancedMessage}${brandContext}`;
       }
 
       const result = await this.agent.run({ message: enhancedMessage, images: referenceImages }, context);
