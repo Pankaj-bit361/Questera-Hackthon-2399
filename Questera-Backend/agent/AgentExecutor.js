@@ -127,8 +127,10 @@ Now create an engaging image and/or content for this brand based on the original
                });
 
                // Store the generated image URL for the next step
-               const imageUrl = toolResult.data?.images?.[0] || toolResult.data?.imageUrl;
+               // Tool returns: { success, imageUrl, images: [...] } directly (not nested under data)
+               const imageUrl = toolResult.images?.[0] || toolResult.imageUrl || toolResult.data?.images?.[0] || toolResult.data?.imageUrl;
                context.generatedImageUrl = imageUrl;
+               console.log('🔗 [EXECUTOR] Generated imageUrl for posting:', imageUrl);
 
                messages.push({
                   role: 'user',
