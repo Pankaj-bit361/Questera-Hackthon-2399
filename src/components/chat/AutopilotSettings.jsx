@@ -219,7 +219,16 @@ const OnboardingFlow = ({ brandInfo, setBrandInfo, currentStep, setCurrentStep, 
   referenceImages, onImageUpload, onDeleteImage, uploadingType }) => {
   const step = ONBOARDING_STEPS[currentStep];
   const isLastStep = currentStep === ONBOARDING_STEPS.length - 1;
-  const textStepsComplete = brandInfo.topics && brandInfo.targetAudience && brandInfo.visualStyle && brandInfo.tone;
+
+  // Check all 4 text fields are filled (trim to handle whitespace-only inputs)
+  const textStepsComplete = Boolean(
+    brandInfo.topics?.trim() &&
+    brandInfo.targetAudience?.trim() &&
+    brandInfo.visualStyle?.trim() &&
+    brandInfo.tone?.trim()
+  );
+
+  console.log('[Onboarding] brandInfo:', brandInfo, 'textStepsComplete:', textStepsComplete, 'saving:', saving);
 
   const personalInputRef = React.useRef(null);
   const productInputRef = React.useRef(null);
