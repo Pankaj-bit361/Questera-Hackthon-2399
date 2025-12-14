@@ -41,22 +41,22 @@ const AutopilotSettings = ({ isOpen, onClose, chatId }) => {
   const fetchStatus = async () => {
     setLoading(true);
     try {
-      const [status, imagesRes] = await Promise.all([
+      const [statusRes, imagesRes] = await Promise.all([
         autopilotAPI.getStatus(userId, chatId),
         autopilotAPI.getImages(userId, chatId),
       ]);
-      if (status.success) {
-        setConfig(status.config);
-        setMemory(status.memory);
-        if (status.memory?.brand) {
+      if (statusRes.success) {
+        setConfig(statusRes.status); // status object contains enabled, configured, etc.
+        setMemory(statusRes.memory);
+        if (statusRes.memory?.brand) {
           setBrandInfo({
-            topics: status.memory.brand.topicsAllowed?.join(', ') || '',
-            targetAudience: status.memory.brand.targetAudience || '',
-            visualStyle: status.memory.brand.visualStyle || '',
-            tone: status.memory.brand.tone || '',
+            topics: statusRes.memory.brand.topicsAllowed?.join(', ') || '',
+            targetAudience: statusRes.memory.brand.targetAudience || '',
+            visualStyle: statusRes.memory.brand.visualStyle || '',
+            tone: statusRes.memory.brand.tone || '',
           });
         }
-        setShowOnboarding(!status.brandComplete);
+        setShowOnboarding(!statusRes.brandComplete);
       }
       if (imagesRes.success) {
         setReferenceImages(imagesRes.referenceImages);

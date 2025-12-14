@@ -292,6 +292,14 @@ autopilotRouter.get('/status/:userId/:chatId', async (req, res) => {
     const config = await AutopilotConfig.findOne({ userId, chatId });
     const memory = await AutopilotMemory.findOne({ userId, chatId });
 
+    // Check if brand info is complete
+    const brandComplete = !!(
+      memory?.brand?.targetAudience &&
+      memory?.brand?.topicsAllowed?.length > 0 &&
+      memory?.brand?.visualStyle &&
+      memory?.brand?.tone
+    );
+
     return res.status(200).json({
       success: true,
       status: {
@@ -306,6 +314,8 @@ autopilotRouter.get('/status/:userId/:chatId', async (req, res) => {
         totalPostsGenerated: memory?.totalPostsGenerated || 0,
         totalStoriesGenerated: memory?.totalStoriesGenerated || 0,
       },
+      memory: memory || null,
+      brandComplete,
     });
   } catch (error) {
     console.error('[AUTOPILOT] Status Error:', error);
