@@ -28,17 +28,19 @@ class InstagramController {
         // Instagram Login for Business API (NEW - replaced Basic Display API)
         // Works for Business/Creator accounts WITHOUT requiring Facebook Page
         // Uses instagram.com OAuth directly (like Buffer does)
+        // IMPORTANT: Uses Instagram App ID, not Facebook App ID!
         const scope = 'business_basic,business_manage_comments,business_content_publish';
 
         oauthUrl = `https://www.instagram.com/oauth/authorize?` +
-          `client_id=${this.appId}` +
-          `&redirect_uri=${encodeURIComponent(this.redirectUri)}` +
+          `client_id=${this.basicAppId}` +
+          `&redirect_uri=${encodeURIComponent(this.basicRedirectUri)}` +
           `&response_type=code` +
           `&scope=${scope}` +
           `&state=${state}`;
 
         console.log('🔐 [INSTAGRAM] Generated Instagram Login for Business OAuth URL');
-        console.log('🔐 [INSTAGRAM] Scopes:', scope);
+        console.log('🔐 [INSTAGRAM] Using Instagram App ID:', this.basicAppId);
+        console.log('🔐 [INSTAGRAM] Redirect URI:', this.basicRedirectUri);
       } else {
         // Meta Graph API via Facebook OAuth (full features)
         const scope = 'pages_show_list,instagram_basic,instagram_manage_comments,instagram_content_publish,pages_read_engagement,business_management,instagram_manage_insights';
@@ -648,15 +650,17 @@ class InstagramController {
       console.log('🔐 [INSTAGRAM] Exchanging code for access token (Instagram Login for Business)...');
 
       // Step 1: Exchange code for short-lived access token
-      // Instagram Login for Business uses the same endpoint as Basic Display
+      // Instagram Login for Business uses Instagram App credentials (not Facebook App!)
       const tokenUrl = 'https://api.instagram.com/oauth/access_token';
       const tokenBody = new URLSearchParams({
-        client_id: this.appId,
-        client_secret: this.appSecret,
+        client_id: this.basicAppId,
+        client_secret: this.basicAppSecret,
         grant_type: 'authorization_code',
-        redirect_uri: this.redirectUri,
+        redirect_uri: this.basicRedirectUri,
         code,
       });
+
+      console.log('🔐 [INSTAGRAM] Exchanging code with Instagram App ID:', this.basicAppId);
 
       const tokenResponse = await fetch(tokenUrl, {
         method: 'POST',
@@ -677,7 +681,7 @@ class InstagramController {
       // Step 2: Exchange for long-lived token (60 days)
       const longLivedUrl = `https://graph.instagram.com/access_token?` +
         `grant_type=ig_exchange_token` +
-        `&client_secret=${this.appSecret}` +
+        `&client_secret=${this.basicAppSecret}` +
         `&access_token=${tokenData.access_token}`;
 
       const longLivedResponse = await fetch(longLivedUrl);
