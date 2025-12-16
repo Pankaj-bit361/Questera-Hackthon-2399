@@ -52,6 +52,11 @@ const ChatPage = () => {
   // Credits state
   const [credits, setCredits] = useState({ balance: 0, plan: 'free', planName: 'Free' });
 
+  // Streaming state
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
+  const [streamingStatus, setStreamingStatus] = useState(null); // { stage, message }
+
   // Fetch user's credits
   const fetchCredits = async () => {
     try {
@@ -439,15 +444,16 @@ const ChatPage = () => {
     }
     requestInFlightRef.current = true;
     setLoading(true);
+    setIsStreaming(true);
+    setStreamingText('');
+    setStreamingStatus({ stage: 'connecting', message: 'Connecting...' });
 
     const imagesToUse = initialImages !== null && initialImages !== undefined ? initialImages : referenceImages;
     const refImagesForApi = imagesToUse.map(img => ({ data: img.data, mimeType: img.mimeType }));
 
     // lastImageUrl is ONLY needed if user didn't upload reference images
-    // If user uploaded reference images, they explicitly chose what to edit
     let imageUrlForEdit = null;
     if (refImagesForApi.length === 0) {
-      // No reference images uploaded - find the last generated image for potential editing
       imageUrlForEdit = selectedImageForEdit?.url || null;
       if (!imageUrlForEdit) {
         const assistantMessages = messages.filter(m => m.role === 'assistant' && m.imageUrl);
@@ -461,81 +467,155 @@ const ChatPage = () => {
     setMessages(prev => [...prev, tempUserMsg]);
     setSelectedImageForEdit(null);
 
+    // Add placeholder for streaming response
+    const streamingMsgId = Date.now();
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: '',
+      isStreaming: true,
+      streamingId: streamingMsgId,
+      streamingStage: 'connecting',
+      streamingMessage: 'Connecting...',
+    }]);
+
+    let accumulatedText = '';
+    let cognitive = null;
+    let finalIntent = null;
+
+    // Helper to update streaming message
+    const updateStreamingMsg = (updates) => {
+      setMessages(prev => prev.map(m =>
+        m.streamingId === streamingMsgId ? { ...m, ...updates } : m
+      ));
+    };
+
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       if (!user.userId) throw new Error('User not logged in');
 
-      const response = await agentAPI.chat({
+      await agentAPI.chatStream({
         userId: user.userId,
         message: userPrompt,
         imageChatId: existingChatId,
         referenceImages: refImagesForApi,
-        lastImageUrl: imageUrlForEdit, // Only set if no reference images
-      });
-
-      // Update chatId for new chats (any intent)
-      if (!existingChatId && response.imageChatId) {
-        setCurrentChatId(response.imageChatId);
-        setChatTitle(userPrompt.slice(0, 30) + '...');
-        navigate(`/chat/${response.imageChatId}`, { replace: true });
-      }
-
-      // Extract cognitive layer from response (thinking steps, decisions, suggestions)
-      const cognitive = response.cognitive || null;
-
-      if (response.intent === 'conversation' || response.intent === 'accounts') {
-        setMessages(prev => [...prev, { role: 'assistant', content: response.message, cognitive }]);
-      } else if (response.intent === 'image_generation') {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: response.message || 'Here is your image!',
-          imageUrl: response.imageUrl || (response.images && response.images[0]?.url),
-          cognitive, // Add cognitive layer to message
-        }]);
-        if (response.creditsRemaining !== undefined) {
-          setCredits(prev => ({ ...prev, balance: response.creditsRemaining }));
-        } else {
-          fetchCredits();
-        }
-      } else if (response.intent === 'schedule') {
-        setMessages(prev => [...prev, { role: 'assistant', content: response.message, isScheduled: true, cognitive }]);
-      } else if (response.intent === 'variations') {
-        // Handle multiple variations - each variation as a separate message or all in one
-        if (response.variations && response.variations.length > 0) {
-          // Add all variations as messages (cognitive only on first)
-          const variationMessages = response.variations.map((v, idx) => ({
-            role: 'assistant',
-            content: `Variation ${idx + 1}: ${v.variant}`,
-            imageUrl: v.imageUrl,
-            cognitive: idx === 0 ? cognitive : null,
-          }));
-          setMessages(prev => [...prev, ...variationMessages]);
-          if (response.creditsRemaining !== undefined) {
-            setCredits(prev => ({ ...prev, balance: response.creditsRemaining }));
+        lastImageUrl: imageUrlForEdit,
+      }, {
+        onInit: (data) => {
+          if (!existingChatId && data.chatId) {
+            setCurrentChatId(data.chatId);
+            setChatTitle(userPrompt.slice(0, 30) + '...');
+            navigate(`/chat/${data.chatId}`, { replace: true });
+          }
+          updateStreamingMsg({ streamingStage: 'init', streamingMessage: 'Connected' });
+        },
+        onThinking: (data) => {
+          setStreamingStatus({ stage: data.stage, message: data.message });
+          updateStreamingMsg({ streamingStage: data.stage, streamingMessage: data.message });
+        },
+        onIntent: (data) => {
+          const intentLabel = {
+            'generate_image': '🎨 Creating image...',
+            'edit_image': '✏️ Editing image...',
+            'generate_and_post': '🎨📱 Creating & scheduling...',
+            'schedule_post': '📅 Scheduling post...',
+            'chat': '💬 Responding...',
+            'website_content': '🌐 Analyzing website...',
+          }[data.intent] || `Processing: ${data.intent}`;
+          updateStreamingMsg({ streamingStage: 'intent', streamingMessage: intentLabel, detectedIntent: data.intent });
+        },
+        onToolCall: (data) => {
+          const toolLabel = {
+            'generate_image': '🎨 Generating image...',
+            'edit_image': '✏️ Editing image...',
+            'schedule_post': '📅 Scheduling post...',
+            'extract_website': '🌐 Extracting website...',
+            'deep_research': '🔬 Researching...',
+            'get_accounts': '📱 Getting accounts...',
+            'create_variations': '🔄 Creating variations...',
+            'reply': '💬 Composing reply...',
+          }[data.tool] || `Using ${data.tool}...`;
+          updateStreamingMsg({ streamingStage: 'tool', streamingMessage: toolLabel, currentTool: data.tool });
+        },
+        onToolResult: (data) => {
+          cognitive = data.cognitive || cognitive;
+          // Show cognitive layer immediately when available
+          if (data.cognitive) {
+            updateStreamingMsg({ cognitive: data.cognitive, streamingMessage: 'Processing result...' });
+          }
+        },
+        onAnswerStart: (data) => {
+          cognitive = data.thought ? { thought: data.thought } : cognitive;
+          setStreamingStatus(null);
+          updateStreamingMsg({ streamingStage: 'answering', streamingMessage: null });
+        },
+        onToken: (data) => {
+          accumulatedText += data.token;
+          setStreamingText(accumulatedText);
+          updateStreamingMsg({ content: accumulatedText, streamingMessage: null });
+        },
+        onAnswerEnd: () => {
+          updateStreamingMsg({ isStreaming: false, cognitive, streamingMessage: null });
+        },
+        onImage: (data) => {
+          finalIntent = 'image_generation';
+          cognitive = data.cognitive || cognitive;
+          updateStreamingMsg({
+            content: 'Here is your image!',
+            imageUrl: data.imageUrl || data.images?.[0]?.url,
+            isStreaming: false,
+            cognitive,
+            streamingMessage: null,
+          });
+          if (data.creditsRemaining !== undefined) {
+            setCredits(prev => ({ ...prev, balance: data.creditsRemaining }));
           } else {
             fetchCredits();
           }
-        } else {
-          setMessages(prev => [...prev, { role: 'assistant', content: response.message || 'Variations created!', cognitive }]);
-        }
-      } else if (response.intent === 'error') {
-        if (response.message?.includes('credit')) {
-          setMessages(prev => [...prev, { role: 'assistant', content: "⚡ You've run out of credits!", isError: true }]);
-        } else {
-          setMessages(prev => [...prev, { role: 'assistant', content: response.message || 'Something went wrong' }]);
-        }
-      } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: response.message || 'Done!', cognitive }]);
-      }
+        },
+        onScheduled: (data) => {
+          finalIntent = 'schedule';
+          cognitive = data.cognitive || cognitive;
+          updateStreamingMsg({ content: data.message, isScheduled: true, isStreaming: false, cognitive, streamingMessage: null });
+        },
+        onAccounts: (data) => {
+          finalIntent = 'accounts';
+          cognitive = data.cognitive || cognitive;
+          updateStreamingMsg({ content: data.message, isStreaming: false, cognitive, streamingMessage: null });
+        },
+        onClarification: (data) => {
+          updateStreamingMsg({ content: data.message, isStreaming: false, streamingMessage: null });
+        },
+        onMessage: (data) => {
+          cognitive = data.cognitive || cognitive;
+          updateStreamingMsg({ content: data.content, isStreaming: false, cognitive, streamingMessage: null });
+        },
+        onDone: (data) => {
+          finalIntent = data.intent || finalIntent;
+          cognitive = data.cognitive || cognitive;
+          updateStreamingMsg({ isStreaming: false, streamingMessage: null });
+        },
+        onError: (data) => {
+          const errorMsg = data.message?.includes('credit')
+            ? "⚡ You've run out of credits!"
+            : (data.message || 'Something went wrong');
+          updateStreamingMsg({ content: errorMsg, isStreaming: false, isError: true, streamingMessage: null });
+        },
+      });
 
       setMessageOverrides({ aspectRatio: null, imageSize: null, style: null });
       setReferenceImages([]);
     } catch (error) {
       console.error('Agent error:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
+      setMessages(prev => prev.map(m =>
+        m.streamingId === streamingMsgId
+          ? { ...m, content: 'Sorry, something went wrong. Please try again.', isStreaming: false }
+          : m
+      ));
     } finally {
       requestInFlightRef.current = false;
       setLoading(false);
+      setIsStreaming(false);
+      setStreamingStatus(null);
     }
   };
 
@@ -669,6 +749,7 @@ const ChatPage = () => {
           <MessageList
             messages={messages}
             loading={loading}
+            streamingStatus={streamingStatus}
             onDeleteMessage={handleDeleteMessage}
             selectedImageForEdit={selectedImageForEdit}
             onSelectImageForEdit={(url, idx) => setSelectedImageForEdit({ url, idx })}

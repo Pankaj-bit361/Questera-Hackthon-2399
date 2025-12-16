@@ -8,7 +8,7 @@ class OpenRouterLLM {
     this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
     this.model = 'x-ai/grok-4.1-fast'; // Fast thinking model
   }
-
+  
   /**
    * Generate text using OpenRouter API
    * @param {string} prompt - The prompt to send

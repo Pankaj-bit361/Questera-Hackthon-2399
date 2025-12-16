@@ -318,6 +318,51 @@ ${parts.join('\n')}
 
       return result;
    }
+
+   /**
+    * Run agent with streaming support
+    * @param {Object} input - User input with userId, chatId, message, etc.
+    * @param {Function} emit - SSE emit callback function
+    * @returns {Promise<Object>} Final result
+    */
+   async runStream(input, emit) {
+      const { userId, chatId, message, referenceImages, lastImageUrl, routerIntent } = input;
+
+      console.log('🤖 [AGENT-STREAM] Processing streaming request...');
+      console.log('👤 [AGENT-STREAM] User:', userId);
+      console.log('💬 [AGENT-STREAM] Message:', message?.slice(0, 50));
+
+      const history = await this.getRecentHistory(chatId, 30);
+      const brandProfile = await this.getBrandProfile(userId, chatId);
+      const brandContext = this.buildBrandContext(brandProfile);
+
+      const context = {
+         userId,
+         chatId,
+         referenceImages,
+         lastImageUrl,
+         history,
+         routerIntent,
+         brandProfile
+      };
+
+      let enhancedMessage = message;
+      if (routerIntent) {
+         enhancedMessage = `[ROUTER_INTENT: ${routerIntent}]\n${message}`;
+      }
+      if (brandContext && (routerIntent === 'generate_image' || routerIntent === 'generate_and_post')) {
+         enhancedMessage = `${enhancedMessage}${brandContext}`;
+      }
+
+      const result = await this.agent.runStream(
+         { message: enhancedMessage, images: referenceImages },
+         context,
+         emit
+      );
+
+      console.log('📤 [AGENT-STREAM] Result:', result.success ? 'success' : 'failed');
+      return result;
+   }
 }
 
 

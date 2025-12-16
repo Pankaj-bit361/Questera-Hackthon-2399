@@ -9,7 +9,7 @@ import { API_BASE_URL } from '../../config';
 
 const { FiUser, FiZap, FiDownload, FiRefreshCw, FiCheck, FiX, FiChevronDown, FiTrash2, FiCopy, FiCalendar, FiClock } = FiIcons;
 
-const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit, onSelectImageForEdit, onClearSelectedImage, onSuggestionClick }) => {
+const MessageList = ({ messages, loading, streamingStatus, onDeleteMessage, selectedImageForEdit, onSelectImageForEdit, onClearSelectedImage, onSuggestionClick }) => {
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
   const [publishingIdx, setPublishingIdx] = useState(null);
@@ -264,15 +264,31 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
                 />
               )}
 
+              {/* Streaming Status - Shows progress during streaming */}
+              {msg.isStreaming && msg.streamingMessage && !msg.content && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-3 px-4 py-3 bg-zinc-900/50 rounded-2xl border border-white/5"
+                >
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <span className="text-sm text-zinc-300">{msg.streamingMessage}</span>
+                </motion.div>
+              )}
+
               {/* Text Bubble */}
-              {msg.content && (
+              {(msg.content || (msg.isStreaming && !msg.streamingMessage)) && (
                 <div className={`relative px-6 py-4 rounded-3xl text-[15px] leading-relaxed shadow-sm backdrop-blur-sm group/bubble ${msg.role === 'user'
                   ? 'bg-[#27272a] text-zinc-100 border border-white/5 rounded-tr-sm'
                   : 'bg-transparent text-zinc-300 pl-0 pt-1 border-none shadow-none'
                   }`}>
                   {msg.content}
+                  {/* Streaming cursor */}
+                  {msg.isStreaming && msg.content && (
+                    <span className="inline-block w-2 h-4 bg-white/80 ml-0.5 animate-pulse rounded-sm" />
+                  )}
                   {/* Delete Button - appears on hover */}
-                  {onDeleteMessage && msg.messageId && (
+                  {onDeleteMessage && msg.messageId && !msg.isStreaming && (
                     <button
                       onClick={() => onDeleteMessage(msg.messageId, idx)}
                       className="absolute -top-2 -right-2 p-1.5 bg-red-500/80 hover:bg-red-500 text-white rounded-full opacity-0 group-hover/bubble:opacity-100 transition-opacity shadow-lg"
@@ -528,38 +544,43 @@ const MessageList = ({ messages, loading, onDeleteMessage, selectedImageForEdit,
         ))
         }
 
-        {/* Loading Indicator */}
-        {
-          loading && (
-            <div className="flex gap-6">
-              <div className="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center flex-shrink-0 shadow-lg border border-white mt-1">
-                <span className="animate-spin text-lg">⚡</span>
+        {/* Loading Indicator - Only show when loading but no streaming message yet */}
+        {loading && !messages.some(m => m.isStreaming) && (
+          <div className="flex gap-6">
+            <div className="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center flex-shrink-0 shadow-lg border border-white mt-1">
+              <span className="animate-spin text-lg">⚡</span>
+            </div>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-zinc-400 font-medium">
+                  {streamingStatus?.message || 'Thinking...'}
+                </div>
+                {streamingStatus?.stage && (
+                  <span className="text-[10px] px-2 py-0.5 bg-white/10 rounded-full text-zinc-500 uppercase tracking-wider">
+                    {streamingStatus.stage}
+                  </span>
+                )}
               </div>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="text-sm text-zinc-400 font-medium">Visualizing...</div>
-                </div>
-                <div className="flex gap-1.5 h-8 items-center pl-1">
-                  <motion.div
-                    animate={{ height: [4, 16, 4], opacity: [0.5, 1, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 1, ease: "easeInOut" }}
-                    className="w-1 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
-                  />
-                  <motion.div
-                    animate={{ height: [4, 24, 4], opacity: [0.5, 1, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 1, ease: "easeInOut", delay: 0.1 }}
-                    className="w-1 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
-                  />
-                  <motion.div
-                    animate={{ height: [4, 16, 4], opacity: [0.5, 1, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 1, ease: "easeInOut", delay: 0.2 }}
-                    className="w-1 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
-                  />
-                </div>
+              <div className="flex gap-1.5 h-8 items-center pl-1">
+                <motion.div
+                  animate={{ height: [4, 16, 4], opacity: [0.5, 1, 0.5] }}
+                  transition={{ repeat: Infinity, duration: 1, ease: "easeInOut" }}
+                  className="w-1 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+                />
+                <motion.div
+                  animate={{ height: [4, 24, 4], opacity: [0.5, 1, 0.5] }}
+                  transition={{ repeat: Infinity, duration: 1, ease: "easeInOut", delay: 0.1 }}
+                  className="w-1 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+                />
+                <motion.div
+                  animate={{ height: [4, 16, 4], opacity: [0.5, 1, 0.5] }}
+                  transition={{ repeat: Infinity, duration: 1, ease: "easeInOut", delay: 0.2 }}
+                  className="w-1 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]"
+                />
               </div>
             </div>
-          )
-        }
+          </div>
+        )}
 
         <div ref={bottomRef} className="h-1" />
       </div >

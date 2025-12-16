@@ -102,6 +102,120 @@ export const agentAPI = {
     });
     return response.json();
   },
+
+  /**
+   * Stream chat with SSE for real-time updates
+   * @param {Object} payload - Chat payload
+   * @param {Object} callbacks - Event callbacks
+   * @param {Function} callbacks.onThinking - Called when agent is thinking
+   * @param {Function} callbacks.onIntent - Called when intent is classified
+   * @param {Function} callbacks.onToolCall - Called when a tool is invoked
+   * @param {Function} callbacks.onToolResult - Called when tool completes
+   * @param {Function} callbacks.onToken - Called for each streamed token
+   * @param {Function} callbacks.onImage - Called when image is generated
+   * @param {Function} callbacks.onDone - Called when stream completes
+   * @param {Function} callbacks.onError - Called on error
+   * @returns {Promise<void>}
+   */
+  chatStream: async (payload, callbacks = {}) => {
+    console.log('🌊 [AGENT API] Starting stream to /agent/stream:', {
+      message: payload.message?.slice(0, 50) + '...',
+      userId: payload.userId,
+    });
+
+    const response = await fetch(`${API_BASE_URL}/agent/stream`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      callbacks.onError?.({ message: error });
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+          try {
+            const event = JSON.parse(trimmed.slice(6));
+
+            switch (event.type) {
+              case 'init':
+                callbacks.onInit?.(event.data);
+                break;
+              case 'thinking':
+                callbacks.onThinking?.(event.data);
+                break;
+              case 'intent':
+                callbacks.onIntent?.(event.data);
+                break;
+              case 'tool_call':
+                callbacks.onToolCall?.(event.data);
+                break;
+              case 'tool_result':
+                callbacks.onToolResult?.(event.data);
+                break;
+              case 'answer_start':
+                callbacks.onAnswerStart?.(event.data);
+                break;
+              case 'token':
+                callbacks.onToken?.(event.data);
+                break;
+              case 'answer_end':
+                callbacks.onAnswerEnd?.(event.data);
+                break;
+              case 'image':
+                callbacks.onImage?.(event.data);
+                break;
+              case 'scheduled':
+                callbacks.onScheduled?.(event.data);
+                break;
+              case 'accounts':
+                callbacks.onAccounts?.(event.data);
+                break;
+              case 'clarification':
+                callbacks.onClarification?.(event.data);
+                break;
+              case 'message':
+                callbacks.onMessage?.(event.data);
+                break;
+              case 'progress':
+                callbacks.onProgress?.(event.data);
+                break;
+              case 'done':
+                callbacks.onDone?.(event.data);
+                break;
+              case 'error':
+                callbacks.onError?.(event.data);
+                break;
+              default:
+                console.log('🌊 [STREAM] Unknown event:', event);
+            }
+          } catch (e) {
+            // Skip malformed JSON
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  },
 };
 
 
