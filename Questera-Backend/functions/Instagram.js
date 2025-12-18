@@ -7,6 +7,40 @@ class InstagramController {
     this.appSecret = process.env.INSTAGRAM_APP_SECRET;
     this.redirectUri = process.env.INSTAGRAM_REDIRECT_URI;
     this.apiVersion = 'v20.0';
+    this.baseUrl = `https://graph.facebook.com/${this.apiVersion}`;
+  }
+
+  /**
+   * Wait for media container to be ready
+   * Instagram processes media async, so we need to poll for status
+   */
+  async waitForContainerReady(containerId, accessToken, maxAttempts = 10) {
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const response = await fetch(
+          `${this.baseUrl}/${containerId}?fields=status_code&access_token=${accessToken}`
+        );
+        const data = await response.json();
+
+        const status = data.status_code;
+        console.log(`📦 [INSTAGRAM] Container ${containerId} status: ${status} (attempt ${i + 1}/${maxAttempts})`);
+
+        if (status === 'FINISHED') {
+          return true;
+        } else if (status === 'ERROR') {
+          throw new Error('Instagram media processing failed');
+        }
+
+        // Wait 2 seconds before checking again
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (err) {
+        console.log(`⚠️ [INSTAGRAM] Error checking container status:`, err.message);
+        // Continue trying
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+
+    throw new Error('Instagram media processing timeout');
   }
 
   /**
@@ -543,6 +577,255 @@ class InstagramController {
       };
     } catch (error) {
       console.error('❌ [INSTAGRAM] Error publishing:', error);
+      return { status: 500, json: { error: error.message } };
+    }
+  }
+
+  /**
+   * Publish a carousel (multiple images) to Instagram
+   */
+  async publishCarousel(req) {
+    try {
+      const { userId, imageUrls, caption, accountId } = req.body;
+
+      if (!userId || !imageUrls || !Array.isArray(imageUrls) || imageUrls.length < 2) {
+        return { status: 400, json: { error: 'userId and at least 2 imageUrls are required for carousel' } };
+      }
+
+      console.log('🎠 [INSTAGRAM] Publishing Carousel with', imageUrls.length, 'images...');
+
+      const instagram = await Instagram.findOne({ userId });
+      if (!instagram) {
+        return { status: 404, json: { error: 'No Instagram accounts found for this user' } };
+      }
+
+      // Find the account - check multiple formats
+      let account;
+      if (instagram.accounts?.length > 0) {
+        if (accountId) {
+          console.log('🎠 [INSTAGRAM] Looking for specific account:', accountId);
+          // Try to find by instagramBusinessAccountId first
+          account = instagram.accounts.find(
+            acc => acc.instagramBusinessAccountId === accountId && acc.isConnected
+          );
+          // If not found, try to find by matching connected account (for sa-XXX format)
+          if (!account) {
+            console.log('🎠 [INSTAGRAM] Account not found by ID, trying first connected...');
+            account = instagram.accounts.find(acc => acc.isConnected);
+          }
+        } else {
+          console.log('🎠 [INSTAGRAM] Looking for first connected account...');
+          account = instagram.accounts.find(acc => acc.isConnected);
+        }
+      }
+
+      console.log('🎠 [INSTAGRAM] Account found:', account ? account.instagramUsername : 'None');
+
+      if (!account) {
+        // Fallback: try legacy data
+        if (instagram.isConnected && instagram.instagramBusinessAccountId) {
+          console.log('🎠 [INSTAGRAM] Using legacy data as fallback');
+          account = {
+            instagramBusinessAccountId: instagram.instagramBusinessAccountId,
+            accessToken: instagram.accessToken,
+            instagramUsername: instagram.instagramUsername,
+          };
+        } else {
+          return { status: 404, json: { error: 'No connected Instagram account found' } };
+        }
+      }
+
+      const { instagramBusinessAccountId, accessToken, instagramUsername } = account;
+      const baseUrl = `https://graph.facebook.com/${this.apiVersion}`;
+
+      // Step 1: Create child containers for each image
+      console.log('🎠 [INSTAGRAM] Creating child containers...');
+      const childContainerIds = [];
+
+      for (const imageUrl of imageUrls) {
+        const containerUrl = `${baseUrl}/${instagramBusinessAccountId}/media`;
+        const containerParams = new URLSearchParams({
+          image_url: imageUrl,
+          is_carousel_item: 'true',
+          access_token: accessToken,
+        });
+
+        const containerResponse = await fetch(`${containerUrl}?${containerParams}`, {
+          method: 'POST',
+        });
+        const containerData = await containerResponse.json();
+
+        if (containerData.error) {
+          console.error('❌ [INSTAGRAM] Child container creation failed:', containerData.error);
+          return { status: 400, json: { error: containerData.error.message, details: containerData.error } };
+        }
+
+        childContainerIds.push(containerData.id);
+        console.log('📦 [INSTAGRAM] Child container created:', containerData.id);
+      }
+
+      // Wait for all children to be ready
+      for (const childId of childContainerIds) {
+        await this.waitForContainerReady(childId, accessToken, 20);
+      }
+
+      // Step 2: Create carousel container
+      console.log('🎠 [INSTAGRAM] Creating carousel container...');
+      const carouselUrl = `${baseUrl}/${instagramBusinessAccountId}/media`;
+      const carouselParams = new URLSearchParams({
+        media_type: 'CAROUSEL',
+        children: childContainerIds.join(','),
+        caption: caption || 'Created with Velos AI ✨',
+        access_token: accessToken,
+      });
+
+      const carouselResponse = await fetch(`${carouselUrl}?${carouselParams}`, {
+        method: 'POST',
+      });
+      const carouselData = await carouselResponse.json();
+
+      if (carouselData.error) {
+        console.error('❌ [INSTAGRAM] Carousel container creation failed:', carouselData.error);
+        return { status: 400, json: { error: carouselData.error.message, details: carouselData.error } };
+      }
+
+      const carouselContainerId = carouselData.id;
+      console.log('📦 [INSTAGRAM] Carousel container created:', carouselContainerId);
+
+      // Wait for carousel to be ready
+      await this.waitForContainerReady(carouselContainerId, accessToken, 30);
+
+      // Step 3: Publish the carousel
+      console.log('🚀 [INSTAGRAM] Publishing carousel...');
+      const publishUrl = `${baseUrl}/${instagramBusinessAccountId}/media_publish`;
+      const publishParams = new URLSearchParams({
+        creation_id: carouselContainerId,
+        access_token: accessToken,
+      });
+
+      const publishResponse = await fetch(`${publishUrl}?${publishParams}`, {
+        method: 'POST',
+      });
+      const publishData = await publishResponse.json();
+
+      if (publishData.error) {
+        console.error('❌ [INSTAGRAM] Carousel publish failed:', publishData.error);
+        return { status: 400, json: { error: publishData.error.message, details: publishData.error } };
+      }
+
+      console.log('✅ [INSTAGRAM] Carousel published! Media ID:', publishData.id);
+
+      // Fetch permalink
+      let permalink = null;
+      try {
+        const mediaInfoUrl = `${baseUrl}/${publishData.id}?fields=permalink&access_token=${accessToken}`;
+        const mediaInfoResponse = await fetch(mediaInfoUrl);
+        const mediaInfo = await mediaInfoResponse.json();
+        if (mediaInfo.permalink) {
+          permalink = mediaInfo.permalink;
+          console.log('✅ [INSTAGRAM] Permalink:', permalink);
+        }
+      } catch (e) {
+        console.log('⚠️ [INSTAGRAM] Could not fetch permalink:', e.message);
+      }
+
+      return {
+        status: 200,
+        json: {
+          success: true,
+          message: 'Carousel published to Instagram!',
+          mediaId: publishData.id,
+          permalink: permalink,
+          username: instagramUsername,
+        },
+      };
+    } catch (error) {
+      console.error('❌ [INSTAGRAM] Error publishing carousel:', error);
+      return { status: 500, json: { error: error.message } };
+    }
+  }
+
+  /**
+   * Post a comment on Instagram media
+   * Used for "first comment" feature
+   */
+  async postComment(req) {
+    try {
+      const { userId, mediaId, comment, accountId } = req.body;
+
+      if (!userId || !mediaId || !comment) {
+        return { status: 400, json: { error: 'userId, mediaId, and comment are required' } };
+      }
+
+      console.log('💬 [INSTAGRAM] Posting comment on media:', mediaId);
+
+      const instagram = await Instagram.findOne({ userId });
+      if (!instagram) {
+        return { status: 404, json: { error: 'No Instagram accounts found for this user' } };
+      }
+
+      // Find the account - check multiple formats
+      let account;
+      if (instagram.accounts?.length > 0) {
+        if (accountId) {
+          console.log('💬 [INSTAGRAM] Looking for specific account:', accountId);
+          account = instagram.accounts.find(
+            acc => acc.instagramBusinessAccountId === accountId && acc.isConnected
+          );
+          if (!account) {
+            console.log('💬 [INSTAGRAM] Account not found by ID, trying first connected...');
+            account = instagram.accounts.find(acc => acc.isConnected);
+          }
+        } else {
+          account = instagram.accounts.find(acc => acc.isConnected);
+        }
+      }
+
+      if (!account) {
+        // Fallback: try legacy data
+        if (instagram.isConnected && instagram.accessToken) {
+          console.log('💬 [INSTAGRAM] Using legacy data as fallback');
+          account = {
+            instagramBusinessAccountId: instagram.instagramBusinessAccountId,
+            accessToken: instagram.accessToken,
+          };
+        } else {
+          return { status: 404, json: { error: 'No connected Instagram account found' } };
+        }
+      }
+
+      const { accessToken } = account;
+      const baseUrl = `https://graph.facebook.com/${this.apiVersion}`;
+
+      // Post comment using Graph API
+      const commentUrl = `${baseUrl}/${mediaId}/comments`;
+      const commentParams = new URLSearchParams({
+        message: comment,
+        access_token: accessToken,
+      });
+
+      const commentResponse = await fetch(`${commentUrl}?${commentParams}`, {
+        method: 'POST',
+      });
+      const commentData = await commentResponse.json();
+
+      if (commentData.error) {
+        console.error('❌ [INSTAGRAM] Comment failed:', commentData.error);
+        return { status: 400, json: { error: commentData.error.message, details: commentData.error } };
+      }
+
+      console.log('✅ [INSTAGRAM] Comment posted! Comment ID:', commentData.id);
+
+      return {
+        status: 200,
+        json: {
+          success: true,
+          message: 'Comment posted successfully!',
+          commentId: commentData.id,
+        },
+      };
+    } catch (error) {
+      console.error('❌ [INSTAGRAM] Error posting comment:', error);
       return { status: 500, json: { error: error.message } };
     }
   }

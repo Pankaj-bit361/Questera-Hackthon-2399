@@ -415,6 +415,17 @@ class SchedulerController {
             accountId: post.accountId,
           },
         });
+      } else if (post.postType === 'carousel' && post.imageUrls?.length > 1) {
+        // Carousel post with multiple images
+        console.log('🎠 [SCHEDULER] Publishing as Instagram Carousel...');
+        result = await this.instagramController.publishCarousel({
+          body: {
+            userId: post.userId,
+            imageUrls: post.imageUrls,
+            caption: post.fullCaption,
+            accountId: post.accountId,
+          },
+        });
       } else if (post.postType === 'reel' || post.postType === 'video') {
         // Video/Reel post
         console.log('🎬 [SCHEDULER] Publishing as Instagram Reel...');
@@ -452,6 +463,29 @@ class SchedulerController {
         post.publishedMediaId = result.json.mediaId;
         post.platformPostUrl = result.json.permalink; // Store permalink for analytics matching
         await post.save();
+
+        // Post first comment if provided
+        if (post.firstComment && result.json.mediaId) {
+          console.log('💬 [SCHEDULER] Posting first comment...');
+          try {
+            const commentResult = await this.instagramController.postComment({
+              body: {
+                userId: post.userId,
+                mediaId: result.json.mediaId,
+                comment: post.firstComment,
+                accountId: post.accountId,
+              },
+            });
+            if (commentResult.json.success) {
+              console.log('✅ [SCHEDULER] First comment posted successfully');
+            } else {
+              console.log('⚠️ [SCHEDULER] First comment failed:', commentResult.json.error);
+            }
+          } catch (commentErr) {
+            console.log('⚠️ [SCHEDULER] Failed to post first comment:', commentErr.message);
+            // Don't fail the whole post for comment failure
+          }
+        }
 
         // Handle recurring posts - create next occurrence
         if (post.isRecurring && post.frequency !== 'once') {
