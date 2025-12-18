@@ -6,8 +6,73 @@ import SafeIcon from '../common/SafeIcon';
 import Sidebar from './Sidebar';
 import { schedulerAPI } from '../lib/api';
 import { API_BASE_URL } from '../config';
+import { getUserId } from '../lib/velosStorage';
 
-const { FiCalendar, FiClock, FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiEdit2, FiInstagram, FiCheck, FiX, FiImage } = FiIcons;
+const { FiCalendar, FiClock, FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiEdit2, FiInstagram, FiCheck, FiX, FiImage, FiVideo, FiPlay } = FiIcons;
+
+// Helper to check if URL is a video
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  const videoExtensions = ['.mp4', '.mov', '.avi', '.webm', '.mkv'];
+  return videoExtensions.some(ext => url.toLowerCase().includes(ext));
+};
+
+// Post thumbnail component - handles both images and videos
+const PostThumbnail = ({ post, size = 'md' }) => {
+  const sizeClasses = {
+    sm: 'w-10 h-10',
+    md: 'w-16 h-16',
+    lg: 'w-24 h-24',
+  };
+
+  // Larger sizes for video display
+  const videoSizeClasses = {
+    sm: 'w-14 h-14',
+    md: 'w-20 h-20',
+    lg: 'w-32 h-32',
+  };
+
+  const mediaUrl = post.videoUrl || post.imageUrl;
+  const isVideo = post.postType === 'reel' || post.postType === 'video' || isVideoUrl(mediaUrl);
+
+  if (isVideo && mediaUrl) {
+    return (
+      <div className={`${videoSizeClasses[size]} relative rounded-lg overflow-hidden border border-purple-500/30 bg-black`}>
+        <video
+          src={mediaUrl}
+          className="w-full h-full object-cover"
+          muted
+          loop
+          playsInline
+          onMouseEnter={(e) => e.target.play()}
+          onMouseLeave={(e) => { e.target.pause(); e.target.currentTime = 0; }}
+        />
+        {/* Play icon overlay */}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
+          <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center">
+            <SafeIcon icon={FiPlay} className="w-3 h-3 text-purple-600 ml-0.5" />
+          </div>
+        </div>
+        {/* Reel badge */}
+        <div className="absolute top-1 right-1 px-1.5 py-0.5 bg-purple-500/80 rounded text-[8px] font-bold text-white">
+          REEL
+        </div>
+      </div>
+    );
+  }
+
+  if (mediaUrl) {
+    return (
+      <img src={mediaUrl} alt="" className={`${sizeClasses[size]} object-cover rounded-lg`} />
+    );
+  }
+
+  return (
+    <div className={`${sizeClasses[size]} rounded-lg bg-zinc-800 flex items-center justify-center`}>
+      <SafeIcon icon={FiImage} className="w-4 h-4 text-zinc-600" />
+    </div>
+  );
+};
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -26,8 +91,7 @@ const SchedulerPage = () => {
   const [editCaption, setEditCaption] = useState('');
   const [editSaving, setEditSaving] = useState(false);
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const userId = user.userId;
+  const userId = getUserId();
 
   // Fetch posts for the current month
   useEffect(() => {
@@ -196,9 +260,7 @@ const SchedulerPage = () => {
                     'bg-purple-500/20 border border-purple-500/30'
                   }`}
               >
-                {post.imageUrl && (
-                  <img src={post.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                )}
+                <PostThumbnail post={post} size="sm" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <SafeIcon icon={FiInstagram} className="w-3 h-3 text-pink-400" />
@@ -380,9 +442,9 @@ const SchedulerPage = () => {
                 {selectedDayPosts.map((post) => (
                   <div key={post.postId} className="p-3 bg-zinc-900 rounded-xl border border-zinc-800">
                     <div className="flex gap-3">
-                      <img src={post.imageUrl} alt="" className="w-16 h-16 object-cover rounded-lg" />
+                      <PostThumbnail post={post} size="md" />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <SafeIcon icon={FiInstagram} className="w-3.5 h-3.5 text-pink-400" />
                           <span className={`text-xs px-2 py-0.5 rounded ${post.status === 'published' ? 'bg-emerald-500/20 text-emerald-400' :
                             post.status === 'failed' ? 'bg-red-500/20 text-red-400' :
@@ -390,6 +452,12 @@ const SchedulerPage = () => {
                             }`}>
                             {post.status}
                           </span>
+                          {(post.postType === 'reel' || post.postType === 'video') && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-400 flex items-center gap-1">
+                              <SafeIcon icon={FiVideo} className="w-2.5 h-2.5" />
+                              Reel
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-zinc-400 truncate">{post.caption || 'No caption'}</p>
                         <p className="text-[10px] text-zinc-600 mt-1">
@@ -453,9 +521,7 @@ const SchedulerPage = () => {
 
               {/* Preview */}
               <div className="flex gap-4 mb-4 p-3 bg-zinc-900 rounded-xl">
-                {editingPost.imageUrl && (
-                  <img src={editingPost.imageUrl} alt="" className="w-20 h-20 object-cover rounded-lg" />
-                )}
+                <PostThumbnail post={editingPost} size="lg" />
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <SafeIcon icon={FiInstagram} className="w-4 h-4 text-pink-400" />

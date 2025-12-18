@@ -4,6 +4,7 @@ import * as FiIcons from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import SafeIcon from '../common/SafeIcon';
 import { imageAPI, agentAPI, creditsAPI, chatAPI } from '../lib/api';
+import { getUserId, getUser } from '../lib/velosStorage';
 
 // Components
 import Sidebar from './Sidebar';
@@ -60,7 +61,7 @@ const ChatPage = () => {
   // Fetch user's credits
   const fetchCredits = async () => {
     try {
-      const userId = localStorage.getItem('userId');
+      const userId = getUserId();
       if (!userId) return;
       const data = await creditsAPI.getCredits(userId);
       if (data.success) {
@@ -175,8 +176,8 @@ const ChatPage = () => {
     setSelectedImageForEdit(null);
 
     try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!user.userId) throw new Error('User not logged in');
+      const user = getUser();
+      if (!user?.userId) throw new Error('User not logged in');
 
       // Step 1: Use smart chat API to understand intent and get prompts
       const chatResponse = await chatAPI.chat({
@@ -382,10 +383,10 @@ const ChatPage = () => {
       console.error('Failed to generate:', error);
       // Fallback to direct image generation if smart chat fails
       try {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const user = getUser();
         const data = await imageAPI.generate({
           prompt: userPrompt,
-          userId: user.userId,
+          userId: user?.userId,
           imageChatId: existingChatId,
           ...overrides,
           images: referenceImages.length > 0 ? referenceImages.map(img => ({ data: img.data, mimeType: img.mimeType })) : undefined,
@@ -490,8 +491,8 @@ const ChatPage = () => {
     };
 
     try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!user.userId) throw new Error('User not logged in');
+      const user = getUser();
+      if (!user?.userId) throw new Error('User not logged in');
 
       await agentAPI.chatStream({
         userId: user.userId,

@@ -5,6 +5,7 @@ import * as FiIcons from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import SafeIcon from '../common/SafeIcon';
 import { creditsAPI } from '../lib/api';
+import { getUser } from '../lib/velosStorage';
 import logo from "../../assets/velos 1.svg";
 
 const { FiCheck, FiX, FiChevronLeft, FiZap, FiStar, FiTrendingUp, FiArrowRight, FiLoader, FiShield } = FiIcons;
@@ -76,8 +77,8 @@ const PricingPage = () => {
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [subscribing, setSubscribing] = useState(null);
 
-  // Get user from localStorage
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  // Get user from storage
+  const user = getUser() || {};
 
   useEffect(() => {
     const fetchPlans = async () => {

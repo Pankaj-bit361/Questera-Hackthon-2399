@@ -15,11 +15,17 @@ const scheduledPostSchema = new mongoose.Schema({
   // Content
   imageUrl: {
     type: String,
-    required: true,
+    required: false, // Not required for video posts
   },
   imageUrls: [{
     type: String, // For carousel posts
   }],
+  videoUrl: {
+    type: String, // For video/reel posts
+  },
+  videoChatId: {
+    type: String, // Reference to video chat
+  },
   caption: {
     type: String,
     default: '',

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../common/SafeIcon';
 import { autopilotAPI } from '../../lib/api';
+import { getUserId } from '../../lib/velosStorage';
 import { toast } from 'react-toastify';
 
 const { FiX, FiZap, FiPlay, FiPause, FiSettings, FiCheck, FiAlertCircle, FiImage, FiUpload, FiTrash2, FiUser, FiPackage } = FiIcons;
@@ -31,7 +32,7 @@ const AutopilotSettings = ({ isOpen, onClose, chatId }) => {
   });
   const [uploadingType, setUploadingType] = useState(null);
 
-  const userId = localStorage.getItem('userId');
+  const userId = getUserId();
 
   useEffect(() => {
     if (isOpen && chatId && chatId !== 'new') {

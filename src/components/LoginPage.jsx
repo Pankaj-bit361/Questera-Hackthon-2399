@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { API_BASE_URL } from '../config';
+import { isLoggedIn, setAuth, getAuthToken } from '../lib/velosStorage';
 
 const { FiMail, FiArrowRight, FiCheck, FiChevronLeft, FiZap, FiAlertCircle } = FiIcons;
 
@@ -31,9 +32,8 @@ const LoginPage = () => {
 
   // Check if user is already logged in with valid token - redirect to home
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
-    if (token && user && !isTokenExpired(token)) {
+    const token = getAuthToken();
+    if (token && isLoggedIn() && !isTokenExpired(token)) {
       navigate('/home', { replace: true });
     }
   }, [navigate]);
@@ -126,9 +126,8 @@ const LoginPage = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Store auth data
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        // Store auth data using velosStorage
+        setAuth(data.token, data.user);
         navigate('/home');
       } else {
         setError(data.error || 'Invalid verification code.');

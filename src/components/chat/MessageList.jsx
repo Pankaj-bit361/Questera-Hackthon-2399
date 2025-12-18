@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../common/SafeIcon';
 import { schedulerAPI } from '../../lib/api';
+import { getUser } from '../../lib/velosStorage';
 import ThinkingSteps from './ThinkingSteps';
 
 import { API_BASE_URL } from '../../config';
@@ -37,8 +38,8 @@ const MessageList = ({ messages, loading, streamingStatus, onDeleteMessage, sele
   // Fetch Instagram accounts on mount
   useEffect(() => {
     const fetchAccounts = async () => {
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (!user.userId) return;
+      const user = getUser();
+      if (!user?.userId) return;
 
       try {
         const response = await fetch(`${API_BASE_URL}/instagram/info/${user.userId}`);
@@ -77,8 +78,8 @@ const MessageList = ({ messages, loading, streamingStatus, onDeleteMessage, sele
   };
 
   const handlePublish = async (imageUrl, idx, accountId = null) => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.userId) {
+    const user = getUser();
+    if (!user?.userId) {
       alert('Please log in to publish');
       return;
     }
@@ -165,8 +166,8 @@ const MessageList = ({ messages, loading, streamingStatus, onDeleteMessage, sele
 
   // Handle schedule submission
   const handleSchedulePost = async (imageUrl, idx) => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.userId) {
+    const user = getUser();
+    if (!user?.userId) {
       alert('Please log in to schedule');
       return;
     }

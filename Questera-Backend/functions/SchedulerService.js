@@ -228,6 +228,12 @@ class SchedulerService {
    */
   async publishPost(post) {
     console.log(`📤 [SCHEDULER] Publishing post ${post.postId} to ${post.platform}`);
+    console.log(`📋 [SCHEDULER] Post details:`, {
+      postType: post.postType,
+      videoUrl: post.videoUrl?.slice(0, 50),
+      imageUrl: post.imageUrl?.slice(0, 50),
+      hasVideoUrl: !!post.videoUrl,
+    });
 
     // Mark as processing
     post.status = 'processing';
@@ -239,12 +245,34 @@ class SchedulerService {
 
       if (post.platform === 'instagram') {
         if (post.postType === 'carousel' && post.imageUrls?.length > 1) {
+          console.log('📸 [SCHEDULER] Posting as CAROUSEL');
           result = await this.instagramService.postCarousel(
             post.accountId,
             post.imageUrls,
             fullCaption
           );
+        } else if (post.postType === 'reel' || post.postType === 'video') {
+          // Post as Reel (video content)
+          console.log('🎬 [SCHEDULER] Posting as REEL');
+          console.log('🎬 [SCHEDULER] Video URL:', post.videoUrl || post.imageUrl);
+          result = await this.instagramService.postReel(
+            post.accountId,
+            post.videoUrl || post.imageUrl, // Use videoUrl if available, fallback to imageUrl
+            fullCaption,
+            { shareToFeed: true }
+          );
+        } else if (post.postType === 'story') {
+          console.log('📖 [SCHEDULER] Posting as STORY');
+          // Post as Story
+          const isVideo = post.videoUrl || post.imageUrl?.includes('.mp4');
+          result = await this.instagramService.postStory(
+            post.accountId,
+            post.videoUrl || post.imageUrl,
+            isVideo
+          );
         } else {
+          // Default: Post as image
+          console.log('🖼️ [SCHEDULER] Posting as IMAGE (postType:', post.postType, ')');
           result = await this.instagramService.postImage(
             post.accountId,
             post.imageUrl,

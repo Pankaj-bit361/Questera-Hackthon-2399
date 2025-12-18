@@ -5,8 +5,9 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import Sidebar from './Sidebar';
 import { analyticsAPI } from '../lib/api';
+import { getUserId } from '../lib/velosStorage';
 
-const { FiChevronLeft, FiRefreshCw, FiTrendingUp, FiHeart, FiEye, FiMessageCircle, FiClock, FiCalendar, FiHash, FiAward, FiBarChart2 } = FiIcons;
+const { FiChevronLeft, FiRefreshCw, FiTrendingUp, FiHeart, FiEye, FiMessageCircle, FiClock, FiCalendar, FiHash, FiAward, FiBarChart2, FiPlay, FiImage } = FiIcons;
 
 const AnalyticsPage = () => {
   const navigate = useNavigate();
@@ -21,8 +22,7 @@ const AnalyticsPage = () => {
   const [bestTimes, setBestTimes] = useState(null);
   const [contentAnalysis, setContentAnalysis] = useState(null);
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const userId = user.userId;
+  const userId = getUserId();
 
   useEffect(() => {
     if (userId) {
@@ -187,32 +187,72 @@ const OverviewTab = ({ dashboard, formatNumber }) => {
         </div>
         {topPosts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {topPosts.map((post, idx) => (
-              <div key={post.postId || idx} className="bg-zinc-900/50 rounded-xl overflow-hidden border border-white/5 hover:border-white/10 transition-colors">
-                {post.imageUrl && (
-                  <div className="aspect-square bg-zinc-800">
-                    <img src={post.imageUrl} alt="" className="w-full h-full object-cover" />
+            {topPosts.map((post, idx) => {
+              const isVideo = post.postType === 'reel' || post.videoUrl;
+              const mediaUrl = isVideo ? post.videoUrl : post.imageUrl;
+              const hasMedia = !!mediaUrl;
+
+              return (
+                <div key={post.postId || idx} className="bg-zinc-900/50 rounded-xl overflow-hidden border border-white/5 hover:border-white/10 transition-colors">
+                  <div className="aspect-square bg-zinc-800 relative">
+                    {isVideo && mediaUrl ? (
+                      <>
+                        <video
+                          src={mediaUrl}
+                          className="w-full h-full object-cover"
+                          muted
+                          playsInline
+                          onMouseEnter={(e) => e.target.play()}
+                          onMouseLeave={(e) => { e.target.pause(); e.target.currentTime = 0; }}
+                        />
+                        <div className="absolute top-2 right-2 bg-black/70 rounded-full p-1.5">
+                          <SafeIcon icon={FiPlay} className="w-3 h-3 text-white" />
+                        </div>
+                      </>
+                    ) : mediaUrl ? (
+                      <img
+                        src={mediaUrl}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    {/* Fallback for missing/broken media */}
+                    {!hasMedia && (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
+                        <SafeIcon icon={isVideo ? FiPlay : FiImage} className="w-12 h-12 mb-2" />
+                        <span className="text-xs">{isVideo ? 'Video' : 'Image'}</span>
+                      </div>
+                    )}
+                    {/* Hidden fallback for broken images */}
+                    <div className="hidden w-full h-full absolute inset-0 flex-col items-center justify-center text-zinc-600 bg-zinc-800">
+                      <SafeIcon icon={FiImage} className="w-12 h-12 mb-2" />
+                      <span className="text-xs">Media unavailable</span>
+                    </div>
                   </div>
-                )}
-                <div className="p-4">
-                  <p className="text-sm text-zinc-300 line-clamp-2 mb-3">{post.caption || 'No caption'}</p>
-                  <div className="flex items-center gap-4 text-xs text-zinc-500">
-                    <span className="flex items-center gap-1">
-                      <SafeIcon icon={FiHeart} className="w-3.5 h-3.5 text-pink-400" />
-                      {post.engagement?.likes || 0}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <SafeIcon icon={FiMessageCircle} className="w-3.5 h-3.5 text-blue-400" />
-                      {post.engagement?.comments || 0}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <SafeIcon icon={FiEye} className="w-3.5 h-3.5 text-emerald-400" />
-                      {post.engagement?.reach || 0}
-                    </span>
+                  <div className="p-4">
+                    <p className="text-sm text-zinc-300 line-clamp-2 mb-3">{post.caption || 'No caption'}</p>
+                    <div className="flex items-center gap-4 text-xs text-zinc-500">
+                      <span className="flex items-center gap-1">
+                        <SafeIcon icon={FiHeart} className="w-3.5 h-3.5 text-pink-400" />
+                        {post.engagement?.likes || 0}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <SafeIcon icon={FiMessageCircle} className="w-3.5 h-3.5 text-blue-400" />
+                        {post.engagement?.comments || 0}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <SafeIcon icon={FiEye} className="w-3.5 h-3.5 text-emerald-400" />
+                        {post.engagement?.reach || 0}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-12 text-zinc-500">

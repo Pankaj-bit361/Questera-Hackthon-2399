@@ -5,6 +5,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import Sidebar from './Sidebar';
 import InstagramIntegration from './InstagramIntegration';
+import { getUserId } from '../lib/velosStorage';
 
 const { FiChevronLeft, FiLink, FiUser, FiBell, FiShield } = FiIcons;
 
@@ -12,9 +13,7 @@ const SettingsPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('integrations');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  // Use same userId source as other components (from user object)
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const userId = user.userId || localStorage.getItem('userId');
+  const userId = getUserId();
 
   const tabs = [
     { id: 'integrations', label: 'Integrations', icon: FiLink },

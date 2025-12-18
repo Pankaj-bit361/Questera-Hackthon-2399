@@ -1,6 +1,5 @@
 import { API_BASE_URL } from '../config';
-
-const getAuthToken = () => localStorage.getItem('authToken');
+import { getAuthToken } from './velosStorage';
 
 const headers = () => ({
   'Content-Type': 'application/json',
@@ -81,6 +80,76 @@ export const imageAPI = {
     });
     return response.json();
   }
+};
+
+/**
+ * Video API - Video generation with Veo
+ */
+export const videoAPI = {
+  // Get User Video Conversations
+  getUserConversations: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/video/user/${userId}/conversations`, {
+      method: 'GET',
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Get Video Conversation
+  getConversation: async (videoChatId) => {
+    const response = await fetch(`${API_BASE_URL}/video/conversation/${videoChatId}`, {
+      method: 'GET',
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Schedule video with auto-generated viral caption
+  schedule: async (payload) => {
+    const response = await fetch(`${API_BASE_URL}/scheduler/video`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(payload),
+    });
+    return response.json();
+  },
+
+  // Generate caption preview (without scheduling)
+  generateCaption: async (payload) => {
+    const response = await fetch(`${API_BASE_URL}/scheduler/video/caption`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(payload),
+    });
+    return response.json();
+  },
+};
+
+/**
+ * Instagram API - Account management and posting
+ */
+export const instagramAPI = {
+  // Get connected Instagram accounts for a user
+  getSocialAccounts: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/instagram/info/${userId}`, {
+      method: 'GET',
+      headers: headers(),
+    });
+    const data = await response.json();
+    // Transform to match expected format
+    if (data.success && data.accounts) {
+      return {
+        success: true,
+        accounts: data.accounts.map(acc => ({
+          accountId: acc.id,
+          instagramUsername: acc.username,
+          pageName: acc.facebookPageName || acc.name,
+          profilePictureUrl: acc.profilePictureUrl,
+        })),
+      };
+    }
+    return { success: false, accounts: [] };
+  },
 };
 
 /**

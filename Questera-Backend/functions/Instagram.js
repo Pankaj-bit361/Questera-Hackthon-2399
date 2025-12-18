@@ -1,4 +1,5 @@
 const Instagram = require('../models/instagram');
+const axios = require('axios');
 
 class InstagramController {
   constructor() {
@@ -543,6 +544,129 @@ class InstagramController {
     } catch (error) {
       console.error('❌ [INSTAGRAM] Error publishing:', error);
       return { status: 500, json: { error: error.message } };
+    }
+  }
+
+  /**
+   * Publish a video as Instagram Reel
+   * Reels require media_type: 'REELS' and video_url
+   */
+  async publishReel(req) {
+    try {
+      const { userId, videoUrl, caption, accountId } = req.body;
+
+      if (!userId || !videoUrl) {
+        return { status: 400, json: { error: 'userId and videoUrl are required' } };
+      }
+
+      console.log('🎬 [INSTAGRAM] Publishing Reel...');
+      console.log('🎬 [INSTAGRAM] Video URL:', videoUrl);
+
+      const instagram = await Instagram.findOne({ userId });
+      if (!instagram) {
+        return { status: 404, json: { error: 'No Instagram accounts found for this user' } };
+      }
+
+      // Find the account
+      let account;
+      if (accountId) {
+        account = instagram.accounts?.find(acc => acc.instagramBusinessAccountId === accountId);
+      }
+      if (!account && instagram.accounts?.length > 0) {
+        account = instagram.accounts[0];
+      }
+      if (!account) {
+        account = {
+          instagramBusinessAccountId: instagram.instagramBusinessAccountId,
+          accessToken: instagram.accessToken,
+          instagramUsername: instagram.instagramUsername,
+        };
+      }
+
+      const { instagramBusinessAccountId, accessToken, instagramUsername } = account;
+
+      console.log('🎬 [INSTAGRAM] Account ID:', instagramBusinessAccountId);
+
+      const baseUrl = `https://graph.facebook.com/${this.apiVersion}`;
+
+      // Step 1: Create Reel container with media_type: REELS
+      const containerUrl = `${baseUrl}/${instagramBusinessAccountId}/media`;
+      const containerParams = new URLSearchParams({
+        video_url: videoUrl,
+        media_type: 'REELS',
+        caption: caption || '',
+        share_to_feed: 'true',
+        access_token: accessToken,
+      });
+
+      console.log('🎬 [INSTAGRAM] Creating Reel container...');
+
+      const containerResponse = await axios.post(containerUrl, containerParams.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+
+      if (!containerResponse.data.id) {
+        throw new Error('Failed to create Reel container');
+      }
+
+      const containerId = containerResponse.data.id;
+      console.log('📦 [INSTAGRAM] Reel container created:', containerId);
+
+      // Step 2: Wait for video processing (videos take longer than images)
+      console.log('⏳ [INSTAGRAM] Waiting for video processing...');
+      let status = 'IN_PROGRESS';
+      let attempts = 0;
+      const maxAttempts = 30; // Max 60 seconds (2s per check)
+
+      while (status === 'IN_PROGRESS' && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        attempts++;
+
+        const statusUrl = `${baseUrl}/${containerId}?fields=status_code&access_token=${accessToken}`;
+        const statusResponse = await axios.get(statusUrl);
+        status = statusResponse.data.status_code;
+        console.log(`📊 [INSTAGRAM] Container status (attempt ${attempts}): ${status}`);
+      }
+
+      if (status !== 'FINISHED') {
+        throw new Error(`Video processing failed or timed out. Status: ${status}`);
+      }
+
+      // Step 3: Publish the Reel
+      console.log('🚀 [INSTAGRAM] Publishing Reel...');
+      const publishUrl = `${baseUrl}/${instagramBusinessAccountId}/media_publish`;
+      const publishParams = new URLSearchParams({
+        creation_id: containerId,
+        access_token: accessToken,
+      });
+
+      const publishResponse = await axios.post(publishUrl, publishParams.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+
+      const mediaId = publishResponse.data.id;
+      console.log('✅ [INSTAGRAM] Reel published! Media ID:', mediaId);
+
+      // Get permalink
+      const mediaInfoUrl = `${baseUrl}/${mediaId}?fields=permalink,timestamp&access_token=${accessToken}`;
+      const mediaInfoResponse = await axios.get(mediaInfoUrl);
+      const permalink = mediaInfoResponse.data.permalink;
+
+      console.log('✅ [INSTAGRAM] Reel permalink:', permalink);
+
+      return {
+        status: 200,
+        json: {
+          success: true,
+          mediaId,
+          permalink,
+          username: instagramUsername,
+          type: 'reel',
+        },
+      };
+    } catch (error) {
+      console.error('❌ [INSTAGRAM] Error publishing Reel:', error.response?.data || error.message);
+      return { status: 500, json: { error: error.response?.data?.error?.message || error.message } };
     }
   }
 

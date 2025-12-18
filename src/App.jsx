@@ -13,6 +13,7 @@ import InstagramCallback from './components/InstagramCallback';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
 import AnalyticsPage from './components/AnalyticsPage';
+import VideoChatPage from './components/VideoChatPage';
 import './App.css';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
           <Route path="/" element={<LoginPage />} />
           <Route path="/home" element={<HomePage />} />
           <Route path="/chat/:chatId" element={<ChatPage />} />
+          <Route path="/video/:chatId" element={<VideoChatPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/scheduler" element={<SchedulerPage />} />

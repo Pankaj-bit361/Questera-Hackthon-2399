@@ -209,6 +209,36 @@ schedulerRouter.post('/bulk', async (req, res) => {
   }
 });
 
+// ============== VIDEO SCHEDULING ==============
+
+/**
+ * POST /scheduler/video
+ * Schedule a video/reel with auto-generated viral caption and hashtags
+ */
+schedulerRouter.post('/video', async (req, res) => {
+  try {
+    const { status, json } = await schedulerController.scheduleVideo(req);
+    return res.status(status).json(json);
+  } catch (error) {
+    console.error('[SCHEDULER] Video Schedule Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /scheduler/video/caption
+ * Generate viral caption preview without scheduling (for UI preview)
+ */
+schedulerRouter.post('/video/caption', async (req, res) => {
+  try {
+    const { status, json } = await schedulerController.generateVideoCaption(req);
+    return res.status(status).json(json);
+  } catch (error) {
+    console.error('[SCHEDULER] Caption Generate Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 // ============== CALENDAR VIEW ==============
 
 /**
