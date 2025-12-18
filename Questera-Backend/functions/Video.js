@@ -5,7 +5,10 @@ const fs = require('fs').promises;
 const path = require('path');
 const Video = require('../models/video');
 const VideoMessage = require('../models/videoMessage');
-const User = require('../models/user');
+const CreditsController = require('./Credits');
+
+const creditsController = new CreditsController();
+const VIDEO_CREDIT_COST = 10; // Each video costs 10 credits
 
 class VideoController {
     constructor() {
@@ -26,38 +29,33 @@ class VideoController {
         this.uploadsDir = path.join(__dirname, '..', 'uploads');
     }
 
-    // Check if user has sufficient video credits
+    // Check if user has sufficient credits for video generation (10 credits)
     async checkVideoCredits(userId) {
-        const user = await User.findOne({ userId });
-        if (!user) {
-            // For development: allow if user not found (guest mode)
-            console.warn(`⚠️ [Video] User ${userId} not found in database, proceeding without credit check`);
+        const credits = await creditsController.getCredits(userId);
+        if (!credits) {
+            console.warn(`⚠️ [Video] Credits not found for ${userId}, proceeding without check`);
             return null;
         }
-        // Initialize credits if not set
-        if (!user.credits) {
-            user.credits = { image: 10, video: 3 };
-            await user.save();
+        if (credits.balance < VIDEO_CREDIT_COST) {
+            throw new Error(`Insufficient credits. Video generation requires ${VIDEO_CREDIT_COST} credits. You have ${credits.balance}.`);
         }
-        if (user.credits.video < 1) {
-            throw new Error('Insufficient video credits. Please upgrade your plan.');
-        }
-        return user;
+        return credits;
     }
 
-    // Deduct video credit from user
-    async deductVideoCredit(userId) {
-        const user = await User.findOneAndUpdate(
-            { userId, 'credits.video': { $gte: 1 } },
-            { $inc: { 'credits.video': -1 } },
-            { new: true }
+    // Deduct 10 credits for video generation
+    async deductVideoCredit(userId, prompt = '') {
+        const result = await creditsController.deductCredits(
+            userId,
+            VIDEO_CREDIT_COST,
+            null,
+            `Video generation: ${prompt.substring(0, 50)}...`
         );
-        if (user) {
-            console.log(`✅ Deducted 1 video credit from ${userId}. Remaining: ${user.credits.video}`);
+        if (result.success) {
+            console.log(`✅ Deducted ${VIDEO_CREDIT_COST} credits from ${userId}. Remaining: ${result.balance}`);
         } else {
-            console.warn(`⚠️ [Video] Could not deduct credit for ${userId} (user not found or no credits)`);
+            console.warn(`⚠️ [Video] Could not deduct credits for ${userId}: ${result.error}`);
         }
-        return user;
+        return result;
     }
 
     async uploadToS3(buffer, mimeType = 'video/mp4') {
@@ -370,8 +368,8 @@ class VideoController {
             await assistantMsg.save();
             console.log(`📁 [Video] Stored googleFile:`, JSON.stringify(generatedVideo.video, null, 2));
 
-            // Deduct credit
-            await this.deductVideoCredit(userId);
+            // Deduct 10 credits for video generation
+            await this.deductVideoCredit(userId, prompt);
 
             console.log(`✅ [Video] Completed and uploaded: ${videoUrl}`);
             return { status: 200, json: { success: true, videoChatId, message: assistantMsg } };
