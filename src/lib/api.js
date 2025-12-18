@@ -494,6 +494,26 @@ export const schedulerAPI = {
     });
     return response.json();
   },
+
+  // Create a manual post (user-uploaded content, Buffer-style)
+  createManualPost: async (postData) => {
+    const response = await fetch(`${API_BASE_URL}/scheduler/manual-post`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(postData),
+    });
+    return response.json();
+  },
+
+  // Upload media for preview (returns S3 URL)
+  uploadMedia: async (media, type = 'image') => {
+    const response = await fetch(`${API_BASE_URL}/scheduler/upload-media`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ media, type }),
+    });
+    return response.json();
+  },
 };
 
 /**

@@ -679,7 +679,7 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#050505] text-white font-sans overflow-hidden relative selection:bg-white/20">
+    <div className="flex h-screen bg-[#000000] text-white font-sans overflow-hidden relative selection:bg-white/20">
 
       {/* Sidebar Trigger Zone */}
       <div
@@ -694,10 +694,10 @@ const ChatPage = () => {
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col relative h-full w-full max-w-[2000px] mx-auto">
+      <div className="flex-1 flex flex-col relative h-full w-full max-w-[2000px] mx-auto bg-[#09090b]">
 
         {/* Header - Floating & Premium */}
-        <header className="absolute top-0 left-0 right-0 z-30 px-6 py-5 flex items-center justify-between pointer-events-none bg-gradient-to-b from-[#050505] via-[#050505]/80 to-transparent">
+        <header className="absolute top-0 left-0 right-0 z-30 px-6 py-5 flex items-center justify-between pointer-events-none bg-gradient-to-b from-[#09090b] via-[#09090b]/90 to-transparent">
           <div className="flex items-center gap-4 pointer-events-auto">
             <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="lg:hidden text-zinc-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-white/5">
               <SafeIcon icon={FiMenu} className="w-5 h-5" />
@@ -720,21 +720,21 @@ const ChatPage = () => {
           <div className="flex items-center gap-3 pointer-events-auto">
             <button
               onClick={handleShare}
-              className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 text-xs font-bold text-zinc-400 hover:bg-white/10 hover:text-white transition-all backdrop-blur-md border border-white/5 hover:border-white/10"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs font-bold text-zinc-400 hover:bg-white/5 hover:text-white hover:border-white/20 transition-all backdrop-blur-md shadow-lg shadow-black/20"
             >
               <SafeIcon icon={shareCopied ? FiCheck : FiShare2} className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{shareCopied ? 'Copied' : 'Share'}</span>
             </button>
             <button
               onClick={() => setShowAutopilotSettings(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-full bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-xs font-bold text-yellow-400 hover:from-yellow-500/30 hover:to-orange-500/30 transition-all backdrop-blur-md border border-yellow-500/20 hover:border-yellow-500/40"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs font-bold text-white hover:bg-white hover:text-black transition-all group shadow-lg shadow-black/20"
             >
-              <SafeIcon icon={FiZap} className="w-3.5 h-3.5" />
+              <SafeIcon icon={FiZap} className="w-3.5 h-3.5 group-hover:text-black transition-colors" />
               <span className="hidden sm:inline">Autopilot</span>
             </button>
             <button
               onClick={() => setShowProjectSettings(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-xs font-bold hover:bg-zinc-200 transition-all shadow-lg shadow-white/5"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-black text-xs font-bold hover:bg-zinc-200 transition-all shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)]"
             >
               <SafeIcon icon={FiSettings} className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Settings</span>
@@ -743,10 +743,7 @@ const ChatPage = () => {
         </header>
 
         {/* Chat Area */}
-        <div className="flex-1 overflow-hidden relative bg-[#050505]">
-          {/* Subtle Ambient Background */}
-          <div className="absolute top-[10%] left-[30%] w-[40%] h-[40%] bg-indigo-900/5 rounded-full blur-[150px] pointer-events-none"></div>
-
+        <div className="flex-1 overflow-hidden relative bg-[#09090b]">
           <MessageList
             messages={messages}
             loading={loading}
@@ -760,7 +757,7 @@ const ChatPage = () => {
         </div>
 
         {/* Input Area - Fixed Bottom with Gradient Fade */}
-        <div className="relative z-30 px-4 sm:px-6 md:px-8 pb-4 pt-2 bg-gradient-to-t from-[#050505] via-[#050505] to-transparent">
+        <div className="relative z-30 px-4 sm:px-6 md:px-8 pb-6 pt-2 bg-[#09090b]">
           <div className="max-w-4xl mx-auto">
             <ChatInput
               prompt={prompt}

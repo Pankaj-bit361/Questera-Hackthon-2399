@@ -7,7 +7,7 @@ import Sidebar from './Sidebar';
 import { API_BASE_URL } from '../config';
 
 
-const { FiArrowRight, FiUpload, FiGrid, FiImage, FiEye, FiX, FiVideo } = FiIcons;
+const { FiArrowRight, FiUpload, FiGrid, FiImage, FiEye, FiX, FiVideo, FiZap } = FiIcons;
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -164,7 +164,7 @@ const HomePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white overflow-hidden font-sans selection:bg-white/20 relative">
+    <div className="min-h-screen bg-[#09090b] text-white overflow-hidden font-sans selection:bg-white/20 relative">
 
       {/* Sidebar Trigger Zone */}
       <div
@@ -178,7 +178,7 @@ const HomePage = () => {
         onMouseLeave={() => setSidebarOpen(false)}
       />
 
-      <main className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-16 transition-all duration-300">
+      <main className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 py-16 transition-all duration-300 z-10">
 
         <div className="relative z-10 w-full max-w-3xl mx-auto text-center space-y-8">
 
@@ -186,13 +186,13 @@ const HomePage = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-1 p-1 rounded-full border border-white/10 bg-white/5"
+            className="inline-flex items-center gap-1 p-1 rounded-full border border-white/5 bg-[#18181b]"
           >
             <button
               onClick={() => handleModeSwitch('image')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${mode === 'image'
-                ? 'bg-white text-black'
-                : 'text-zinc-400 hover:text-white'
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${mode === 'image'
+                ? 'bg-white text-black shadow-lg'
+                : 'text-zinc-500 hover:text-white'
                 }`}
             >
               <SafeIcon icon={FiImage} className="w-4 h-4" />
@@ -200,9 +200,9 @@ const HomePage = () => {
             </button>
             <button
               onClick={() => handleModeSwitch('video')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${mode === 'video'
-                ? 'bg-white text-black'
-                : 'text-zinc-400 hover:text-white'
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${mode === 'video'
+                ? 'bg-white text-black shadow-lg'
+                : 'text-zinc-500 hover:text-white'
                 }`}
             >
               <SafeIcon icon={FiVideo} className="w-4 h-4" />
@@ -214,16 +214,17 @@ const HomePage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight"
+            className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-tight"
           >
-            What will you <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-500 italic pr-1">{mode === 'video' ? 'create' : 'visualize'}</span> today?
+            What will you <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-zinc-200 to-zinc-500">{mode === 'video' ? 'create' : 'visualize'}</span> today?
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-lg text-zinc-400 max-w-xl mx-auto"
+            className="text-lg text-zinc-400 max-w-xl mx-auto leading-relaxed"
           >
             {mode === 'video'
               ? 'Generate stunning AI videos from text prompts or images.'
@@ -240,7 +241,7 @@ const HomePage = () => {
               ${isFocused ? 'scale-[1.01]' : ''}
             `}
           >
-            <div className="relative bg-[#18181B] border border-white/10 rounded-2xl shadow-2xl overflow-hidden focus-within:border-white/20 transition-colors">
+            <div className={`relative bg-[#18181B] border transition-all duration-300 rounded-3xl overflow-hidden shadow-2xl ${isFocused ? 'border-white/20 shadow-white/5' : 'border-white/10'}`}>
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
@@ -250,25 +251,25 @@ const HomePage = () => {
                 placeholder={mode === 'video'
                   ? "Describe your video... e.g., A drone shot flying over a tropical island at sunset, cinematic..."
                   : "Describe your imagination... e.g., A futuristic Tokyo street with neon rain, cinematic lighting, 8k..."}
-                className="w-full h-32 bg-transparent text-lg p-5 resize-none outline-none placeholder-zinc-600 text-white custom-scrollbar"
+                className="w-full h-36 bg-transparent text-lg p-6 resize-none outline-none placeholder-zinc-600 text-white custom-scrollbar leading-relaxed"
               />
 
               {/* Uploaded Images Preview */}
               {(uploadedImages.length > 0 || startFrame || endFrame) && (
-                <div className="px-4 py-2 border-t border-white/10">
+                <div className="px-6 py-3 border-t border-white/5 bg-[#09090b]/50">
                   <div className="flex items-center gap-3 flex-wrap">
                     {/* Start Frame - Video only */}
                     {startFrame && (
                       <div className="relative">
-                        <span className="absolute -top-2 left-1 text-[10px] bg-green-600 px-1.5 py-0.5 rounded z-10">Start</span>
+                        <span className="absolute -top-2 left-1 text-[10px] bg-green-900 text-green-100 px-1.5 py-0.5 rounded z-10 border border-green-700">Start</span>
                         <img
                           src={startFrame.preview}
                           alt="Start Frame"
-                          className="w-16 h-16 object-cover rounded-lg border-2 border-green-500/50"
+                          className="w-16 h-16 object-cover rounded-xl border border-white/10"
                         />
                         <button
                           onClick={() => setStartFrame(null)}
-                          className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors z-10"
+                          className="absolute -top-2 -right-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full p-1 transition-colors z-10 border border-white/10"
                         >
                           <SafeIcon icon={FiX} className="w-3 h-3" />
                         </button>
@@ -277,15 +278,15 @@ const HomePage = () => {
                     {/* End Frame - Video only */}
                     {endFrame && (
                       <div className="relative">
-                        <span className="absolute -top-2 left-1 text-[10px] bg-blue-600 px-1.5 py-0.5 rounded z-10">End</span>
+                        <span className="absolute -top-2 left-1 text-[10px] bg-blue-900 text-blue-100 px-1.5 py-0.5 rounded z-10 border border-blue-700">End</span>
                         <img
                           src={endFrame.preview}
                           alt="End Frame"
-                          className="w-16 h-16 object-cover rounded-lg border-2 border-blue-500/50"
+                          className="w-16 h-16 object-cover rounded-xl border border-white/10"
                         />
                         <button
                           onClick={() => setEndFrame(null)}
-                          className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors z-10"
+                          className="absolute -top-2 -right-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full p-1 transition-colors z-10 border border-white/10"
                         >
                           <SafeIcon icon={FiX} className="w-3 h-3" />
                         </button>
@@ -297,31 +298,31 @@ const HomePage = () => {
                         <img
                           src={img.preview}
                           alt={`Reference ${index + 1}`}
-                          className="w-16 h-16 object-cover rounded-lg border border-white/20"
+                          className="w-16 h-16 object-cover rounded-xl border border-white/10"
                         />
                         <button
                           onClick={() => removeUploadedImage(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 transition-colors"
+                          className="absolute -top-2 -right-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full p-1 transition-colors border border-white/10"
                         >
                           <SafeIcon icon={FiX} className="w-3 h-3" />
                         </button>
                       </div>
                     ))}
-                    <span className="text-xs text-zinc-400">
+                    <span className="text-xs text-zinc-500 font-bold ml-2">
                       {mode === 'video'
-                        ? `${uploadedImages.length}/3 refs${startFrame ? ' • Start' : ''}${endFrame ? ' • End' : ''}`
-                        : `${uploadedImages.length} reference image${uploadedImages.length !== 1 ? 's' : ''}`
+                        ? `${uploadedImages.length}/3`
+                        : `${uploadedImages.length}`
                       }
                     </span>
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-between px-4 pb-4 pt-2">
+              <div className="flex items-center justify-between px-6 pb-6 pt-2">
                 <div className="flex items-center gap-2">
                   {/* Reference Image Upload */}
                   <label
-                    className={`p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer ${mode === 'video' && uploadedImages.length >= 3 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer ${mode === 'video' && uploadedImages.length >= 3 ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title={mode === 'video' ? `Reference Images (${uploadedImages.length}/3)` : 'Upload Reference Image'}
                   >
                     <SafeIcon icon={FiUpload} className="w-5 h-5" />
@@ -337,10 +338,10 @@ const HomePage = () => {
                   {/* Video-specific: Start Frame */}
                   {mode === 'video' && (
                     <label
-                      className={`flex items-center gap-1 px-2 py-1.5 text-xs rounded-lg transition-colors cursor-pointer ${startFrame ? 'bg-green-600/20 text-green-400 border border-green-500/30' : 'text-zinc-400 hover:text-green-400 hover:bg-green-500/10'}`}
+                      className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wide rounded-xl transition-colors cursor-pointer ${startFrame ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'text-zinc-500 hover:text-white hover:bg-white/5 border border-transparent'}`}
                       title="Upload Start Frame"
                     >
-                      <span>▶ Start</span>
+                      <span>Start</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -353,10 +354,10 @@ const HomePage = () => {
                   {/* Video-specific: End Frame */}
                   {mode === 'video' && (
                     <label
-                      className={`flex items-center gap-1 px-2 py-1.5 text-xs rounded-lg transition-colors cursor-pointer ${endFrame ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10'}`}
+                      className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wide rounded-xl transition-colors cursor-pointer ${endFrame ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'text-zinc-500 hover:text-white hover:bg-white/5 border border-transparent'}`}
                       title="Upload End Frame"
                     >
-                      <span>⏹ End</span>
+                      <span>End</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -366,14 +367,14 @@ const HomePage = () => {
                     </label>
                   )}
 
-                  <div className="h-4 w-px bg-white/10 mx-1"></div>
-                  <span className="text-xs text-zinc-500 font-mono">{mode === 'video' ? 'Veo 3.1' : 'Velos XL 1.0'}</span>
+                  <div className="h-5 w-px bg-white/5 mx-2"></div>
+                  <span className="text-xs text-zinc-600 font-bold uppercase tracking-widest">{mode === 'video' ? 'Veo 3.1' : 'Velos XL 1.0'}</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <button
                     onClick={handleGenerate}
-                    className="px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors bg-white text-black hover:bg-zinc-200"
+                    className="px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all bg-white text-black hover:bg-zinc-200 shadow-lg shadow-white/5 hover:shadow-white/10 hover:scale-105 active:scale-95"
                   >
                     <span>{mode === 'video' ? 'Generate Video' : 'Generate'}</span>
                     <SafeIcon icon={FiArrowRight} className="w-4 h-4" />
@@ -381,8 +382,6 @@ const HomePage = () => {
                 </div>
               </div>
             </div>
-
-            <div className="absolute -inset-1 bg-gradient-to-r from-white/20 via-white/10 to-white/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-30 transition-opacity duration-500 -z-10"></div>
           </motion.div>
 
           {/* Templates Section - Only show for image mode */}
@@ -391,44 +390,56 @@ const HomePage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35 }}
-              className="w-full mt-12"
+              className="w-full mt-20"
             >
-              <h3 className="text-sm font-semibold text-zinc-400 mb-4 text-left">✨ Try a Template</h3>
+              <div className="flex items-center justify-between mb-6 px-2">
+                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                  <SafeIcon icon={FiZap} className="w-4 h-4" />
+                  Start with a Template
+                </h3>
+              </div>
 
               {isLoadingTemplates ? (
-                <div className="text-center py-12 text-zinc-500">Loading templates...</div>
+                <div className="text-center py-12 text-zinc-600 font-mono text-xs">LOADING_ASSETS...</div>
               ) : templates.length === 0 ? (
-                <div className="text-center py-12 text-zinc-500">
-                  No templates available. Create one in the Templates Manager.
+                <div className="text-center py-12 text-zinc-600">
+                  No templates available.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {templates.map((template) => (
                     <motion.div
                       key={template.id}
-                      whileHover={{ scale: 1.02 }}
+                      whileHover={{ scale: 1.02, y: -5 }}
                       onClick={() => handleTemplateClick(template)}
                       className={`
-                      cursor-pointer group relative overflow-hidden rounded-xl border transition-all duration-300
+                      cursor-pointer group relative overflow-hidden rounded-3xl transition-all duration-500
                       ${selectedTemplate === template.id
-                          ? 'border-white/40 bg-white/10'
-                          : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/8'
+                          ? 'ring-2 ring-white shadow-2xl shadow-white/10'
+                          : 'border border-white/5 bg-[#18181b] hover:border-white/20 hover:shadow-2xl hover:shadow-black'
                         }
                     `}
                     >
-                      <div className="relative h-40 overflow-hidden">
+                      <div className="relative h-48 overflow-hidden">
                         {template.image ? (
                           <img
                             src={template.image}
                             alt={template.title}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                           />
                         ) : (
-                          <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                            <SafeIcon icon={FiImage} className="w-8 h-8 text-zinc-600" />
+                          <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
+                            <SafeIcon icon={FiImage} className="w-8 h-8 text-zinc-700" />
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#18181b] via-transparent to-transparent opacity-80"></div>
+
+                        {/* Prompt Overlay */}
+                        <div className="absolute bottom-0 left-0 right-0 p-5 translate-y-2 group-hover:translate-y-0 transition-transform">
+                          <p className="text-sm font-medium text-white line-clamp-2 leading-relaxed drop-shadow-md">
+                            {template.prompt}
+                          </p>
+                        </div>
 
                         {/* View Image Button */}
                         {template.image && (
@@ -437,25 +448,13 @@ const HomePage = () => {
                               e.stopPropagation();
                               setViewingImage(template);
                             }}
-                            className="absolute top-2 left-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="View Image"
+                            className="absolute top-3 right-3 bg-black/40 backdrop-blur-md hover:bg-black/60 text-white rounded-full p-2.5 opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100 border border-white/10"
+                            title="View Full"
                           >
                             <SafeIcon icon={FiEye} className="w-4 h-4" />
                           </button>
                         )}
                       </div>
-
-                      <div className="p-4">
-                        <p className="text-xs text-zinc-400 line-clamp-3">
-                          {template.prompt}
-                        </p>
-                      </div>
-
-                      {selectedTemplate === template.id && (
-                        <div className="absolute top-2 right-2 bg-white text-black rounded-full p-1">
-                          <SafeIcon icon={FiArrowRight} className="w-4 h-4" />
-                        </div>
-                      )}
                     </motion.div>
                   ))}
                 </div>
@@ -464,14 +463,10 @@ const HomePage = () => {
           )}
 
         </div>
-
-        <div className="absolute bottom-0 left-0 right-0 h-[40vh] pointer-events-none z-0 flex items-end justify-center overflow-hidden">
-          <div className="w-[150%] h-[100%] bg-gradient-to-t from-white/5 via-transparent to-transparent rounded-[100%] blur-[100px] translate-y-[50%]"></div>
-        </div>
       </main>
 
-      <footer className="fixed bottom-4 right-6 text-xs text-zinc-700 z-30 pointer-events-none">
-        <div className="pointer-events-auto flex gap-4">
+      <footer className="fixed bottom-6 right-8 text-[10px] font-bold tracking-widest text-zinc-800 z-30 pointer-events-none uppercase">
+        <div className="pointer-events-auto flex gap-6">
           <a href="/privacy-policy" className="hover:text-zinc-500 transition-colors">Privacy</a>
           <a href="/terms-of-service" className="hover:text-zinc-500 transition-colors">Terms</a>
         </div>
@@ -483,29 +478,29 @@ const HomePage = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/95 backdrop-blur-xl z-50 flex items-center justify-center p-6"
           onClick={() => setViewingImage(null)}
         >
           <button
             onClick={() => setViewingImage(null)}
-            className="absolute top-4 right-4 text-white hover:text-zinc-300 transition-colors"
+            className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors p-2 bg-white/5 rounded-full"
           >
-            <SafeIcon icon={FiX} className="w-8 h-8" />
+            <SafeIcon icon={FiX} className="w-6 h-6" />
           </button>
 
           <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
+            initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="max-w-4xl max-h-[90vh] relative"
+            className="max-w-5xl w-full flex flex-col items-center gap-8"
             onClick={(e) => e.stopPropagation()}
           >
             <img
               src={viewingImage.image}
               alt={viewingImage.title}
-              className="max-w-full max-h-[80vh] object-contain rounded-lg"
+              className="max-h-[70vh] w-auto object-contain rounded-2xl shadow-2xl border border-white/10"
             />
-            <div className="mt-4 text-center">
-              <p className="text-sm text-zinc-400 max-w-2xl mx-auto">
+            <div className="text-center max-w-2xl bg-[#18181b] p-6 rounded-3xl border border-white/10">
+              <p className="text-base text-zinc-300 leading-relaxed font-light">
                 {viewingImage.prompt}
               </p>
               <button
@@ -514,7 +509,7 @@ const HomePage = () => {
                   setSelectedTemplate(viewingImage.id);
                   setViewingImage(null);
                 }}
-                className="mt-4 bg-white text-black px-4 py-2 rounded-lg font-medium text-sm hover:bg-zinc-200 transition-colors"
+                className="mt-6 bg-white text-black px-8 py-3 rounded-xl font-bold text-sm hover:bg-zinc-200 transition-colors shadow-lg"
               >
                 Use This Template
               </button>

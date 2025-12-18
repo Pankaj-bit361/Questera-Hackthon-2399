@@ -163,8 +163,112 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="flex min-h-screen w-full bg-white font-sans">
-      {/* Left Section - Form */}
+    <div className="flex min-h-screen w-full bg-white font-sans text-gray-900">
+
+      {/* Visual Section - Now on LEFT */}
+      <div className="hidden lg:flex lg:w-1/2 bg-[#09090b] relative flex-col justify-between p-12 overflow-hidden border-r border-white/5">
+
+        {/* Animated Background Grid */}
+        <div className="absolute inset-0 z-0 opacity-20">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+          <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[500px] w-[500px] rounded-full bg-white opacity-[0.05] blur-[100px]"></div>
+        </div>
+
+        {/* Top Status Bar */}
+        <div className="relative z-10 flex justify-start">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[10px] font-medium text-zinc-400 uppercase tracking-wider">System Online</span>
+          </div>
+        </div>
+
+        {/* Center Hero: Floating Abstract V */}
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            className="relative w-80 h-80 flex items-center justify-center"
+          >
+            {/* Ambient Glow */}
+            <div className="absolute inset-0 bg-white/5 blur-3xl rounded-full animate-pulse-slow"></div>
+
+            {/* Floating Logo Container */}
+            <motion.div
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+              className="relative z-10"
+            >
+              {/* Geometric V Logo constructed from SVG */}
+              <svg width="180" height="180" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-2xl">
+                <path d="M60 40L100 140L140 40H170L100 190L30 40H60Z" fill="url(#paint0_linear)" stroke="white" strokeOpacity="0.1" />
+                <path d="M75 55L100 115L125 55" fill="black" fillOpacity="0.2" />
+                <defs>
+                  <linearGradient id="paint0_linear" x1="100" y1="40" x2="100" y2="190" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="white" />
+                    <stop offset="1" stopColor="#52525b" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </motion.div>
+
+            {/* Orbiting Elements */}
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 border border-white/5 rounded-full border-dashed opacity-50"
+            />
+            <motion.div
+              animate={{ rotate: -360 }}
+              transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-10 border border-white/5 rounded-full opacity-30"
+            />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="text-center mt-8 space-y-4"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tighter">
+              Visualise the <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-b from-zinc-400 to-zinc-700">impossible.</span>
+            </h2>
+          </motion.div>
+        </div>
+
+        {/* Bottom Card - Glassmorphic Status */}
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="relative z-10 mx-auto w-full max-w-sm"
+        >
+          <div className="bg-[#18181b]/80 backdrop-blur-xl border border-white/10 p-5 rounded-2xl shadow-2xl flex items-center gap-4 group hover:border-white/20 transition-colors">
+            <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-lg relative overflow-hidden">
+              <SafeIcon icon={FiZap} className="w-6 h-6 text-black z-10" />
+              <div className="absolute inset-0 bg-gradient-to-tr from-zinc-200 to-transparent opacity-50"></div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-sm font-bold truncate">New Generation</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                <p className="text-xs text-zinc-500 font-mono">PROCESSING_REQUEST...</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-zinc-500 font-bold">0.4s</p>
+            </div>
+          </div>
+        </motion.div>
+
+      </div>
+
+      {/* Form Section - Now on RIGHT */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center px-6 sm:px-12 xl:px-24 bg-white relative z-10">
         <div className="w-full max-w-md space-y-8">
           {/* Logo & Header */}
@@ -235,7 +339,7 @@ const LoginPage = () => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="btn-black flex items-center justify-center gap-2 group w-full py-4 text-lg disabled:opacity-70"
+                    className="flex items-center justify-center gap-2 group w-full py-4 text-lg font-bold bg-black text-white rounded-xl hover:bg-gray-900 disabled:opacity-70 transition-all shadow-lg"
                   >
                     {loading ? (
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -266,7 +370,7 @@ const LoginPage = () => {
                         value={digit}
                         onChange={(e) => handleOtpChange(i, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(i, e)}
-                        className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-black focus:bg-white transition-all outline-none caret-black selection:bg-black/20"
+                        className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-bold bg-gray-50 border-2 border-gray-200 rounded-xl text-gray-900 focus:border-black focus:bg-white transition-all outline-none caret-black"
                       />
                     ))}
                   </div>
@@ -274,7 +378,7 @@ const LoginPage = () => {
                     <button
                       type="submit"
                       disabled={loading || otp.join('').length !== 6}
-                      className="btn-black py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                      className="py-4 text-lg font-bold bg-black text-white rounded-xl hover:bg-gray-900 disabled:opacity-70 flex items-center justify-center transition-all shadow-lg"
                     >
                       {loading ? (
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -296,7 +400,7 @@ const LoginPage = () => {
                         <button
                           type="button"
                           onClick={handleResendCode}
-                          className="font-semibold text-black hover:underline"
+                          className="font-bold text-black hover:underline"
                           disabled={loading}
                         >
                           Resend Code
@@ -309,108 +413,10 @@ const LoginPage = () => {
             </AnimatePresence>
 
             <p className="pt-8 text-center text-xs text-gray-400 leading-relaxed">
-              By continuing,you agree to Velos's <br />
-              <a href="/terms-of-service" className="underline hover:text-gray-600 mx-1">Terms of Service</a> and <a href="/privacy-policy" className="underline hover:text-gray-600 mx-1">Privacy Policy</a>.
+              By continuing, you agree to Velos's <br />
+              <a href="/terms-of-service" className="underline hover:text-gray-600 mx-1 transition-colors">Terms of Service</a> and <a href="/privacy-policy" className="underline hover:text-gray-600 mx-1 transition-colors">Privacy Policy</a>.
             </p>
           </div>
-        </div>
-      </div>
-
-      {/* Right Section - EXACT Reference Clone with "V" */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[#050505] relative flex-col justify-between p-12 overflow-hidden">
-        {/* Background Elements */}
-        <div className="absolute top-0 right-0 w-full h-[60%] bg-gradient-to-b from-[#111] to-transparent pointer-events-none opacity-50"></div>
-        {/* Diagonal Beam */}
-        <div className="absolute top-[-20%] right-[-10%] w-[1px] h-[150%] bg-gradient-to-b from-transparent via-white/10 to-transparent transform rotate-45 pointer-events-none"></div>
-        <div className="absolute top-[-30%] right-[10%] w-[1px] h-[150%] bg-gradient-to-b from-transparent via-white/5 to-transparent transform rotate-45 pointer-events-none"></div>
-
-        {/* Top: Large Geometric "V" Logo */}
-        <div className="relative z-10 flex-1 flex flex-col justify-center items-center mt-[-40px]">
-          <div className="w-[300px] h-[300px] relative flex items-center justify-center">
-            {/* The V Shape */}
-            <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-2xl opacity-90">
-              <defs>
-                <linearGradient id="v-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#333" />
-                  <stop offset="50%" stopColor="#1a1a1a" />
-                  <stop offset="100%" stopColor="#000" />
-                </linearGradient>
-                <filter id="glow">
-                  <feGaussianBlur stdDeviation="4" result="coloredBlur" />
-                  <feMerge>
-                    <feMergeNode in="coloredBlur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
-              {/* Main V Structure */}
-              <path
-                d="M40,40 L100,180 L160,40 L130,40 L100,120 L70,40 Z"
-                fill="url(#v-gradient)"
-                stroke="rgba(255,255,255,0.1)"
-                strokeWidth="1"
-                filter="url(#glow)"
-                className="drop-shadow-2xl"
-              />
-              {/* Inner darker V for depth */}
-              <path d="M75,50 L100,110 L125,50" fill="#0a0a0a" opacity="0.8" />
-            </svg>
-            {/* Ambient Glow behind logo */}
-            <div className="absolute inset-0 bg-white/5 blur-[100px] rounded-full pointer-events-none"></div>
-          </div>
-
-          {/* Middle Content */}
-          <div className="w-full max-w-sm mt-8 space-y-6">
-            <div className="space-y-4">
-              <h1 className="text-4xl font-bold text-white leading-tight">
-                Welcome to Velos
-              </h1>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Velos helps marketers to build high-converting ad creatives using advanced AI models.
-              </p>
-              <p className="text-gray-500 text-xs mt-4">
-                More than 17k people joined us,it's your turn
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Card Section */}
-        <div className="relative z-10 w-full max-w-md mx-auto mt-12">
-          <div className="bg-[#1c1c1e] rounded-[2rem] p-8 pb-10 relative overflow-hidden group border border-white/5">
-            {/* Card Content */}
-            <div className="relative z-10">
-              <h3 className="text-2xl font-semibold text-white mb-2">
-                Generate your first <br /> ad creative now
-              </h3>
-              <p className="text-gray-400 text-sm max-w-[240px] leading-relaxed">
-                Be among the first founders to experience the easiest way to generate ads.
-              </p>
-
-              {/* Avatar Group */}
-              <div className="flex items-center gap-3 mt-8 justify-end">
-                <div className="flex -space-x-4">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="w-10 h-10 rounded-full border-2 border-[#1c1c1e] bg-gray-700 overflow-hidden relative">
-                      <img
-                        src={`https://i.pravatar.cc/100?img=${10 + i}`}
-                        alt="User"
-                        className="w-full h-full object-cover grayscale opacity-80 hover:opacity-100 transition-opacity"
-                      />
-                    </div>
-                  ))}
-                  <div className="w-10 h-10 rounded-full border-2 border-[#1c1c1e] bg-white text-black flex items-center justify-center text-xs font-bold z-10">
-                    +2k
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/* Decorative Card Elements */}
-            <div className="absolute right-[-20px] top-[-20px] w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
-            <div className="absolute left-[-20px] bottom-[-20px] w-40 h-40 bg-black/20 rounded-full blur-2xl pointer-events-none"></div>
-          </div>
-          {/* Card decorative line connection */}
-          <div className="absolute right-[-100px] bottom-[50%] w-[100px] h-[1px] bg-gradient-to-l from-transparent to-indigo-500/50"></div>
         </div>
       </div>
     </div>
