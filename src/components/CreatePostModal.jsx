@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -7,7 +7,7 @@ import { format, addMinutes, setHours, setMinutes } from 'date-fns';
 import * as FiIcons from 'react-icons/fi';
 import EmojiPicker from 'emoji-picker-react';
 import SafeIcon from '../common/SafeIcon';
-import { schedulerAPI } from '../lib/api';
+import { schedulerAPI, instagramAPI } from '../lib/api';
 import { getUserId } from '../lib/velosStorage';
 
 const { FiX, FiImage, FiVideo, FiUpload, FiInstagram, FiCalendar, FiClock, FiCheck, FiTrash2, FiPlay, FiChevronDown, FiChevronLeft, FiChevronRight, FiStar, FiZap, FiSend, FiSmile, FiTag, FiMusic, FiMessageCircle, FiHash } = FiIcons;
@@ -46,6 +46,33 @@ const CreatePostModal = ({ isOpen, onClose, onSuccess, selectedDate = null }) =>
   const [showMusicInput, setShowMusicInput] = useState(false);
   const [showProductsInput, setShowProductsInput] = useState(false);
   const textareaRef = useRef(null);
+
+  // Account selection
+  const [socialAccounts, setSocialAccounts] = useState([]);
+  const [selectedAccount, setSelectedAccount] = useState('');
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+
+  // Fetch Instagram accounts on mount
+  useEffect(() => {
+    const loadAccounts = async () => {
+      if (!userId) return;
+      setLoadingAccounts(true);
+      try {
+        const result = await instagramAPI.getSocialAccounts(userId);
+        if (result.success && result.accounts?.length > 0) {
+          setSocialAccounts(result.accounts);
+          setSelectedAccount(result.accounts[0].accountId);
+        }
+      } catch (err) {
+        console.error('Error loading social accounts:', err);
+      } finally {
+        setLoadingAccounts(false);
+      }
+    };
+    if (isOpen) {
+      loadAccounts();
+    }
+  }, [userId, isOpen]);
 
   const handleEmojiClick = (emojiData) => {
     const emoji = emojiData.emoji;
@@ -161,6 +188,12 @@ const CreatePostModal = ({ isOpen, onClose, onSuccess, selectedDate = null }) =>
     setIsSubmitting(true);
     setError('');
 
+    // Validate account selection
+    if (!selectedAccount) {
+      setError('Please select an Instagram account');
+      return;
+    }
+
     try {
       const isCarousel = mediaList.length > 1 && postType === 'carousel';
       const mediaPayload = isCarousel
@@ -169,6 +202,7 @@ const CreatePostModal = ({ isOpen, onClose, onSuccess, selectedDate = null }) =>
 
       const result = await schedulerAPI.createManualPost({
         userId,
+        accountId: selectedAccount,
         media: mediaPayload,
         caption,
         hashtags,
@@ -329,6 +363,56 @@ const CreatePostModal = ({ isOpen, onClose, onSuccess, selectedDate = null }) =>
                     </button>
                   )}
                 </div>
+              </section>
+
+              {/* Account Selection */}
+              <section>
+                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-3 block">
+                  <SafeIcon icon={FiInstagram} className="w-3.5 h-3.5 inline mr-1.5" />
+                  Post To
+                </label>
+                {loadingAccounts ? (
+                  <div className="flex items-center gap-2 p-3 bg-zinc-900/50 border border-white/5 rounded-xl">
+                    <div className="w-4 h-4 border-2 border-zinc-600 border-t-white rounded-full animate-spin" />
+                    <span className="text-xs text-zinc-500">Loading accounts...</span>
+                  </div>
+                ) : socialAccounts.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-2">
+                    {socialAccounts.map((acc) => (
+                      <button
+                        key={acc.accountId}
+                        type="button"
+                        onClick={() => setSelectedAccount(acc.accountId)}
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${selectedAccount === acc.accountId
+                            ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/40'
+                            : 'bg-zinc-900/50 border-white/5 hover:border-white/20'
+                          }`}
+                      >
+                        {acc.profilePictureUrl ? (
+                          <img src={acc.profilePictureUrl} alt="" className="w-8 h-8 rounded-full ring-2 ring-white/10" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">{acc.instagramUsername?.[0]?.toUpperCase() || 'U'}</span>
+                          </div>
+                        )}
+                        <div className="flex-1 text-left">
+                          <p className="text-sm font-medium text-white">@{acc.instagramUsername || acc.pageName}</p>
+                        </div>
+                        {selectedAccount === acc.accountId && (
+                          <div className="w-5 h-5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                            <SafeIcon icon={FiCheck} className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                    <p className="text-xs text-amber-400">
+                      No Instagram accounts connected. Go to Settings to connect.
+                    </p>
+                  </div>
+                )}
               </section>
 
               {/* Text Fields */}
