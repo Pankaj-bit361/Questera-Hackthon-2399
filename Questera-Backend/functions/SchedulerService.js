@@ -30,6 +30,11 @@ class SchedulerService {
       postType = 'image',
       campaignId,
       contentJobId,
+      // Buffer-like features
+      music = '',
+      tagProducts = '',
+      firstComment = '',
+      videoUrl,
     } = postData;
 
     // Validate social account - check SocialAccount first, then Instagram collection
@@ -60,6 +65,7 @@ class SchedulerService {
       platform,
       imageUrl,
       imageUrls: imageUrls || [],
+      videoUrl: videoUrl || null,
       caption,
       hashtags: hashtags || '',
       scheduledAt: new Date(scheduledAt),
@@ -68,6 +74,10 @@ class SchedulerService {
       campaignId,
       contentJobId,
       status: 'scheduled',
+      // Buffer-like features
+      music: music || '',
+      tagProducts: tagProducts || '',
+      firstComment: firstComment || '',
     });
 
     console.log('📅 [SCHEDULER] Post scheduled for:', post.scheduledAt);

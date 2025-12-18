@@ -39,6 +39,19 @@ const scheduledPostSchema = new mongoose.Schema({
     enum: ['image', 'carousel', 'video', 'reel', 'story'],
     default: 'image',
   },
+  // Buffer-like features
+  music: {
+    type: String,
+    default: '',
+  },
+  tagProducts: {
+    type: String,
+    default: '',
+  },
+  firstComment: {
+    type: String,
+    default: '',
+  },
   // Campaign reference
   campaignId: {
     type: String,
