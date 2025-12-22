@@ -89,10 +89,10 @@ instagramRouter.get('/facebook-pages/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Find user's Instagram connection to get access token
-    const instagramDoc = await Instagram.findOne({ userId, isConnected: true });
+    // Find all user's Instagram connections
+    const instagramDocs = await Instagram.find({ userId, isConnected: true });
 
-    if (!instagramDoc) {
+    if (!instagramDocs || instagramDocs.length === 0) {
       return res.status(200).json({
         success: true,
         pages: [],
@@ -100,41 +100,84 @@ instagramRouter.get('/facebook-pages/:userId', async (req, res) => {
       });
     }
 
-    // Get access token from main doc or first account
-    let accessToken = instagramDoc.accessToken;
-    if (!accessToken && instagramDoc.accounts?.length > 0) {
-      accessToken = instagramDoc.accounts[0].accessToken;
+    // Collect all Facebook Pages from connected accounts
+    const pagesMap = new Map();
+
+    for (const doc of instagramDocs) {
+      // Check accounts array first (multi-account)
+      if (doc.accounts && doc.accounts.length > 0) {
+        for (const account of doc.accounts) {
+          if (account.facebookPageId && account.isConnected !== false) {
+            // Try to get page details from Facebook Graph API
+            let pageDetails = {
+              id: account.facebookPageId,
+              name: account.facebookPageName || 'Facebook Page',
+              picture: null,
+              category: null,
+              fanCount: 0,
+              hasInstagram: true,
+              instagramId: account.instagramBusinessAccountId,
+              instagramUsername: account.instagramUsername,
+            };
+
+            // Fetch additional page details if we have access token
+            if (account.accessToken) {
+              try {
+                const pageResponse = await fetch(
+                  `https://graph.facebook.com/v21.0/${account.facebookPageId}?fields=id,name,picture,category,fan_count&access_token=${account.accessToken}`
+                );
+                const pageData = await pageResponse.json();
+                if (!pageData.error) {
+                  pageDetails.name = pageData.name || pageDetails.name;
+                  pageDetails.picture = pageData.picture?.data?.url || null;
+                  pageDetails.category = pageData.category || null;
+                  pageDetails.fanCount = pageData.fan_count || 0;
+                }
+              } catch (e) {
+                console.log('[INSTAGRAM] Could not fetch page details:', e.message);
+              }
+            }
+
+            pagesMap.set(account.facebookPageId, pageDetails);
+          }
+        }
+      }
+
+      // Also check single account fields (backward compatibility)
+      if (doc.facebookPageId && !pagesMap.has(doc.facebookPageId)) {
+        let pageDetails = {
+          id: doc.facebookPageId,
+          name: doc.facebookPageName || 'Facebook Page',
+          picture: null,
+          category: null,
+          fanCount: 0,
+          hasInstagram: true,
+          instagramId: doc.instagramBusinessAccountId,
+          instagramUsername: doc.instagramUsername,
+        };
+
+        if (doc.accessToken) {
+          try {
+            const pageResponse = await fetch(
+              `https://graph.facebook.com/v21.0/${doc.facebookPageId}?fields=id,name,picture,category,fan_count&access_token=${doc.accessToken}`
+            );
+            const pageData = await pageResponse.json();
+            if (!pageData.error) {
+              pageDetails.name = pageData.name || pageDetails.name;
+              pageDetails.picture = pageData.picture?.data?.url || null;
+              pageDetails.category = pageData.category || null;
+              pageDetails.fanCount = pageData.fan_count || 0;
+            }
+          } catch (e) {
+            console.log('[INSTAGRAM] Could not fetch page details:', e.message);
+          }
+        }
+
+        pagesMap.set(doc.facebookPageId, pageDetails);
+      }
     }
 
-    if (!accessToken) {
-      return res.status(200).json({
-        success: true,
-        pages: [],
-        message: 'No access token available'
-      });
-    }
-
-    // Fetch Facebook Pages from Meta Graph API
-    const pagesResponse = await fetch(
-      `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,picture,category,fan_count,instagram_business_account&access_token=${accessToken}`
-    );
-    const pagesData = await pagesResponse.json();
-
-    if (pagesData.error) {
-      console.error('[INSTAGRAM] Facebook Pages API error:', pagesData.error);
-      return res.status(400).json({ error: pagesData.error.message });
-    }
-
-    // Format pages for frontend
-    const pages = (pagesData.data || []).map(page => ({
-      id: page.id,
-      name: page.name,
-      picture: page.picture?.data?.url || null,
-      category: page.category,
-      fanCount: page.fan_count || 0,
-      hasInstagram: !!page.instagram_business_account,
-      instagramId: page.instagram_business_account?.id || null,
-    }));
+    const pages = Array.from(pagesMap.values());
 
     return res.status(200).json({
       success: true,

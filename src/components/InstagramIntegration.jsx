@@ -14,7 +14,7 @@ const InstagramIntegration = ({ userId }) => {
   const [disconnecting, setDisconnecting] = useState(null);
   const [error, setError] = useState('');
   const [showConnectionModal, setShowConnectionModal] = useState(false);
-  const [showFacebookPages, setShowFacebookPages] = useState(false);
+  const [showFacebookPages, setShowFacebookPages] = useState(true); // Default open for Meta review
 
   useEffect(() => {
     checkConnection();
