@@ -312,11 +312,6 @@ const InstagramIntegration = ({ userId }) => {
                                     </div>
                                   </div>
 
-                                  {/* Permission Badge */}
-                                  <div className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded inline-block">
-                                    ✓ pages_read_engagement active
-                                  </div>
-
                                   {/* Page Posts */}
                                   <div>
                                     <h5 className="text-zinc-400 text-xs font-medium mb-2 flex items-center gap-1">
