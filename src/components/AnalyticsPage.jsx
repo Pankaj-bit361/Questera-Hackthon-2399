@@ -882,17 +882,27 @@ const CommentsTab = ({ userId, selectedAccount }) => {
   };
 
   const handleDelete = async (commentId) => {
-    if (!confirm('Are you sure you want to delete this comment?')) return;
+    if (!confirm('Are you sure you want to delete this?')) return;
     try {
       const result = await analyticsAPI.deleteComment(userId, commentId, selectedAccount?.igBusinessId);
       if (result.success) {
-        setComments(comments.filter(c => c.id !== commentId));
+        // Check if it's a main comment or a reply
+        const isMainComment = comments.some(c => c.id === commentId);
+        if (isMainComment) {
+          setComments(comments.filter(c => c.id !== commentId));
+        } else {
+          // It's a reply, remove it from the parent comment
+          setComments(comments.map(c => ({
+            ...c,
+            replies: c.replies?.filter(r => r.id !== commentId) || []
+          })));
+        }
       } else {
-        alert(result.error || 'Failed to delete comment');
+        alert(result.error || 'Failed to delete');
       }
     } catch (error) {
       console.error('Error deleting:', error);
-      alert('Failed to delete comment');
+      alert('Failed to delete');
     }
   };
 
@@ -1022,9 +1032,17 @@ const CommentsTab = ({ userId, selectedAccount }) => {
                   {comment.replies && comment.replies.length > 0 && (
                     <div className="mt-3 ml-4 space-y-2 border-l-2 border-zinc-800 pl-4">
                       {comment.replies.map((reply) => (
-                        <div key={reply.id} className="text-sm">
-                          <span className="font-medium text-blue-400">@{reply.username}</span>
-                          <span className="text-zinc-500 text-xs ml-2">{formatTime(reply.timestamp)}</span>
+                        <div key={reply.id} className="text-sm group">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-blue-400">@{reply.username}</span>
+                            <span className="text-zinc-500 text-xs">{formatTime(reply.timestamp)}</span>
+                            <button
+                              onClick={() => handleDelete(reply.id)}
+                              className="text-xs text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
+                            >
+                              <SafeIcon icon={FiTrash2} className="w-3 h-3" /> Delete
+                            </button>
+                          </div>
                           <p className="text-zinc-400 mt-1">{reply.text}</p>
                         </div>
                       ))}
