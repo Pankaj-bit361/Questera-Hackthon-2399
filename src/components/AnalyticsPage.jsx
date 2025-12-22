@@ -7,7 +7,7 @@ import Sidebar from './Sidebar';
 import { analyticsAPI } from '../lib/api';
 import { getUserId } from '../lib/velosStorage';
 
-const { FiChevronLeft, FiRefreshCw, FiTrendingUp, FiHeart, FiEye, FiMessageCircle, FiClock, FiCalendar, FiHash, FiAward, FiBarChart2, FiPlay, FiImage, FiInstagram, FiChevronDown, FiExternalLink, FiGrid, FiSend, FiTrash2, FiCornerDownRight, FiUser, FiThumbsUp, FiEdit2 } = FiIcons;
+const { FiChevronLeft, FiRefreshCw, FiTrendingUp, FiHeart, FiEye, FiEyeOff, FiMessageCircle, FiClock, FiCalendar, FiHash, FiAward, FiBarChart2, FiPlay, FiImage, FiInstagram, FiChevronDown, FiExternalLink, FiGrid, FiSend, FiTrash2, FiCornerDownRight, FiUser, FiThumbsUp } = FiIcons;
 
 const AnalyticsPage = () => {
   const navigate = useNavigate();
@@ -838,11 +838,10 @@ const CommentsTab = ({ userId, selectedAccount }) => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState(null);
-  const [editingComment, setEditingComment] = useState(null);
   const [replyText, setReplyText] = useState('');
-  const [editText, setEditText] = useState('');
   const [sending, setSending] = useState(false);
   const [accountName, setAccountName] = useState('');
+  const [hidingComment, setHidingComment] = useState(null);
 
   useEffect(() => {
     fetchComments();
@@ -908,40 +907,31 @@ const CommentsTab = ({ userId, selectedAccount }) => {
     }
   };
 
-  const handleEdit = async (commentId) => {
-    if (!editText.trim()) return;
-    setSending(true);
+  const handleHide = async (commentId, currentlyHidden) => {
+    setHidingComment(commentId);
     try {
-      const result = await analyticsAPI.editComment(userId, commentId, editText, selectedAccount?.igBusinessId);
+      const result = await analyticsAPI.hideComment(userId, commentId, !currentlyHidden, selectedAccount?.igBusinessId);
       if (result.success) {
-        // Update the comment text locally
+        // Update the comment hidden status locally
         setComments(comments.map(c => {
           if (c.id === commentId) {
-            return { ...c, text: editText };
+            return { ...c, hidden: !currentlyHidden };
           }
           // Check replies too
           return {
             ...c,
-            replies: c.replies?.map(r => r.id === commentId ? { ...r, text: editText } : r) || []
+            replies: c.replies?.map(r => r.id === commentId ? { ...r, hidden: !currentlyHidden } : r) || []
           };
         }));
-        setEditText('');
-        setEditingComment(null);
       } else {
-        alert(result.error || 'Failed to edit comment');
+        alert(result.error || 'Failed to hide/unhide comment');
       }
     } catch (error) {
-      console.error('Error editing:', error);
-      alert('Failed to edit comment');
+      console.error('Error hiding:', error);
+      alert('Failed to hide/unhide comment');
     } finally {
-      setSending(false);
+      setHidingComment(null);
     }
-  };
-
-  const startEditing = (commentId, currentText) => {
-    setEditingComment(commentId);
-    setEditText(currentText);
-    setReplyingTo(null);
   };
 
   const formatTime = (timestamp) => {
@@ -1023,15 +1013,26 @@ const CommentsTab = ({ userId, selectedAccount }) => {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-zinc-300 mb-2">{comment.text}</p>
+                  <p className={`text-sm mb-2 ${comment.hidden ? 'text-zinc-500 italic' : 'text-zinc-300'}`}>
+                    {comment.hidden && <span className="text-amber-400 text-xs mr-2">[Hidden]</span>}
+                    {comment.text}
+                  </p>
 
-                  {/* Actions - Edit only shown for own comments (username matches account) */}
+                  {/* Actions */}
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={() => { setReplyingTo(replyingTo === comment.id ? null : comment.id); setEditingComment(null); }}
+                      onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
                       className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
                     >
                       <SafeIcon icon={FiCornerDownRight} className="w-3 h-3" /> Reply
+                    </button>
+                    <button
+                      onClick={() => handleHide(comment.id, comment.hidden)}
+                      disabled={hidingComment === comment.id}
+                      className={`text-xs flex items-center gap-1 ${comment.hidden ? 'text-emerald-400 hover:text-emerald-300' : 'text-amber-400 hover:text-amber-300'}`}
+                    >
+                      <SafeIcon icon={comment.hidden ? FiEye : FiEyeOff} className="w-3 h-3" />
+                      {hidingComment === comment.id ? '...' : (comment.hidden ? 'Unhide' : 'Hide')}
                     </button>
                     <button
                       onClick={() => handleDelete(comment.id)}
@@ -1066,11 +1067,10 @@ const CommentsTab = ({ userId, selectedAccount }) => {
                     </motion.div>
                   )}
 
-                  {/* Existing Replies - Edit only for own replies (from connected account) */}
+                  {/* Existing Replies */}
                   {comment.replies && comment.replies.length > 0 && (
                     <div className="mt-3 ml-4 space-y-2 border-l-2 border-zinc-800 pl-4">
                       {comment.replies.map((reply) => {
-                        // Check if this reply is from the connected account (can be edited)
                         const isOwnReply = reply.username?.toLowerCase() === accountName?.toLowerCase() ||
                                           reply.username?.toLowerCase() === selectedAccount?.username?.toLowerCase();
                         return (
@@ -1080,15 +1080,15 @@ const CommentsTab = ({ userId, selectedAccount }) => {
                                 @{reply.username} {isOwnReply && <span className="text-[10px] text-emerald-500">(You)</span>}
                               </span>
                               <span className="text-zinc-500 text-xs">{formatTime(reply.timestamp)}</span>
-                              {/* Edit button - only for own replies */}
-                              {isOwnReply && (
-                                <button
-                                  onClick={() => startEditing(reply.id, reply.text)}
-                                  className="text-xs text-amber-400 hover:text-amber-300 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
-                                >
-                                  <SafeIcon icon={FiEdit2} className="w-3 h-3" /> Edit
-                                </button>
-                              )}
+                              {/* Hide/Unhide button */}
+                              <button
+                                onClick={() => handleHide(reply.id, reply.hidden)}
+                                disabled={hidingComment === reply.id}
+                                className={`text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 ${reply.hidden ? 'text-emerald-400 hover:text-emerald-300' : 'text-amber-400 hover:text-amber-300'}`}
+                              >
+                                <SafeIcon icon={reply.hidden ? FiEye : FiEyeOff} className="w-3 h-3" />
+                                {hidingComment === reply.id ? '...' : (reply.hidden ? 'Unhide' : 'Hide')}
+                              </button>
                               <button
                                 onClick={() => handleDelete(reply.id)}
                                 className="text-xs text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
@@ -1096,37 +1096,10 @@ const CommentsTab = ({ userId, selectedAccount }) => {
                                 <SafeIcon icon={FiTrash2} className="w-3 h-3" /> Delete
                               </button>
                             </div>
-                            {editingComment === reply.id && isOwnReply ? (
-                              <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className="mt-1 flex gap-2"
-                              >
-                                <input
-                                  type="text"
-                                  value={editText}
-                                  onChange={(e) => setEditText(e.target.value)}
-                                  className="flex-1 bg-zinc-800 border border-blue-500/50 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"
-                                  onKeyDown={(e) => e.key === 'Enter' && handleEdit(reply.id)}
-                                  autoFocus
-                                />
-                                <button
-                                  onClick={() => handleEdit(reply.id)}
-                                  disabled={sending}
-                                  className="px-2 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium disabled:opacity-50"
-                                >
-                                  {sending ? '...' : 'Save'}
-                                </button>
-                                <button
-                                  onClick={() => { setEditingComment(null); setEditText(''); }}
-                                  className="px-2 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-xs font-medium"
-                                >
-                                  ✕
-                                </button>
-                              </motion.div>
-                            ) : (
-                              <p className="text-zinc-400 mt-1">{reply.text}</p>
-                            )}
+                            <p className={`mt-1 ${reply.hidden ? 'text-zinc-500 italic' : 'text-zinc-400'}`}>
+                              {reply.hidden && <span className="text-amber-400 text-xs mr-2">[Hidden]</span>}
+                              {reply.text}
+                            </p>
                           </div>
                         );
                       })}

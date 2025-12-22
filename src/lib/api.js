@@ -611,12 +611,12 @@ export const analyticsAPI = {
     return response.json();
   },
 
-  // Edit a comment
-  editComment: async (userId, commentId, message, accountId = null) => {
+  // Hide or unhide a comment
+  hideComment: async (userId, commentId, hide, accountId = null) => {
     const response = await fetch(`${API_BASE_URL}/analytics/comments/${userId}/${commentId}`, {
       method: 'PUT',
       headers: headers(),
-      body: JSON.stringify({ message, account: accountId }),
+      body: JSON.stringify({ hide, account: accountId }),
     });
     return response.json();
   },

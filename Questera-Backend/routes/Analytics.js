@@ -749,15 +749,15 @@ analyticsRouter.delete('/comments/:userId/:commentId', async (req, res) => {
 
 /**
  * PUT /analytics/comments/:userId/:commentId
- * Edit a comment (only works for comments made by the app)
+ * Hide or unhide a comment (Instagram API only supports hide, not edit text)
  */
 analyticsRouter.put('/comments/:userId/:commentId', async (req, res) => {
   try {
     const { userId, commentId } = req.params;
-    const { message, account } = req.body;
+    const { hide, account } = req.body;
 
-    if (!message) {
-      return res.status(400).json({ error: 'message is required' });
+    if (typeof hide !== 'boolean') {
+      return res.status(400).json({ error: 'hide parameter (true/false) is required' });
     }
 
     // Find account credentials
@@ -795,13 +795,13 @@ analyticsRouter.put('/comments/:userId/:commentId', async (req, res) => {
       return res.status(400).json({ error: 'No Instagram account connected' });
     }
 
-    // Update comment using Instagram Graph API
+    // Hide/unhide comment using Instagram Graph API
     const updateUrl = `https://graph.facebook.com/v21.0/${commentId}`;
     const updateResponse = await fetch(updateUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: message,
+        hide: hide,
         access_token: accessToken,
       }),
     });
@@ -814,10 +814,11 @@ analyticsRouter.put('/comments/:userId/:commentId', async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Comment updated successfully',
+      hidden: hide,
+      message: hide ? 'Comment hidden successfully' : 'Comment unhidden successfully',
     });
   } catch (error) {
-    console.error('[ANALYTICS] Edit Comment Error:', error);
+    console.error('[ANALYTICS] Hide Comment Error:', error);
     return res.status(500).json({ error: error.message });
   }
 });
