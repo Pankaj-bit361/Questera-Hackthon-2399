@@ -189,9 +189,13 @@ const AnalyticsPage = () => {
               onChange={(e) => setDateRange(Number(e.target.value))}
               className="bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-white/20"
             >
+              <option value={1}>Today</option>
               <option value={7}>Last 7 days</option>
               <option value={30}>Last 30 days</option>
-              <option value={90}>Last 90 days</option>
+              <option value={90}>Last 3 months</option>
+              <option value={180}>Last 6 months</option>
+              <option value={365}>Last year</option>
+              <option value={9999}>All time</option>
             </select>
             <button
               onClick={handleRefresh}
@@ -228,7 +232,7 @@ const AnalyticsPage = () => {
           </div>
         ) : (
           <>
-            {activeTab === 'overview' && <OverviewTab instagramData={instagramData} dashboard={dashboard} formatNumber={formatNumber} />}
+            {activeTab === 'overview' && <OverviewTab instagramData={instagramData} dashboard={dashboard} formatNumber={formatNumber} dateRange={dateRange} />}
             {activeTab === 'timing' && <TimingTab bestTimes={bestTimes} />}
             {activeTab === 'content' && <ContentTab contentAnalysis={contentAnalysis} />}
           </>
@@ -239,16 +243,37 @@ const AnalyticsPage = () => {
 };
 
 // Overview Tab Component - Now shows Instagram data directly
-const OverviewTab = ({ instagramData, dashboard, formatNumber }) => {
+const OverviewTab = ({ instagramData, dashboard, formatNumber, dateRange }) => {
   const [visiblePosts, setVisiblePosts] = useState(9);
 
   // Use Instagram data if available, fallback to dashboard
-  const posts = instagramData?.posts || [];
-  const totals = instagramData?.totals || {};
+  const allPosts = instagramData?.posts || [];
   const overview = dashboard?.overview || {};
   const accountName = instagramData?.account?.username;
 
-  // Calculate stats from Instagram data or fall back to dashboard
+  // Filter posts by date range
+  const filterByDateRange = (posts, days) => {
+    if (days >= 9999) return posts; // All time
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    return posts.filter(post => {
+      const postDate = new Date(post.timestamp);
+      return postDate >= cutoffDate;
+    });
+  };
+
+  const posts = filterByDateRange(allPosts, dateRange);
+
+  // Calculate totals from filtered posts
+  const totals = posts.reduce((acc, p) => ({
+    likes: acc.likes + (p.likes || 0),
+    comments: acc.comments + (p.comments || 0),
+    views: acc.views + (p.views || 0),
+    reach: acc.reach + (p.reach || 0),
+    saves: acc.saves + (p.saves || 0),
+  }), { likes: 0, comments: 0, views: 0, reach: 0, saves: 0 });
+
+  // Calculate stats from filtered posts
   const totalPosts = posts.length || overview.totalPosts || 0;
   const totalEngagement = (totals.likes || 0) + (totals.comments || 0) + (totals.saves || 0) || overview.totalEngagement || 0;
   const totalViews = totals.views || overview.totalImpressions || 0;
