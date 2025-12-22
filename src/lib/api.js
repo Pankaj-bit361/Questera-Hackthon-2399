@@ -579,6 +579,37 @@ export const analyticsAPI = {
     });
     return response.json();
   },
+
+  // Get comments for all recent posts
+  getComments: async (userId, accountId = null, limit = 50) => {
+    let url = `${API_BASE_URL}/analytics/comments/${userId}?limit=${limit}`;
+    if (accountId) url += `&account=${accountId}`;
+    const response = await fetch(url, {
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Reply to a comment
+  replyToComment: async (userId, commentId, message, accountId = null) => {
+    const response = await fetch(`${API_BASE_URL}/analytics/comments/${userId}/reply`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ commentId, message, account: accountId }),
+    });
+    return response.json();
+  },
+
+  // Delete a comment
+  deleteComment: async (userId, commentId, accountId = null) => {
+    let url = `${API_BASE_URL}/analytics/comments/${userId}/${commentId}`;
+    if (accountId) url += `?account=${accountId}`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: headers(),
+    });
+    return response.json();
+  },
 };
 
 /**

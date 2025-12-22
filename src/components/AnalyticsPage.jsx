@@ -7,7 +7,7 @@ import Sidebar from './Sidebar';
 import { analyticsAPI } from '../lib/api';
 import { getUserId } from '../lib/velosStorage';
 
-const { FiChevronLeft, FiRefreshCw, FiTrendingUp, FiHeart, FiEye, FiMessageCircle, FiClock, FiCalendar, FiHash, FiAward, FiBarChart2, FiPlay, FiImage, FiInstagram, FiChevronDown, FiExternalLink, FiGrid } = FiIcons;
+const { FiChevronLeft, FiRefreshCw, FiTrendingUp, FiHeart, FiEye, FiMessageCircle, FiClock, FiCalendar, FiHash, FiAward, FiBarChart2, FiPlay, FiImage, FiInstagram, FiChevronDown, FiExternalLink, FiGrid, FiSend, FiTrash2, FiCornerDownRight, FiUser, FiThumbsUp } = FiIcons;
 
 const AnalyticsPage = () => {
   const navigate = useNavigate();
@@ -114,6 +114,7 @@ const AnalyticsPage = () => {
     { id: 'overview', label: 'Overview', icon: FiBarChart2 },
     { id: 'timing', label: 'Best Times', icon: FiClock },
     { id: 'content', label: 'Content', icon: FiHash },
+    { id: 'comments', label: 'Comments', icon: FiMessageCircle },
   ];
 
   const formatNumber = (num) => {
@@ -235,6 +236,7 @@ const AnalyticsPage = () => {
             {activeTab === 'overview' && <OverviewTab instagramData={instagramData} dashboard={dashboard} formatNumber={formatNumber} dateRange={dateRange} />}
             {activeTab === 'timing' && <TimingTab instagramData={instagramData} dateRange={dateRange} />}
             {activeTab === 'content' && <ContentTab instagramData={instagramData} dateRange={dateRange} />}
+            {activeTab === 'comments' && <CommentsTab userId={userId} selectedAccount={selectedAccount} />}
           </>
         )}
       </main>
@@ -827,6 +829,213 @@ const ContentTab = ({ instagramData, dateRange }) => {
           })()}
         </div>
       </div>
+    </motion.div>
+  );
+};
+
+// Comments Tab Component - Manage Instagram comments
+const CommentsTab = ({ userId, selectedAccount }) => {
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyText, setReplyText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [accountName, setAccountName] = useState('');
+
+  useEffect(() => {
+    fetchComments();
+  }, [userId, selectedAccount]);
+
+  const fetchComments = async () => {
+    setLoading(true);
+    try {
+      const data = await analyticsAPI.getComments(userId, selectedAccount?.igBusinessId, 100);
+      if (data.success) {
+        setComments(data.comments || []);
+        setAccountName(data.account || '');
+      }
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReply = async (commentId) => {
+    if (!replyText.trim()) return;
+    setSending(true);
+    try {
+      const result = await analyticsAPI.replyToComment(userId, commentId, replyText, selectedAccount?.igBusinessId);
+      if (result.success) {
+        setReplyText('');
+        setReplyingTo(null);
+        fetchComments(); // Refresh to show new reply
+      } else {
+        alert(result.error || 'Failed to send reply');
+      }
+    } catch (error) {
+      console.error('Error replying:', error);
+      alert('Failed to send reply');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleDelete = async (commentId) => {
+    if (!confirm('Are you sure you want to delete this comment?')) return;
+    try {
+      const result = await analyticsAPI.deleteComment(userId, commentId, selectedAccount?.igBusinessId);
+      if (result.success) {
+        setComments(comments.filter(c => c.id !== commentId));
+      } else {
+        alert(result.error || 'Failed to delete comment');
+      }
+    } catch (error) {
+      console.error('Error deleting:', error);
+      alert('Failed to delete comment');
+    }
+  };
+
+  const formatTime = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = (now - date) / 1000;
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4" />
+        <p className="text-zinc-500 text-sm">Loading comments...</p>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">Comment Management</h2>
+          <p className="text-sm text-zinc-500">{comments.length} comments from @{accountName}</p>
+        </div>
+        <button onClick={fetchComments} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg flex items-center gap-2 text-sm transition-colors">
+          <SafeIcon icon={FiRefreshCw} className="w-4 h-4" />
+          Refresh
+        </button>
+      </div>
+
+      {/* Comments List */}
+      {comments.length === 0 ? (
+        <div className="bg-[#121214] border border-white/5 rounded-2xl p-12 text-center">
+          <SafeIcon icon={FiMessageCircle} className="w-16 h-16 mx-auto mb-4 text-zinc-700" />
+          <h3 className="text-lg font-medium mb-2">No Comments Yet</h3>
+          <p className="text-zinc-500">Comments on your posts will appear here</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {comments.map((comment, idx) => (
+            <motion.div
+              key={comment.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.03 }}
+              className="bg-[#121214] border border-white/5 rounded-xl p-4"
+            >
+              {/* Post Reference */}
+              <div className="flex items-center gap-3 mb-3 pb-3 border-b border-white/5">
+                {comment.postThumbnail && (
+                  <img src={comment.postThumbnail} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-zinc-500 truncate">{comment.postCaption || 'Post'}</p>
+                  <a href={comment.postPermalink} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-1">
+                    View on Instagram <SafeIcon icon={FiExternalLink} className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Comment */}
+              <div className="flex gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <SafeIcon icon={FiUser} className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium text-sm">@{comment.username}</span>
+                    <span className="text-xs text-zinc-500">{formatTime(comment.timestamp)}</span>
+                    {comment.likeCount > 0 && (
+                      <span className="text-xs text-zinc-500 flex items-center gap-1">
+                        <SafeIcon icon={FiThumbsUp} className="w-3 h-3" /> {comment.likeCount}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-zinc-300 mb-2">{comment.text}</p>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    >
+                      <SafeIcon icon={FiCornerDownRight} className="w-3 h-3" /> Reply
+                    </button>
+                    <button
+                      onClick={() => handleDelete(comment.id)}
+                      className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                    >
+                      <SafeIcon icon={FiTrash2} className="w-3 h-3" /> Delete
+                    </button>
+                  </div>
+
+                  {/* Reply Input */}
+                  {replyingTo === comment.id && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="mt-3 flex gap-2"
+                    >
+                      <input
+                        type="text"
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder={`Reply to @${comment.username}...`}
+                        className="flex-1 bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                        onKeyDown={(e) => e.key === 'Enter' && handleReply(comment.id)}
+                      />
+                      <button
+                        onClick={() => handleReply(comment.id)}
+                        disabled={sending || !replyText.trim()}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded-lg flex items-center gap-2 text-sm transition-colors"
+                      >
+                        {sending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <SafeIcon icon={FiSend} className="w-4 h-4" />}
+                      </button>
+                    </motion.div>
+                  )}
+
+                  {/* Existing Replies */}
+                  {comment.replies && comment.replies.length > 0 && (
+                    <div className="mt-3 ml-4 space-y-2 border-l-2 border-zinc-800 pl-4">
+                      {comment.replies.map((reply) => (
+                        <div key={reply.id} className="text-sm">
+                          <span className="font-medium text-blue-400">@{reply.username}</span>
+                          <span className="text-zinc-500 text-xs ml-2">{formatTime(reply.timestamp)}</span>
+                          <p className="text-zinc-400 mt-1">{reply.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 };
