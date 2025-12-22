@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
@@ -7,7 +7,7 @@ import Sidebar from './Sidebar';
 import { analyticsAPI } from '../lib/api';
 import { getUserId } from '../lib/velosStorage';
 
-const { FiChevronLeft, FiRefreshCw, FiTrendingUp, FiHeart, FiEye, FiMessageCircle, FiClock, FiCalendar, FiHash, FiAward, FiBarChart2, FiPlay, FiImage } = FiIcons;
+const { FiChevronLeft, FiRefreshCw, FiTrendingUp, FiHeart, FiEye, FiMessageCircle, FiClock, FiCalendar, FiHash, FiAward, FiBarChart2, FiPlay, FiImage, FiInstagram, FiChevronDown, FiExternalLink } = FiIcons;
 
 const AnalyticsPage = () => {
   const navigate = useNavigate();
@@ -16,29 +16,78 @@ const AnalyticsPage = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [dateRange, setDateRange] = useState(30);
+  const hasAutoRefreshed = useRef(false);
+
+  // Account selector states
+  const [accounts, setAccounts] = useState([]);
+  const [selectedAccount, setSelectedAccount] = useState(null);
+  const [showAccountSelector, setShowAccountSelector] = useState(false);
 
   // Data states
   const [dashboard, setDashboard] = useState(null);
+  const [instagramData, setInstagramData] = useState(null);
   const [bestTimes, setBestTimes] = useState(null);
   const [contentAnalysis, setContentAnalysis] = useState(null);
+  const [dataSource, setDataSource] = useState('instagram'); // 'instagram' (live) or 'database'
 
   const userId = getUserId();
 
+  // Auto-refresh on page load (only once)
   useEffect(() => {
-    if (userId) {
+    if (userId && !hasAutoRefreshed.current) {
+      hasAutoRefreshed.current = true;
+      loadAccountsAndRefresh();
+    }
+  }, [userId]);
+
+  // Reload when dateRange or account changes
+  useEffect(() => {
+    if (userId && hasAutoRefreshed.current) {
       fetchAllData();
     }
-  }, [userId, dateRange]);
+  }, [dateRange, selectedAccount]);
+
+  const loadAccountsAndRefresh = async () => {
+    setLoading(true);
+    setRefreshing(true);
+    try {
+      // Load accounts first
+      const accountsRes = await analyticsAPI.getAccounts(userId);
+      if (accountsRes.success && accountsRes.accounts) {
+        setAccounts(accountsRes.accounts);
+        if (accountsRes.accounts.length > 0 && !selectedAccount) {
+          setSelectedAccount(accountsRes.accounts[0]);
+        }
+      }
+
+      // Auto-refresh engagement data from Instagram
+      await analyticsAPI.refreshEngagement(userId);
+
+      // Then fetch all data
+      await fetchAllData();
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   const fetchAllData = async () => {
+    if (!userId) return;
     setLoading(true);
     try {
-      const [dashboardRes, bestTimesRes, contentRes] = await Promise.all([
-        analyticsAPI.getDashboard(userId, dateRange),
+      const accountId = selectedAccount?.igBusinessId || null;
+
+      // Fetch from Instagram API directly for real-time data
+      const [instagramRes, dashboardRes, bestTimesRes, contentRes] = await Promise.all([
+        analyticsAPI.getInstagramDirect(userId, accountId, 50),
+        analyticsAPI.getDashboard(userId, dateRange, 50),
         analyticsAPI.getBestTimes(userId),
         analyticsAPI.getContentAnalysis(userId),
       ]);
 
+      if (instagramRes.success) setInstagramData(instagramRes);
       if (dashboardRes.success) setDashboard(dashboardRes);
       if (bestTimesRes.success) setBestTimes(bestTimesRes);
       if (contentRes.success) setContentAnalysis(contentRes);
@@ -93,6 +142,48 @@ const AnalyticsPage = () => {
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            {/* Account Selector */}
+            {accounts.length > 0 && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowAccountSelector(!showAccountSelector)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-lg text-sm hover:border-white/20 transition-colors"
+                >
+                  <SafeIcon icon={FiInstagram} className="w-4 h-4 text-pink-400" />
+                  <span className="text-white">@{selectedAccount?.username || 'Select Account'}</span>
+                  <SafeIcon icon={FiChevronDown} className={`w-4 h-4 text-zinc-400 transition-transform ${showAccountSelector ? 'rotate-180' : ''}`} />
+                </button>
+                {showAccountSelector && (
+                  <div className="absolute top-full right-0 mt-2 w-64 bg-zinc-900 border border-white/10 rounded-xl shadow-xl z-50 overflow-hidden">
+                    <div className="p-2 border-b border-white/5">
+                      <span className="text-xs text-zinc-500 px-2">Select Instagram Account</span>
+                    </div>
+                    {accounts.map((acc) => (
+                      <button
+                        key={acc.igBusinessId}
+                        onClick={() => {
+                          setSelectedAccount(acc);
+                          setShowAccountSelector(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors ${
+                          selectedAccount?.igBusinessId === acc.igBusinessId ? 'bg-white/10' : ''
+                        }`}
+                      >
+                        <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                          <SafeIcon icon={FiInstagram} className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="text-left">
+                          <div className="text-sm text-white font-medium">@{acc.username}</div>
+                        </div>
+                        {selectedAccount?.igBusinessId === acc.igBusinessId && (
+                          <div className="ml-auto w-2 h-2 bg-emerald-400 rounded-full" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <select
               value={dateRange}
               onChange={(e) => setDateRange(Number(e.target.value))}
@@ -108,7 +199,7 @@ const AnalyticsPage = () => {
               className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition-colors disabled:opacity-50"
             >
               <SafeIcon icon={FiRefreshCw} className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
+              {refreshing ? 'Syncing...' : 'Refresh'}
             </button>
           </div>
         </div>
@@ -131,12 +222,13 @@ const AnalyticsPage = () => {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4" />
+            <p className="text-zinc-500 text-sm">{refreshing ? 'Syncing with Instagram...' : 'Loading analytics...'}</p>
           </div>
         ) : (
           <>
-            {activeTab === 'overview' && <OverviewTab dashboard={dashboard} formatNumber={formatNumber} />}
+            {activeTab === 'overview' && <OverviewTab instagramData={instagramData} dashboard={dashboard} formatNumber={formatNumber} />}
             {activeTab === 'timing' && <TimingTab bestTimes={bestTimes} />}
             {activeTab === 'content' && <ContentTab contentAnalysis={contentAnalysis} />}
           </>
@@ -146,20 +238,50 @@ const AnalyticsPage = () => {
   );
 };
 
-// Overview Tab Component
-const OverviewTab = ({ dashboard, formatNumber }) => {
+// Overview Tab Component - Now shows Instagram data directly
+const OverviewTab = ({ instagramData, dashboard, formatNumber }) => {
+  const [visiblePosts, setVisiblePosts] = useState(9);
+
+  // Use Instagram data if available, fallback to dashboard
+  const posts = instagramData?.posts || [];
+  const totals = instagramData?.totals || {};
   const overview = dashboard?.overview || {};
-  const topPosts = dashboard?.topPosts || [];
+  const accountName = instagramData?.account?.username;
+
+  // Calculate stats from Instagram data or fall back to dashboard
+  const totalPosts = posts.length || overview.totalPosts || 0;
+  const totalEngagement = (totals.likes || 0) + (totals.comments || 0) + (totals.saves || 0) || overview.totalEngagement || 0;
+  const totalViews = totals.views || overview.totalImpressions || 0;
+  const totalReach = totals.reach || overview.totalReach || 0;
+  const avgEngagement = totalPosts > 0 ? Math.round(totalEngagement / totalPosts) : 0;
 
   const stats = [
-    { label: 'Total Posts', value: formatNumber(overview.totalPosts), icon: FiCalendar, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { label: 'Total Engagement', value: formatNumber(overview.totalEngagement), icon: FiHeart, color: 'text-pink-400', bg: 'bg-pink-500/10' },
-    { label: 'Total Reach', value: formatNumber(overview.totalReach), icon: FiEye, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-    { label: 'Avg Engagement', value: formatNumber(overview.avgEngagement), icon: FiTrendingUp, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+    { label: 'Total Posts', value: formatNumber(totalPosts), icon: FiCalendar, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+    { label: 'Total Engagement', value: formatNumber(totalEngagement), icon: FiHeart, color: 'text-pink-400', bg: 'bg-pink-500/10' },
+    { label: 'Total Views', value: formatNumber(totalViews), icon: FiEye, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+    { label: 'Total Reach', value: formatNumber(totalReach), icon: FiTrendingUp, color: 'text-amber-400', bg: 'bg-amber-500/10' },
   ];
+
+  // Sort posts by engagement (likes + comments)
+  const sortedPosts = [...posts].sort((a, b) => {
+    const engA = (a.likes || 0) + (a.comments || 0);
+    const engB = (b.likes || 0) + (b.comments || 0);
+    return engB - engA;
+  });
+
+  const displayedPosts = sortedPosts.slice(0, visiblePosts);
+  const hasMorePosts = visiblePosts < sortedPosts.length;
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+      {/* Live Data Badge */}
+      {instagramData && (
+        <div className="flex items-center gap-2 text-xs text-emerald-400">
+          <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+          <span>Live data from @{accountName}</span>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((stat, idx) => (
@@ -181,79 +303,95 @@ const OverviewTab = ({ dashboard, formatNumber }) => {
 
       {/* Top Performing Posts */}
       <div className="bg-[#121214] border border-white/5 rounded-2xl p-6">
-        <div className="flex items-center gap-2 mb-6">
-          <SafeIcon icon={FiAward} className="w-5 h-5 text-amber-400" />
-          <h2 className="text-lg font-bold">Top Performing Posts</h2>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <SafeIcon icon={FiAward} className="w-5 h-5 text-amber-400" />
+            <h2 className="text-lg font-bold">Top Performing Posts</h2>
+          </div>
+          <span className="text-xs text-zinc-500">{displayedPosts.length} of {sortedPosts.length} posts</span>
         </div>
-        {topPosts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {topPosts.map((post, idx) => {
-              const isVideo = post.postType === 'reel' || post.videoUrl;
-              const mediaUrl = isVideo ? post.videoUrl : post.imageUrl;
-              const hasMedia = !!mediaUrl;
+        {displayedPosts.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {displayedPosts.map((post, idx) => {
+                const isVideo = post.mediaType === 'VIDEO' || post.mediaType === 'REEL';
+                const mediaUrl = post.thumbnailUrl || post.mediaUrl;
+                const hasMedia = !!mediaUrl;
 
-              return (
-                <div key={post.postId || idx} className="bg-zinc-900/50 rounded-xl overflow-hidden border border-white/5 hover:border-white/10 transition-colors">
-                  <div className="aspect-square bg-zinc-800 relative">
-                    {isVideo && mediaUrl ? (
-                      <>
-                        <video
+                return (
+                  <motion.div
+                    key={post.id || idx}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="bg-zinc-900/50 rounded-xl overflow-hidden border border-white/5 hover:border-white/10 transition-colors group"
+                  >
+                    <div className="aspect-square bg-zinc-800 relative overflow-hidden">
+                      {hasMedia ? (
+                        <img
                           src={mediaUrl}
-                          className="w-full h-full object-cover"
-                          muted
-                          playsInline
-                          onMouseEnter={(e) => e.target.play()}
-                          onMouseLeave={(e) => { e.target.pause(); e.target.currentTime = 0; }}
+                          alt=""
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
                         />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
+                          <SafeIcon icon={isVideo ? FiPlay : FiImage} className="w-12 h-12 mb-2" />
+                          <span className="text-xs">{isVideo ? 'Video' : 'Image'}</span>
+                        </div>
+                      )}
+                      {isVideo && (
                         <div className="absolute top-2 right-2 bg-black/70 rounded-full p-1.5">
                           <SafeIcon icon={FiPlay} className="w-3 h-3 text-white" />
                         </div>
-                      </>
-                    ) : mediaUrl ? (
-                      <img
-                        src={mediaUrl}
-                        alt=""
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.nextElementSibling?.classList.remove('hidden');
-                        }}
-                      />
-                    ) : null}
-                    {/* Fallback for missing/broken media */}
-                    {!hasMedia && (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600">
-                        <SafeIcon icon={isVideo ? FiPlay : FiImage} className="w-12 h-12 mb-2" />
-                        <span className="text-xs">{isVideo ? 'Video' : 'Image'}</span>
+                      )}
+                      {/* Link to Instagram */}
+                      {post.permalink && (
+                        <a
+                          href={post.permalink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="absolute top-2 left-2 bg-black/70 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <SafeIcon icon={FiExternalLink} className="w-3 h-3 text-white" />
+                        </a>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <p className="text-sm text-zinc-300 line-clamp-2 mb-3">{post.caption || 'No caption'}</p>
+                      <div className="flex items-center gap-4 text-xs text-zinc-500">
+                        <span className="flex items-center gap-1">
+                          <SafeIcon icon={FiHeart} className="w-3.5 h-3.5 text-pink-400" />
+                          {post.likes || 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <SafeIcon icon={FiMessageCircle} className="w-3.5 h-3.5 text-blue-400" />
+                          {post.comments || 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <SafeIcon icon={FiEye} className="w-3.5 h-3.5 text-emerald-400" />
+                          {post.views || 0}
+                        </span>
                       </div>
-                    )}
-                    {/* Hidden fallback for broken images */}
-                    <div className="hidden w-full h-full absolute inset-0 flex-col items-center justify-center text-zinc-600 bg-zinc-800">
-                      <SafeIcon icon={FiImage} className="w-12 h-12 mb-2" />
-                      <span className="text-xs">Media unavailable</span>
                     </div>
-                  </div>
-                  <div className="p-4">
-                    <p className="text-sm text-zinc-300 line-clamp-2 mb-3">{post.caption || 'No caption'}</p>
-                    <div className="flex items-center gap-4 text-xs text-zinc-500">
-                      <span className="flex items-center gap-1">
-                        <SafeIcon icon={FiHeart} className="w-3.5 h-3.5 text-pink-400" />
-                        {post.engagement?.likes || 0}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <SafeIcon icon={FiMessageCircle} className="w-3.5 h-3.5 text-blue-400" />
-                        {post.engagement?.comments || 0}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <SafeIcon icon={FiEye} className="w-3.5 h-3.5 text-emerald-400" />
-                        {post.engagement?.impressions || post.engagement?.views || 0}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+            {/* Load More Button */}
+            {hasMorePosts && (
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={() => setVisiblePosts(prev => prev + 9)}
+                  className="px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium transition-colors"
+                >
+                  Load More ({sortedPosts.length - visiblePosts} remaining)
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-12 text-zinc-500">
             <SafeIcon icon={FiBarChart2} className="w-12 h-12 mx-auto mb-3 opacity-30" />

@@ -15,7 +15,7 @@ class AnalyticsService {
   /**
    * Get dashboard overview for a user
    */
-  async getDashboard(userId, dateRange = 30) {
+  async getDashboard(userId, dateRange = 30, postLimit = 20) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - dateRange);
 
@@ -40,14 +40,14 @@ class AnalyticsService {
     // Average engagement per post
     const avgEngagement = totalPosts > 0 ? Math.round(totalEngagement / totalPosts) : 0;
 
-    // Best performing posts
+    // Best performing posts - now with configurable limit (default 20)
     const topPosts = [...posts]
       .sort((a, b) => {
         const engA = (a.engagement?.likes || 0) + (a.engagement?.comments || 0);
         const engB = (b.engagement?.likes || 0) + (b.engagement?.comments || 0);
         return engB - engA;
       })
-      .slice(0, 5)
+      .slice(0, postLimit)
       .map(p => ({
         postId: p.postId,
         imageUrl: p.imageUrl,
@@ -55,6 +55,7 @@ class AnalyticsService {
         postType: p.postType,
         caption: p.caption?.substring(0, 100),
         publishedAt: p.publishedAt,
+        platformPostUrl: p.platformPostUrl,
         engagement: p.engagement,
       }));
 
