@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 // Change this to check different account: 'lux.kaira' or 'iammyglow'
-const INSTAGRAM_USERNAME = 'iammyglow';
+const INSTAGRAM_USERNAME = 'lux.kaira';
 
 // Try to refresh token if expired
 async function tryRefreshToken(igAccount) {
