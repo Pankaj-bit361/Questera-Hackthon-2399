@@ -203,49 +203,44 @@ instagramRouter.get('/page-content/:userId/:pageId', async (req, res) => {
     const instagramDocs = await Instagram.find({ userId, isConnected: true });
     let pageAccessToken = null;
     let pageInfo = null;
-    let userAccessToken = null;
 
-    // First try to find directly stored page token
+    // Search through all accounts to find matching page
     for (const doc of instagramDocs) {
+      // Check accounts array (multi-account structure)
       if (doc.accounts && doc.accounts.length > 0) {
         for (const acc of doc.accounts) {
-          // Store user access token as fallback
-          if (acc.accessToken) {
-            userAccessToken = acc.accessToken;
-          }
-
-          if (acc.facebookPages && acc.facebookPages.length > 0) {
-            const page = acc.facebookPages.find(p => p.id === pageId);
-            if (page && page.access_token) {
-              pageAccessToken = page.access_token;
-              pageInfo = page;
-              break;
-            }
+          // Match by facebookPageId and use the account's accessToken
+          if (acc.facebookPageId === pageId && acc.accessToken && acc.isConnected !== false) {
+            pageAccessToken = acc.accessToken;
+            pageInfo = {
+              id: acc.facebookPageId,
+              name: acc.facebookPageName,
+            };
+            console.log('[PAGE-CONTENT] Found token from accounts array for page:', acc.facebookPageName);
+            break;
           }
         }
       }
       if (pageAccessToken) break;
-    }
 
-    // If no page token found, try to get it from Facebook API using user token
-    if (!pageAccessToken && userAccessToken) {
-      console.log('[PAGE-CONTENT] No stored page token, fetching from API...');
-      const pagesUrl = `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,category&access_token=${userAccessToken}`;
-      const pagesResponse = await fetch(pagesUrl);
-      const pagesData = await pagesResponse.json();
-
-      if (pagesData.data) {
-        const targetPage = pagesData.data.find(p => p.id === pageId);
-        if (targetPage && targetPage.access_token) {
-          pageAccessToken = targetPage.access_token;
-          pageInfo = targetPage;
-          console.log('[PAGE-CONTENT] Found page token from API for:', targetPage.name);
-        }
+      // Also check single account fields (backward compatibility)
+      if (doc.facebookPageId === pageId && doc.accessToken) {
+        pageAccessToken = doc.accessToken;
+        pageInfo = {
+          id: doc.facebookPageId,
+          name: doc.facebookPageName,
+        };
+        console.log('[PAGE-CONTENT] Found token from doc level for page:', doc.facebookPageName);
+        break;
       }
     }
 
     if (!pageAccessToken) {
       console.log('[PAGE-CONTENT] No page token found for pageId:', pageId);
+      console.log('[PAGE-CONTENT] Available docs:', instagramDocs.map(d => ({
+        accounts: d.accounts?.map(a => ({ pageId: a.facebookPageId, hasToken: !!a.accessToken })),
+        docPageId: d.facebookPageId,
+      })));
       return res.status(400).json({ error: 'Page not found or no access token. Please reconnect your Instagram account.' });
     }
 
