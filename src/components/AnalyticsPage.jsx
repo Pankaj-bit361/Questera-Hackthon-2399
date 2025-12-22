@@ -7,7 +7,7 @@ import Sidebar from './Sidebar';
 import { analyticsAPI } from '../lib/api';
 import { getUserId } from '../lib/velosStorage';
 
-const { FiChevronLeft, FiRefreshCw, FiTrendingUp, FiHeart, FiEye, FiMessageCircle, FiClock, FiCalendar, FiHash, FiAward, FiBarChart2, FiPlay, FiImage, FiInstagram, FiChevronDown, FiExternalLink } = FiIcons;
+const { FiChevronLeft, FiRefreshCw, FiTrendingUp, FiHeart, FiEye, FiMessageCircle, FiClock, FiCalendar, FiHash, FiAward, FiBarChart2, FiPlay, FiImage, FiInstagram, FiChevronDown, FiExternalLink, FiGrid } = FiIcons;
 
 const AnalyticsPage = () => {
   const navigate = useNavigate();
@@ -233,8 +233,8 @@ const AnalyticsPage = () => {
         ) : (
           <>
             {activeTab === 'overview' && <OverviewTab instagramData={instagramData} dashboard={dashboard} formatNumber={formatNumber} dateRange={dateRange} />}
-            {activeTab === 'timing' && <TimingTab bestTimes={bestTimes} />}
-            {activeTab === 'content' && <ContentTab contentAnalysis={contentAnalysis} />}
+            {activeTab === 'timing' && <TimingTab instagramData={instagramData} dateRange={dateRange} />}
+            {activeTab === 'content' && <ContentTab instagramData={instagramData} dateRange={dateRange} />}
           </>
         )}
       </main>
@@ -444,11 +444,65 @@ const OverviewTab = ({ instagramData, dashboard, formatNumber, dateRange }) => {
   );
 };
 
-// Timing Tab Component - Best posting times heatmap
-const TimingTab = ({ bestTimes }) => {
-  const byHour = bestTimes?.byHour || [];
-  const byDay = bestTimes?.byDay || [];
-  const recommendation = bestTimes?.recommendation || 'Post consistently for best results';
+// Timing Tab Component - Best posting times from REAL Instagram data
+const TimingTab = ({ instagramData, dateRange }) => {
+  const allPosts = instagramData?.posts || [];
+
+  // Filter by date range
+  const filterByDateRange = (posts, days) => {
+    if (days >= 9999) return posts;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    return posts.filter(post => new Date(post.timestamp) >= cutoffDate);
+  };
+  const posts = filterByDateRange(allPosts, dateRange);
+
+  // Aggregate by hour
+  const byHour = Array.from({ length: 24 }, (_, i) => ({
+    hour: i,
+    label: `${i}:00`,
+    posts: 0,
+    engagement: 0,
+    avgEngagement: 0,
+  }));
+
+  // Aggregate by day
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const byDay = days.map((name, index) => ({
+    day: name,
+    dayIndex: index,
+    posts: 0,
+    engagement: 0,
+    avgEngagement: 0,
+  }));
+
+  posts.forEach(post => {
+    if (post.timestamp) {
+      const date = new Date(post.timestamp);
+      const hour = date.getHours();
+      const dayIndex = date.getDay();
+      const eng = (post.likes || 0) + (post.comments || 0);
+
+      byHour[hour].posts += 1;
+      byHour[hour].engagement += eng;
+
+      byDay[dayIndex].posts += 1;
+      byDay[dayIndex].engagement += eng;
+    }
+  });
+
+  byHour.forEach(h => { h.avgEngagement = h.posts > 0 ? Math.round(h.engagement / h.posts) : 0; });
+  byDay.forEach(d => { d.avgEngagement = d.posts > 0 ? Math.round(d.engagement / d.posts) : 0; });
+
+  // Find best times
+  const bestHours = [...byHour].filter(h => h.posts > 0).sort((a, b) => b.avgEngagement - a.avgEngagement).slice(0, 3);
+  const bestDays = [...byDay].filter(d => d.posts > 0).sort((a, b) => b.avgEngagement - a.avgEngagement).slice(0, 3);
+
+  const formatHour = (h) => h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
+
+  const recommendation = bestHours.length > 0 && bestDays.length > 0
+    ? `Post on ${bestDays[0].day} at ${formatHour(bestHours[0].hour)} for best engagement (${bestHours[0].avgEngagement} avg)`
+    : 'Post consistently for best results';
 
   const maxEngagement = Math.max(...byHour.map(h => h.avgEngagement), 1);
 
@@ -464,68 +518,97 @@ const TimingTab = ({ bestTimes }) => {
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-      {/* Recommendation Banner */}
+      {/* Best Times Summary */}
       <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 rounded-2xl p-6">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
             <SafeIcon icon={FiClock} className="w-6 h-6 text-emerald-400" />
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="text-lg font-bold text-white mb-1">Best Time to Post</h3>
-            <p className="text-zinc-300">{recommendation}</p>
+            <p className="text-zinc-300 mb-4">{recommendation}</p>
+            <div className="flex flex-wrap gap-4">
+              {bestHours.slice(0, 3).map((h, i) => (
+                <div key={h.hour} className="bg-white/5 rounded-lg px-3 py-2">
+                  <div className="text-xs text-zinc-500">#{i + 1} Best Hour</div>
+                  <div className="text-white font-bold">{formatHour(h.hour)}</div>
+                  <div className="text-xs text-emerald-400">{h.avgEngagement} avg eng</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Hourly Heatmap */}
+      {/* Hourly Heatmap - Full 24 hours */}
       <div className="bg-[#121214] border border-white/5 rounded-2xl p-6">
-        <h2 className="text-lg font-bold mb-6">Engagement by Hour</h2>
-        <div className="grid grid-cols-12 gap-2">
-          {byHour.slice(6, 24).map((hour) => (
+        <h2 className="text-lg font-bold mb-2">Engagement by Hour</h2>
+        <p className="text-xs text-zinc-500 mb-6">Based on {posts.length} posts</p>
+        <div className="grid grid-cols-12 gap-2 mb-4">
+          {byHour.slice(0, 12).map((hour) => (
             <div key={hour.hour} className="text-center">
               <div
-                className={`aspect-square rounded-lg ${getHeatColor(hour.avgEngagement)} flex items-center justify-center mb-2 transition-all hover:scale-110`}
-                title={`${hour.label}: ${hour.avgEngagement} avg engagement`}
+                className={`aspect-square rounded-lg ${getHeatColor(hour.avgEngagement)} flex items-center justify-center mb-2 transition-all hover:scale-110 cursor-pointer`}
+                title={`${formatHour(hour.hour)}: ${hour.posts} posts, ${hour.avgEngagement} avg engagement`}
               >
-                <span className="text-xs font-bold text-white/80">{hour.posts}</span>
+                <span className="text-xs font-bold text-white/80">{hour.posts || ''}</span>
               </div>
-              <span className="text-[10px] text-zinc-500">{hour.hour}h</span>
+              <span className="text-[10px] text-zinc-500">{hour.hour}</span>
             </div>
           ))}
         </div>
-        <div className="flex items-center justify-end gap-2 mt-4 text-xs text-zinc-500">
-          <span>Low</span>
-          <div className="flex gap-1">
-            <div className="w-4 h-4 rounded bg-zinc-800" />
-            <div className="w-4 h-4 rounded bg-emerald-900" />
-            <div className="w-4 h-4 rounded bg-emerald-700" />
-            <div className="w-4 h-4 rounded bg-emerald-500" />
+        <div className="grid grid-cols-12 gap-2">
+          {byHour.slice(12, 24).map((hour) => (
+            <div key={hour.hour} className="text-center">
+              <div
+                className={`aspect-square rounded-lg ${getHeatColor(hour.avgEngagement)} flex items-center justify-center mb-2 transition-all hover:scale-110 cursor-pointer`}
+                title={`${formatHour(hour.hour)}: ${hour.posts} posts, ${hour.avgEngagement} avg engagement`}
+              >
+                <span className="text-xs font-bold text-white/80">{hour.posts || ''}</span>
+              </div>
+              <span className="text-[10px] text-zinc-500">{hour.hour}</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between mt-6">
+          <span className="text-xs text-zinc-500">AM (12am-11am) / PM (12pm-11pm)</span>
+          <div className="flex items-center gap-2 text-xs text-zinc-500">
+            <span>Low</span>
+            <div className="flex gap-1">
+              <div className="w-4 h-4 rounded bg-zinc-800" />
+              <div className="w-4 h-4 rounded bg-emerald-900" />
+              <div className="w-4 h-4 rounded bg-emerald-700" />
+              <div className="w-4 h-4 rounded bg-emerald-500" />
+            </div>
+            <span>High</span>
           </div>
-          <span>High</span>
         </div>
       </div>
 
       {/* Day of Week Chart */}
       <div className="bg-[#121214] border border-white/5 rounded-2xl p-6">
-        <h2 className="text-lg font-bold mb-6">Engagement by Day</h2>
+        <h2 className="text-lg font-bold mb-6">Engagement by Day of Week</h2>
         <div className="space-y-3">
-          {byDay.map((day) => {
+          {byDay.map((day, idx) => {
             const maxDayEng = Math.max(...byDay.map(d => d.avgEngagement), 1);
             const width = (day.avgEngagement / maxDayEng) * 100;
+            const isBest = bestDays[0]?.day === day.day;
             return (
               <div key={day.day} className="flex items-center gap-4">
-                <span className="w-24 text-sm text-zinc-400">{day.day}</span>
+                <span className={`w-24 text-sm ${isBest ? 'text-emerald-400 font-bold' : 'text-zinc-400'}`}>
+                  {day.day} {isBest && '⭐'}
+                </span>
                 <div className="flex-1 h-8 bg-zinc-800 rounded-lg overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${width}%` }}
-                    transition={{ duration: 0.5, delay: 0.1 }}
-                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-end pr-3"
+                    transition={{ duration: 0.5, delay: idx * 0.05 }}
+                    className={`h-full ${isBest ? 'bg-gradient-to-r from-emerald-500 to-cyan-500' : 'bg-gradient-to-r from-purple-500 to-pink-500'} rounded-lg flex items-center justify-end pr-3`}
                   >
-                    {width > 20 && <span className="text-xs font-bold text-white">{day.avgEngagement}</span>}
+                    {width > 15 && <span className="text-xs font-bold text-white">{day.avgEngagement}</span>}
                   </motion.div>
                 </div>
-                <span className="w-16 text-right text-xs text-zinc-500">{day.posts} posts</span>
+                <span className="w-20 text-right text-xs text-zinc-500">{day.posts} posts</span>
               </div>
             );
           })}
@@ -535,63 +618,214 @@ const TimingTab = ({ bestTimes }) => {
   );
 };
 
-// Content Tab Component - Hashtag analysis
-const ContentTab = ({ contentAnalysis }) => {
-  const topHashtags = contentAnalysis?.topHashtags || [];
-  const postTypes = contentAnalysis?.postTypes || [];
+// Content Tab Component - Analyze REAL Instagram content
+const ContentTab = ({ instagramData, dateRange }) => {
+  const allPosts = instagramData?.posts || [];
+
+  // Filter by date range
+  const filterByDateRange = (posts, days) => {
+    if (days >= 9999) return posts;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    return posts.filter(post => new Date(post.timestamp) >= cutoffDate);
+  };
+  const posts = filterByDateRange(allPosts, dateRange);
+
+  // Extract and analyze hashtags from captions
+  const hashtagStats = {};
+  posts.forEach(post => {
+    if (post.caption) {
+      const tags = post.caption.match(/#\w+/g) || [];
+      const eng = (post.likes || 0) + (post.comments || 0);
+      tags.forEach(tag => {
+        const lowerTag = tag.toLowerCase();
+        if (!hashtagStats[lowerTag]) {
+          hashtagStats[lowerTag] = { tag: lowerTag, count: 0, totalEngagement: 0, posts: [] };
+        }
+        hashtagStats[lowerTag].count += 1;
+        hashtagStats[lowerTag].totalEngagement += eng;
+      });
+    }
+  });
+
+  const topHashtags = Object.values(hashtagStats)
+    .map(h => ({ ...h, avgEngagement: Math.round(h.totalEngagement / h.count) }))
+    .sort((a, b) => b.avgEngagement - a.avgEngagement)
+    .slice(0, 15);
+
+  // Analyze by content type (IMAGE, VIDEO, CAROUSEL, REEL)
+  const typeStats = {};
+  posts.forEach(post => {
+    const type = post.mediaType || 'IMAGE';
+    if (!typeStats[type]) {
+      typeStats[type] = { type, count: 0, totalEngagement: 0, totalViews: 0, totalReach: 0 };
+    }
+    typeStats[type].count += 1;
+    typeStats[type].totalEngagement += (post.likes || 0) + (post.comments || 0);
+    typeStats[type].totalViews += post.views || 0;
+    typeStats[type].totalReach += post.reach || 0;
+  });
+
+  const typePerformance = Object.values(typeStats)
+    .map(t => ({
+      ...t,
+      avgEngagement: Math.round(t.totalEngagement / t.count),
+      avgViews: Math.round(t.totalViews / t.count),
+      avgReach: Math.round(t.totalReach / t.count),
+    }))
+    .sort((a, b) => b.avgEngagement - a.avgEngagement);
+
+  // Find best performing type
+  const bestType = typePerformance[0];
+
+  // Get type icons and colors
+  const getTypeStyle = (type) => {
+    switch (type) {
+      case 'VIDEO': return { icon: FiPlay, color: 'text-red-400', bg: 'bg-red-500/10', gradient: 'from-red-500 to-orange-500' };
+      case 'REEL': return { icon: FiPlay, color: 'text-pink-400', bg: 'bg-pink-500/10', gradient: 'from-pink-500 to-purple-500' };
+      case 'CAROUSEL_ALBUM': return { icon: FiGrid, color: 'text-blue-400', bg: 'bg-blue-500/10', gradient: 'from-blue-500 to-cyan-500' };
+      default: return { icon: FiImage, color: 'text-emerald-400', bg: 'bg-emerald-500/10', gradient: 'from-emerald-500 to-teal-500' };
+    }
+  };
+
+  const formatNumber = (num) => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+      {/* Content Type Performance */}
+      <div className="bg-[#121214] border border-white/5 rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-lg font-bold">Content Type Performance</h2>
+            <p className="text-xs text-zinc-500 mt-1">Based on {posts.length} posts</p>
+          </div>
+          {bestType && (
+            <div className="text-xs text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full">
+              Best: {bestType.type === 'CAROUSEL_ALBUM' ? 'Carousel' : bestType.type}
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {typePerformance.map((type, idx) => {
+            const style = getTypeStyle(type.type);
+            const isBest = idx === 0;
+            return (
+              <motion.div
+                key={type.type}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                className={`bg-zinc-900/50 rounded-xl p-5 border ${isBest ? 'border-emerald-500/30' : 'border-white/5'} relative overflow-hidden`}
+              >
+                {isBest && <div className="absolute top-2 right-2 text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded">Best</div>}
+                <div className={`w-10 h-10 ${style.bg} rounded-xl flex items-center justify-center mb-3`}>
+                  <SafeIcon icon={style.icon} className={`w-5 h-5 ${style.color}`} />
+                </div>
+                <div className="text-lg font-bold text-white capitalize mb-1">
+                  {type.type === 'CAROUSEL_ALBUM' ? 'Carousel' : type.type}
+                </div>
+                <div className={`text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r ${style.gradient} mb-3`}>
+                  {type.count}
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500">Avg Engagement</span>
+                    <span className="text-white font-medium">{formatNumber(type.avgEngagement)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500">Avg Views</span>
+                    <span className="text-white font-medium">{formatNumber(type.avgViews)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500">Avg Reach</span>
+                    <span className="text-white font-medium">{formatNumber(type.avgReach)}</span>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Top Hashtags */}
       <div className="bg-[#121214] border border-white/5 rounded-2xl p-6">
-        <div className="flex items-center gap-2 mb-6">
+        <div className="flex items-center gap-2 mb-2">
           <SafeIcon icon={FiHash} className="w-5 h-5 text-blue-400" />
           <h2 className="text-lg font-bold">Top Performing Hashtags</h2>
         </div>
+        <p className="text-xs text-zinc-500 mb-6">Sorted by average engagement</p>
+
         {topHashtags.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {topHashtags.map((tag, idx) => (
-              <motion.div
-                key={tag.hashtag || idx}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: idx * 0.05 }}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-full text-sm transition-colors cursor-default"
-              >
-                <span className="text-blue-400">{tag.hashtag}</span>
-                <span className="text-zinc-500 ml-2">({tag.avgEngagement} avg)</span>
-              </motion.div>
-            ))}
+          <div className="space-y-3">
+            {topHashtags.slice(0, 10).map((tag, idx) => {
+              const maxEng = topHashtags[0]?.avgEngagement || 1;
+              const width = (tag.avgEngagement / maxEng) * 100;
+              return (
+                <motion.div
+                  key={tag.tag}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className="flex items-center gap-4"
+                >
+                  <span className="w-8 text-xs text-zinc-500">#{idx + 1}</span>
+                  <span className="w-32 text-sm text-blue-400 truncate">{tag.tag}</span>
+                  <div className="flex-1 h-6 bg-zinc-800 rounded-lg overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${width}%` }}
+                      transition={{ duration: 0.5, delay: idx * 0.05 }}
+                      className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-end pr-2"
+                    >
+                      {width > 20 && <span className="text-xs font-bold text-white">{tag.avgEngagement}</span>}
+                    </motion.div>
+                  </div>
+                  <span className="w-20 text-right text-xs text-zinc-500">{tag.count} uses</span>
+                </motion.div>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-8 text-zinc-500">
-            <p>No hashtag data yet. Hashtags will be analyzed after you publish posts.</p>
+            <SafeIcon icon={FiHash} className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <p>No hashtags found in your posts</p>
           </div>
         )}
       </div>
 
-      {/* Post Type Breakdown */}
+      {/* Caption Length Analysis */}
       <div className="bg-[#121214] border border-white/5 rounded-2xl p-6">
-        <h2 className="text-lg font-bold mb-6">Content Type Performance</h2>
-        {postTypes.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {postTypes.map((type, idx) => (
-              <div key={type.type || idx} className="bg-zinc-900/50 rounded-xl p-5 border border-white/5">
-                <div className="text-lg font-bold text-white capitalize mb-1">{type.type || 'Image'}</div>
-                <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-2">
-                  {type.count}
+        <h2 className="text-lg font-bold mb-6">Caption Length Analysis</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {(() => {
+            const short = posts.filter(p => (p.caption?.length || 0) < 100);
+            const medium = posts.filter(p => (p.caption?.length || 0) >= 100 && (p.caption?.length || 0) < 500);
+            const long = posts.filter(p => (p.caption?.length || 0) >= 500);
+
+            const avgEng = (arr) => arr.length > 0 ? Math.round(arr.reduce((s, p) => s + (p.likes || 0) + (p.comments || 0), 0) / arr.length) : 0;
+
+            return [
+              { label: 'Short (<100 chars)', count: short.length, avg: avgEng(short), color: 'from-yellow-500 to-orange-500' },
+              { label: 'Medium (100-500)', count: medium.length, avg: avgEng(medium), color: 'from-blue-500 to-cyan-500' },
+              { label: 'Long (500+ chars)', count: long.length, avg: avgEng(long), color: 'from-purple-500 to-pink-500' },
+            ].map((item, idx) => (
+              <div key={item.label} className="bg-zinc-900/50 rounded-xl p-5 border border-white/5">
+                <div className="text-sm text-zinc-400 mb-2">{item.label}</div>
+                <div className={`text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r ${item.color}`}>
+                  {item.count} posts
                 </div>
-                <div className="text-xs text-zinc-500">
-                  Avg engagement: {type.avgEngagement || 0}
+                <div className="text-xs text-zinc-500 mt-2">
+                  Avg engagement: {formatNumber(item.avg)}
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-zinc-500">
-            <p>No content type data available yet.</p>
-          </div>
-        )}
+            ));
+          })()}
+        </div>
       </div>
     </motion.div>
   );
