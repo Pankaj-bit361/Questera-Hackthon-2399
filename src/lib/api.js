@@ -521,8 +521,8 @@ export const schedulerAPI = {
  */
 export const analyticsAPI = {
   // Get full dashboard
-  getDashboard: async (userId, days = 30) => {
-    const response = await fetch(`${API_BASE_URL}/analytics/dashboard/${userId}?days=${days}`, {
+  getDashboard: async (userId, days = 30, limit = 20) => {
+    const response = await fetch(`${API_BASE_URL}/analytics/dashboard/${userId}?days=${days}&limit=${limit}`, {
       headers: headers(),
     });
     return response.json();
@@ -556,6 +556,25 @@ export const analyticsAPI = {
   refreshEngagement: async (userId) => {
     const response = await fetch(`${API_BASE_URL}/analytics/refresh/${userId}`, {
       method: 'POST',
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Get all connected Instagram accounts
+  getAccounts: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/analytics/accounts/${userId}`, {
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Get analytics directly from Instagram API (real-time)
+  // Set fetchAll=true to get ALL posts (up to 2000)
+  getInstagramDirect: async (userId, accountId = null, limit = 100, fetchAll = false) => {
+    let url = `${API_BASE_URL}/analytics/instagram-direct/${userId}?limit=${limit}&fetchAll=${fetchAll}`;
+    if (accountId) url += `&account=${accountId}`;
+    const response = await fetch(url, {
       headers: headers(),
     });
     return response.json();
