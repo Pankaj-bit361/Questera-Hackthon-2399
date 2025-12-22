@@ -79,10 +79,10 @@ const AnalyticsPage = () => {
     try {
       const accountId = selectedAccount?.igBusinessId || null;
 
-      // Fetch from Instagram API directly for real-time data
+      // Fetch from Instagram API directly for real-time data (up to 100 posts)
       const [instagramRes, dashboardRes, bestTimesRes, contentRes] = await Promise.all([
-        analyticsAPI.getInstagramDirect(userId, accountId, 50),
-        analyticsAPI.getDashboard(userId, dateRange, 50),
+        analyticsAPI.getInstagramDirect(userId, accountId, 100),
+        analyticsAPI.getDashboard(userId, dateRange, 100),
         analyticsAPI.getBestTimes(userId),
         analyticsAPI.getContentAnalysis(userId),
       ]);
