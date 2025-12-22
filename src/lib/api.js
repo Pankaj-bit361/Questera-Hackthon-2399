@@ -570,8 +570,9 @@ export const analyticsAPI = {
   },
 
   // Get analytics directly from Instagram API (real-time)
-  getInstagramDirect: async (userId, accountId = null, limit = 20) => {
-    let url = `${API_BASE_URL}/analytics/instagram-direct/${userId}?limit=${limit}`;
+  // Set fetchAll=true to get ALL posts (up to 2000)
+  getInstagramDirect: async (userId, accountId = null, limit = 100, fetchAll = false) => {
+    let url = `${API_BASE_URL}/analytics/instagram-direct/${userId}?limit=${limit}&fetchAll=${fetchAll}`;
     if (accountId) url += `&account=${accountId}`;
     const response = await fetch(url, {
       headers: headers(),

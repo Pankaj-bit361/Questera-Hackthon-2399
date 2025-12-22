@@ -67,11 +67,12 @@ analyticsRouter.get('/accounts/:userId', async (req, res) => {
 /**
  * GET /analytics/instagram-direct/:userId
  * Get analytics directly from Instagram API (real-time, not from database)
+ * Supports fetching ALL posts with pagination
  */
 analyticsRouter.get('/instagram-direct/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { account, limit = 20, page = 1 } = req.query;
+    const { account, limit = 100, cursor, fetchAll = 'false' } = req.query;
 
     // Find account credentials
     let accessToken = null;
@@ -83,7 +84,6 @@ analyticsRouter.get('/instagram-direct/:userId', async (req, res) => {
       if (doc.accounts && doc.accounts.length > 0) {
         for (const acc of doc.accounts) {
           if (acc.isConnected !== false && acc.accessToken) {
-            // If specific account requested, match it
             if (account && acc.instagramBusinessAccountId !== account) continue;
             accessToken = acc.accessToken;
             igBusinessId = acc.instagramBusinessAccountId;
@@ -106,26 +106,45 @@ analyticsRouter.get('/instagram-direct/:userId', async (req, res) => {
       return res.status(400).json({ error: 'No Instagram account connected' });
     }
 
-    // Fetch media from Instagram with pagination
-    const mediaUrl = `https://graph.facebook.com/v21.0/${igBusinessId}/media?` +
-      `fields=id,caption,like_count,comments_count,permalink,timestamp,media_type,thumbnail_url,media_url&` +
-      `limit=${limit}&access_token=${accessToken}`;
+    // Fetch ALL posts if requested, otherwise just one page
+    let allPosts = [];
+    let nextCursor = cursor || null;
+    let hasMore = true;
+    const maxPages = fetchAll === 'true' ? 20 : 1; // Max 20 pages = 2000 posts
+    let pageCount = 0;
 
-    const mediaResponse = await fetch(mediaUrl);
-    const mediaData = await mediaResponse.json();
+    while (hasMore && pageCount < maxPages) {
+      let mediaUrl = `https://graph.facebook.com/v21.0/${igBusinessId}/media?` +
+        `fields=id,caption,like_count,comments_count,permalink,timestamp,media_type,thumbnail_url,media_url&` +
+        `limit=${Math.min(limit, 100)}&access_token=${accessToken}`;
 
-    if (mediaData.error) {
-      return res.status(400).json({ error: mediaData.error.message });
+      if (nextCursor) {
+        mediaUrl += `&after=${nextCursor}`;
+      }
+
+      const mediaResponse = await fetch(mediaUrl);
+      const mediaData = await mediaResponse.json();
+
+      if (mediaData.error) {
+        return res.status(400).json({ error: mediaData.error.message });
+      }
+
+      const posts = mediaData.data || [];
+      allPosts = allPosts.concat(posts);
+
+      nextCursor = mediaData.paging?.cursors?.after;
+      hasMore = !!mediaData.paging?.next;
+      pageCount++;
+
+      console.log(`[ANALYTICS] Fetched page ${pageCount}: ${posts.length} posts (total: ${allPosts.length})`);
     }
 
-    const posts = mediaData.data || [];
-
-    // Get insights for each post (views, reach, saves)
-    const postsWithInsights = await Promise.all(posts.map(async (post) => {
+    // Get insights for posts (batch to avoid rate limits - only first 100 for speed)
+    const postsToEnrich = allPosts.slice(0, 200); // Limit insights fetch to first 200 for speed
+    const postsWithInsights = await Promise.all(postsToEnrich.map(async (post) => {
       let views = 0, reach = 0, saves = 0;
 
       try {
-        // Get reach and saved
         const insightsUrl = `https://graph.facebook.com/v21.0/${post.id}/insights?metric=reach,saved&access_token=${accessToken}`;
         const insightsRes = await fetch(insightsUrl);
         const insightsData = await insightsRes.json();
@@ -137,7 +156,6 @@ analyticsRouter.get('/instagram-direct/:userId', async (req, res) => {
           });
         }
 
-        // Get views from v22
         const viewsUrl = `https://graph.facebook.com/v22.0/${post.id}/insights?metric=views&access_token=${accessToken}`;
         const viewsRes = await fetch(viewsUrl);
         const viewsData = await viewsRes.json();
@@ -148,7 +166,7 @@ analyticsRouter.get('/instagram-direct/:userId', async (req, res) => {
           });
         }
       } catch (e) {
-        console.log(`[ANALYTICS] Insights error for ${post.id}:`, e.message);
+        // Silent fail for insights
       }
 
       return {
@@ -167,8 +185,26 @@ analyticsRouter.get('/instagram-direct/:userId', async (req, res) => {
       };
     }));
 
+    // For remaining posts (beyond 200), just use basic data
+    const remainingPosts = allPosts.slice(200).map(post => ({
+      id: post.id,
+      caption: post.caption,
+      likes: post.like_count || 0,
+      comments: post.comments_count || 0,
+      views: 0,
+      reach: 0,
+      saves: 0,
+      permalink: post.permalink,
+      timestamp: post.timestamp,
+      mediaType: post.media_type,
+      thumbnailUrl: post.thumbnail_url,
+      mediaUrl: post.media_url,
+    }));
+
+    const finalPosts = [...postsWithInsights, ...remainingPosts];
+
     // Calculate totals
-    const totals = postsWithInsights.reduce((acc, p) => ({
+    const totals = finalPosts.reduce((acc, p) => ({
       likes: acc.likes + p.likes,
       comments: acc.comments + p.comments,
       views: acc.views + p.views,
@@ -179,11 +215,12 @@ analyticsRouter.get('/instagram-direct/:userId', async (req, res) => {
     return res.status(200).json({
       success: true,
       account: { username: accountUsername, igBusinessId },
-      posts: postsWithInsights,
+      posts: finalPosts,
       totals,
+      totalCount: finalPosts.length,
       pagination: {
-        hasMore: !!mediaData.paging?.next,
-        nextCursor: mediaData.paging?.cursors?.after,
+        hasMore,
+        nextCursor,
       },
     });
   } catch (error) {
