@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { API_BASE_URL } from '../config';
 
-const { FiCheck, FiX, FiLoader, FiExternalLink, FiCamera, FiMessageCircle, FiTrendingUp, FiPlus, FiTrash2, FiUsers, FiLink } = FiIcons;
+const { FiCheck, FiX, FiLoader, FiExternalLink, FiCamera, FiMessageCircle, FiTrendingUp, FiPlus, FiTrash2, FiUsers, FiLink, FiChevronDown, FiHeart, FiShare2, FiImage, FiVideo, FiFileText } = FiIcons;
 
 const InstagramIntegration = ({ userId }) => {
   const [accounts, setAccounts] = useState([]);
@@ -15,6 +16,10 @@ const InstagramIntegration = ({ userId }) => {
   const [error, setError] = useState('');
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [showFacebookPages, setShowFacebookPages] = useState(true); // Default open for Meta review
+  // Page Content state (for pages_read_engagement demo)
+  const [selectedPageForContent, setSelectedPageForContent] = useState(null);
+  const [pageContent, setPageContent] = useState(null);
+  const [loadingPageContent, setLoadingPageContent] = useState(false);
 
   useEffect(() => {
     checkConnection();
@@ -50,6 +55,27 @@ const InstagramIntegration = ({ userId }) => {
       }
     } catch (err) {
       console.error('Error fetching Facebook pages:', err);
+    }
+  };
+
+  // Fetch Page content and engagement (for Meta pages_read_engagement demo)
+  const fetchPageContent = async (page) => {
+    setSelectedPageForContent(page);
+    setLoadingPageContent(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/instagram/page-content/${userId}/${page.id}`);
+      const data = await response.json();
+      if (data.success) {
+        setPageContent(data);
+      } else {
+        console.error('Error fetching page content:', data.error);
+        setPageContent(null);
+      }
+    } catch (err) {
+      console.error('Error fetching page content:', err);
+      setPageContent(null);
+    } finally {
+      setLoadingPageContent(false);
     }
   };
 
@@ -227,11 +253,12 @@ const InstagramIntegration = ({ userId }) => {
 
                     {showFacebookPages && (
                       <div className="space-y-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
-                        <p className="text-xs text-blue-400 mb-2">Pages you manage (pages_show_list)</p>
+                        <p className="text-xs text-blue-400 mb-2">Pages you manage (pages_show_list) - Click to view content</p>
                         {facebookPages.map((page) => (
                           <div
                             key={page.id}
-                            className="flex items-center gap-3 p-2 bg-zinc-900/50 rounded-lg"
+                            onClick={() => fetchPageContent(page)}
+                            className={`flex items-center gap-3 p-2 bg-zinc-900/50 rounded-lg cursor-pointer hover:bg-zinc-800/50 transition-colors ${selectedPageForContent?.id === page.id ? 'ring-2 ring-blue-500' : ''}`}
                           >
                             {page.picture ? (
                               <img
@@ -258,6 +285,92 @@ const InstagramIntegration = ({ userId }) => {
                             )}
                           </div>
                         ))}
+
+                        {/* Page Content Display - pages_read_engagement demo */}
+                        <AnimatePresence>
+                          {selectedPageForContent && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="mt-4 pt-4 border-t border-blue-500/20"
+                            >
+                              {loadingPageContent ? (
+                                <div className="flex items-center justify-center py-8">
+                                  <SafeIcon icon={FiLoader} className="w-6 h-6 text-blue-400 animate-spin" />
+                                </div>
+                              ) : pageContent ? (
+                                <div className="space-y-4">
+                                  {/* Page Identity Header */}
+                                  <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-600/20 to-blue-500/10 rounded-lg border border-blue-500/30">
+                                    {pageContent.page.picture && (
+                                      <img src={pageContent.page.picture} alt={pageContent.page.name} className="w-12 h-12 rounded-lg" />
+                                    )}
+                                    <div>
+                                      <h4 className="text-white font-bold text-lg">{pageContent.page.name}</h4>
+                                      <p className="text-blue-400 text-sm">{pageContent.page.category} • {pageContent.page.followers?.toLocaleString()} followers</p>
+                                    </div>
+                                  </div>
+
+                                  {/* Permission Badge */}
+                                  <div className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded inline-block">
+                                    ✓ pages_read_engagement active
+                                  </div>
+
+                                  {/* Page Posts */}
+                                  <div>
+                                    <h5 className="text-zinc-400 text-xs font-medium mb-2 flex items-center gap-1">
+                                      <SafeIcon icon={FiFileText} className="w-3 h-3" />
+                                      Page Posts ({pageContent.totalPosts})
+                                    </h5>
+                                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                                      {pageContent.posts.map((post) => (
+                                        <div key={post.id} className="flex gap-3 p-2 bg-zinc-900/70 rounded-lg">
+                                          {post.image && (
+                                            <img src={post.image} alt="" className="w-16 h-16 object-cover rounded" />
+                                          )}
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-zinc-300 text-sm line-clamp-2">{post.message || '(No text)'}</p>
+                                            <div className="flex items-center gap-3 mt-1 text-xs text-zinc-500">
+                                              <span className="flex items-center gap-1">
+                                                <SafeIcon icon={FiHeart} className="w-3 h-3 text-red-400" />
+                                                {post.likes}
+                                              </span>
+                                              <span className="flex items-center gap-1">
+                                                <SafeIcon icon={FiMessageCircle} className="w-3 h-3 text-blue-400" />
+                                                {post.comments}
+                                              </span>
+                                              <span className="flex items-center gap-1">
+                                                <SafeIcon icon={FiShare2} className="w-3 h-3 text-emerald-400" />
+                                                {post.shares}
+                                              </span>
+                                              <span className="text-zinc-600">
+                                                {new Date(post.createdTime).toLocaleDateString()}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                      {pageContent.posts.length === 0 && (
+                                        <p className="text-zinc-500 text-sm text-center py-4">No posts found</p>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Close button */}
+                                  <button
+                                    onClick={() => { setSelectedPageForContent(null); setPageContent(null); }}
+                                    className="text-xs text-zinc-500 hover:text-white transition-colors"
+                                  >
+                                    Close
+                                  </button>
+                                </div>
+                              ) : (
+                                <p className="text-red-400 text-sm">Failed to load page content</p>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     )}
                   </div>

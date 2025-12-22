@@ -190,4 +190,100 @@ instagramRouter.get('/facebook-pages/:userId', async (req, res) => {
   }
 });
 
+/**
+ * GET /instagram/page-content/:userId/:pageId
+ * Get Facebook Page posts and engagement data for Meta App Review
+ * Demonstrates pages_read_engagement permission
+ */
+instagramRouter.get('/page-content/:userId/:pageId', async (req, res) => {
+  try {
+    const { userId, pageId } = req.params;
+
+    // Find the page access token from stored accounts
+    const instagramDocs = await Instagram.find({ userId, isConnected: true });
+    let pageAccessToken = null;
+    let pageInfo = null;
+
+    for (const doc of instagramDocs) {
+      if (doc.accounts && doc.accounts.length > 0) {
+        for (const acc of doc.accounts) {
+          if (acc.facebookPages && acc.facebookPages.length > 0) {
+            const page = acc.facebookPages.find(p => p.id === pageId);
+            if (page && page.access_token) {
+              pageAccessToken = page.access_token;
+              pageInfo = page;
+              break;
+            }
+          }
+        }
+      }
+      if (pageAccessToken) break;
+    }
+
+    if (!pageAccessToken) {
+      return res.status(400).json({ error: 'Page not found or no access token' });
+    }
+
+    // Fetch Page details
+    const pageDetailsUrl = `https://graph.facebook.com/v21.0/${pageId}?fields=id,name,picture,category,followers_count,fan_count,about,website,phone&access_token=${pageAccessToken}`;
+    const pageResponse = await fetch(pageDetailsUrl);
+    const pageData = await pageResponse.json();
+
+    if (pageData.error) {
+      return res.status(400).json({ error: pageData.error.message });
+    }
+
+    // Fetch Page posts with engagement
+    const postsUrl = `https://graph.facebook.com/v21.0/${pageId}/posts?fields=id,message,created_time,full_picture,attachments{media_type,url,media},shares,likes.summary(true),comments.summary(true),reactions.summary(true)&limit=25&access_token=${pageAccessToken}`;
+    const postsResponse = await fetch(postsUrl);
+    const postsData = await postsResponse.json();
+
+    // Fetch Page insights (engagement metrics)
+    const insightsUrl = `https://graph.facebook.com/v21.0/${pageId}/insights?metric=page_engaged_users,page_post_engagements,page_impressions,page_fans&period=day&access_token=${pageAccessToken}`;
+    const insightsResponse = await fetch(insightsUrl);
+    const insightsData = await insightsResponse.json();
+
+    // Format posts
+    const posts = (postsData.data || []).map(post => ({
+      id: post.id,
+      message: post.message || '',
+      createdTime: post.created_time,
+      image: post.full_picture || null,
+      mediaType: post.attachments?.data?.[0]?.media_type || 'status',
+      likes: post.likes?.summary?.total_count || 0,
+      comments: post.comments?.summary?.total_count || 0,
+      shares: post.shares?.count || 0,
+      reactions: post.reactions?.summary?.total_count || 0,
+    }));
+
+    // Format insights
+    const insights = {};
+    if (insightsData.data) {
+      insightsData.data.forEach(metric => {
+        const latestValue = metric.values?.[metric.values.length - 1]?.value || 0;
+        insights[metric.name] = latestValue;
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      page: {
+        id: pageData.id,
+        name: pageData.name,
+        picture: pageData.picture?.data?.url || null,
+        category: pageData.category,
+        followers: pageData.followers_count || pageData.fan_count || 0,
+        about: pageData.about || '',
+        website: pageData.website || '',
+      },
+      posts,
+      insights,
+      totalPosts: posts.length,
+    });
+  } catch (error) {
+    console.error('[INSTAGRAM] Page Content Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = instagramRouter;

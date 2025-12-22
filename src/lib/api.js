@@ -150,6 +150,22 @@ export const instagramAPI = {
     }
     return { success: false, accounts: [] };
   },
+
+  // Get Facebook Pages for a user
+  getFacebookPages: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/instagram/facebook-pages/${userId}`, {
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Get Facebook Page content and engagement (for pages_read_engagement demo)
+  getPageContent: async (userId, pageId) => {
+    const response = await fetch(`${API_BASE_URL}/instagram/page-content/${userId}/${pageId}`, {
+      headers: headers(),
+    });
+    return response.json();
+  },
 };
 
 /**
