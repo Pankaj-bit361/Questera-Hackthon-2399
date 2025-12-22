@@ -4,15 +4,17 @@ import SafeIcon from '../common/SafeIcon';
 
 import { API_BASE_URL } from '../config';
 
-const { FiCheck, FiX, FiLoader, FiExternalLink, FiCamera, FiMessageCircle, FiTrendingUp, FiPlus, FiTrash2 } = FiIcons;
+const { FiCheck, FiX, FiLoader, FiExternalLink, FiCamera, FiMessageCircle, FiTrendingUp, FiPlus, FiTrash2, FiUsers, FiLink } = FiIcons;
 
 const InstagramIntegration = ({ userId }) => {
   const [accounts, setAccounts] = useState([]);
+  const [facebookPages, setFacebookPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(null);
   const [error, setError] = useState('');
   const [showConnectionModal, setShowConnectionModal] = useState(false);
+  const [showFacebookPages, setShowFacebookPages] = useState(false);
 
   useEffect(() => {
     checkConnection();
@@ -26,6 +28,8 @@ const InstagramIntegration = ({ userId }) => {
 
       if (data.success && data.accounts?.length > 0) {
         setAccounts(data.accounts);
+        // Also fetch Facebook Pages
+        fetchFacebookPages();
       } else {
         setAccounts([]);
       }
@@ -34,6 +38,18 @@ const InstagramIntegration = ({ userId }) => {
       setAccounts([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFacebookPages = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/instagram/facebook-pages/${userId}`);
+      const data = await response.json();
+      if (data.success && data.pages?.length > 0) {
+        setFacebookPages(data.pages);
+      }
+    } catch (err) {
+      console.error('Error fetching Facebook pages:', err);
     }
   };
 
@@ -195,8 +211,61 @@ const InstagramIntegration = ({ userId }) => {
 
             {hasAccounts ? (
               <div className="space-y-4">
-                {/* Connected Accounts List */}
+                {/* Facebook Pages Section - For Meta App Review */}
+                {facebookPages.length > 0 && (
+                  <div className="mb-4">
+                    <button
+                      onClick={() => setShowFacebookPages(!showFacebookPages)}
+                      className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors mb-2"
+                    >
+                      <svg className="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                      </svg>
+                      <span>Facebook Pages ({facebookPages.length})</span>
+                      <SafeIcon icon={showFacebookPages ? FiX : FiPlus} className="w-3 h-3 ml-1" />
+                    </button>
+
+                    {showFacebookPages && (
+                      <div className="space-y-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
+                        <p className="text-xs text-blue-400 mb-2">Pages you manage (pages_show_list)</p>
+                        {facebookPages.map((page) => (
+                          <div
+                            key={page.id}
+                            className="flex items-center gap-3 p-2 bg-zinc-900/50 rounded-lg"
+                          >
+                            {page.picture ? (
+                              <img
+                                src={page.picture}
+                                alt={page.name}
+                                className="w-8 h-8 rounded-lg"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                                <SafeIcon icon={FiUsers} className="w-4 h-4 text-blue-400" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white font-medium text-sm truncate">{page.name}</p>
+                              <p className="text-zinc-500 text-xs">
+                                {page.category} • {page.fanCount?.toLocaleString() || 0} followers
+                              </p>
+                            </div>
+                            {page.hasInstagram && (
+                              <span className="px-1.5 py-0.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-pink-400 text-[9px] font-bold rounded flex items-center gap-1">
+                                <SafeIcon icon={FiLink} className="w-3 h-3" />
+                                IG Linked
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Connected Instagram Accounts List */}
                 <div className="space-y-2">
+                  <p className="text-xs text-zinc-500 mb-1">Connected Instagram Accounts</p>
                   {accounts.map((account) => (
                     <div
                       key={account.id}
@@ -223,7 +292,7 @@ const InstagramIntegration = ({ userId }) => {
                           </span>
                         </div>
                         <p className="text-zinc-500 text-xs truncate">
-                          {account.facebookPageName || '✓ Full publishing enabled'}
+                          {account.facebookPageName ? `via ${account.facebookPageName}` : '✓ Full publishing enabled'}
                         </p>
                       </div>
                       {/* Remove individual account */}

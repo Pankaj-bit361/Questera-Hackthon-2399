@@ -747,4 +747,79 @@ analyticsRouter.delete('/comments/:userId/:commentId', async (req, res) => {
   }
 });
 
+/**
+ * PUT /analytics/comments/:userId/:commentId
+ * Edit a comment (only works for comments made by the app)
+ */
+analyticsRouter.put('/comments/:userId/:commentId', async (req, res) => {
+  try {
+    const { userId, commentId } = req.params;
+    const { message, account } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ error: 'message is required' });
+    }
+
+    // Find account credentials
+    let accessToken = null;
+
+    const instagramDocs = await Instagram.find({ userId, isConnected: true });
+    for (const doc of instagramDocs) {
+      if (doc.accounts && doc.accounts.length > 0) {
+        for (const acc of doc.accounts) {
+          if (acc.isConnected !== false && acc.accessToken) {
+            if (account && acc.instagramBusinessAccountId !== account) continue;
+            accessToken = acc.accessToken;
+            break;
+          }
+        }
+      }
+      if (!accessToken && doc.accessToken) {
+        accessToken = doc.accessToken;
+      }
+      if (accessToken) break;
+    }
+
+    if (!accessToken) {
+      const socialAccounts = await SocialAccount.find({ userId, platform: 'instagram', isActive: true });
+      for (const sa of socialAccounts) {
+        const token = sa.facebookPageAccessToken || sa.accessToken;
+        if (token) {
+          accessToken = token;
+          break;
+        }
+      }
+    }
+
+    if (!accessToken) {
+      return res.status(400).json({ error: 'No Instagram account connected' });
+    }
+
+    // Update comment using Instagram Graph API
+    const updateUrl = `https://graph.facebook.com/v21.0/${commentId}`;
+    const updateResponse = await fetch(updateUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: message,
+        access_token: accessToken,
+      }),
+    });
+
+    const updateData = await updateResponse.json();
+
+    if (updateData.error) {
+      return res.status(400).json({ error: updateData.error.message });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Comment updated successfully',
+    });
+  } catch (error) {
+    console.error('[ANALYTICS] Edit Comment Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = analyticsRouter;

@@ -610,6 +610,16 @@ export const analyticsAPI = {
     });
     return response.json();
   },
+
+  // Edit a comment
+  editComment: async (userId, commentId, message, accountId = null) => {
+    const response = await fetch(`${API_BASE_URL}/analytics/comments/${userId}/${commentId}`, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify({ message, account: accountId }),
+    });
+    return response.json();
+  },
 };
 
 /**
