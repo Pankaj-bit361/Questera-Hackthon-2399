@@ -245,6 +245,7 @@ const AnalyticsPage = () => {
 // Overview Tab Component - Now shows Instagram data directly
 const OverviewTab = ({ instagramData, dashboard, formatNumber, dateRange }) => {
   const [visiblePosts, setVisiblePosts] = useState(9);
+  const [sortBy, setSortBy] = useState('recent'); // 'recent' or 'engagement'
 
   // Use Instagram data if available, fallback to dashboard
   const allPosts = instagramData?.posts || [];
@@ -287,11 +288,16 @@ const OverviewTab = ({ instagramData, dashboard, formatNumber, dateRange }) => {
     { label: 'Total Reach', value: formatNumber(totalReach), icon: FiTrendingUp, color: 'text-amber-400', bg: 'bg-amber-500/10' },
   ];
 
-  // Sort posts by engagement (likes + comments)
+  // Sort posts based on selected option
   const sortedPosts = [...posts].sort((a, b) => {
-    const engA = (a.likes || 0) + (a.comments || 0);
-    const engB = (b.likes || 0) + (b.comments || 0);
-    return engB - engA;
+    if (sortBy === 'engagement') {
+      const engA = (a.likes || 0) + (a.comments || 0);
+      const engB = (b.likes || 0) + (b.comments || 0);
+      return engB - engA;
+    } else {
+      // Sort by date (newest first)
+      return new Date(b.timestamp) - new Date(a.timestamp);
+    }
   });
 
   const displayedPosts = sortedPosts.slice(0, visiblePosts);
@@ -326,14 +332,24 @@ const OverviewTab = ({ instagramData, dashboard, formatNumber, dateRange }) => {
         ))}
       </div>
 
-      {/* Top Performing Posts */}
+      {/* Posts Section */}
       <div className="bg-[#121214] border border-white/5 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <SafeIcon icon={FiAward} className="w-5 h-5 text-amber-400" />
-            <h2 className="text-lg font-bold">Top Performing Posts</h2>
+            <SafeIcon icon={sortBy === 'recent' ? FiCalendar : FiAward} className="w-5 h-5 text-amber-400" />
+            <h2 className="text-lg font-bold">{sortBy === 'recent' ? 'Recent Posts' : 'Top Performing Posts'}</h2>
           </div>
-          <span className="text-xs text-zinc-500">{displayedPosts.length} of {sortedPosts.length} posts</span>
+          <div className="flex items-center gap-3">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-zinc-800 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white/20"
+            >
+              <option value="recent">Newest First</option>
+              <option value="engagement">Top Performing</option>
+            </select>
+            <span className="text-xs text-zinc-500">{displayedPosts.length} of {sortedPosts.length} posts</span>
+          </div>
         </div>
         {displayedPosts.length > 0 ? (
           <>
