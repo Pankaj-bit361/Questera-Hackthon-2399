@@ -246,7 +246,7 @@ const OverviewTab = ({ dashboard, formatNumber }) => {
                       </span>
                       <span className="flex items-center gap-1">
                         <SafeIcon icon={FiEye} className="w-3.5 h-3.5 text-emerald-400" />
-                        {post.engagement?.reach || 0}
+                        {post.engagement?.impressions || post.engagement?.views || 0}
                       </span>
                     </div>
                   </div>
