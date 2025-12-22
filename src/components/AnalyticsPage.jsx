@@ -7,7 +7,7 @@ import Sidebar from './Sidebar';
 import { analyticsAPI } from '../lib/api';
 import { getUserId } from '../lib/velosStorage';
 
-const { FiChevronLeft, FiRefreshCw, FiTrendingUp, FiHeart, FiEye, FiEyeOff, FiMessageCircle, FiClock, FiCalendar, FiHash, FiAward, FiBarChart2, FiPlay, FiImage, FiInstagram, FiChevronDown, FiExternalLink, FiGrid, FiSend, FiTrash2, FiCornerDownRight, FiUser, FiThumbsUp } = FiIcons;
+const { FiChevronLeft, FiRefreshCw, FiTrendingUp, FiHeart, FiEye, FiEyeOff, FiMessageCircle, FiClock, FiCalendar, FiHash, FiAward, FiBarChart2, FiPlay, FiImage, FiInstagram, FiChevronDown, FiExternalLink, FiGrid, FiSend, FiTrash2, FiCornerDownRight, FiUser, FiThumbsUp, FiEdit2 } = FiIcons;
 
 const AnalyticsPage = () => {
   const navigate = useNavigate();
@@ -842,6 +842,9 @@ const CommentsTab = ({ userId, selectedAccount }) => {
   const [sending, setSending] = useState(false);
   const [accountName, setAccountName] = useState('');
   const [hidingComment, setHidingComment] = useState(null);
+  // Edit state: {replyId, parentCommentId, originalText}
+  const [editingReply, setEditingReply] = useState(null);
+  const [editText, setEditText] = useState('');
 
   useEffect(() => {
     fetchComments();
@@ -931,6 +934,49 @@ const CommentsTab = ({ userId, selectedAccount }) => {
       alert('Failed to hide/unhide comment');
     } finally {
       setHidingComment(null);
+    }
+  };
+
+  // Start editing a reply (own comments only)
+  const startEditing = (replyId, parentCommentId, currentText) => {
+    setEditingReply({ replyId, parentCommentId });
+    setEditText(currentText);
+    setReplyingTo(null);
+  };
+
+  // Cancel editing
+  const cancelEditing = () => {
+    setEditingReply(null);
+    setEditText('');
+  };
+
+  // Handle edit: Delete old reply + Post new reply with edited text
+  const handleEditReply = async () => {
+    if (!editText.trim() || !editingReply) return;
+    setSending(true);
+    try {
+      // Step 1: Delete the old reply
+      const deleteResult = await analyticsAPI.deleteComment(userId, editingReply.replyId, selectedAccount?.igBusinessId);
+      if (!deleteResult.success) {
+        alert(deleteResult.error || 'Failed to update comment');
+        setSending(false);
+        return;
+      }
+
+      // Step 2: Post new reply with edited text
+      const replyResult = await analyticsAPI.replyToComment(userId, editingReply.parentCommentId, editText, selectedAccount?.igBusinessId);
+      if (replyResult.success) {
+        setEditText('');
+        setEditingReply(null);
+        fetchComments(); // Refresh to show the updated reply
+      } else {
+        alert(replyResult.error || 'Comment deleted but failed to post updated version');
+      }
+    } catch (error) {
+      console.error('Error editing:', error);
+      alert('Failed to edit comment');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -1073,13 +1119,23 @@ const CommentsTab = ({ userId, selectedAccount }) => {
                       {comment.replies.map((reply) => {
                         const isOwnReply = reply.username?.toLowerCase() === accountName?.toLowerCase() ||
                                           reply.username?.toLowerCase() === selectedAccount?.username?.toLowerCase();
+                        const isEditing = editingReply?.replyId === reply.id;
                         return (
                           <div key={reply.id} className="text-sm group">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className={`font-medium ${isOwnReply ? 'text-emerald-400' : 'text-blue-400'}`}>
                                 @{reply.username} {isOwnReply && <span className="text-[10px] text-emerald-500">(You)</span>}
                               </span>
                               <span className="text-zinc-500 text-xs">{formatTime(reply.timestamp)}</span>
+                              {/* Edit button - only for own replies */}
+                              {isOwnReply && !isEditing && (
+                                <button
+                                  onClick={() => startEditing(reply.id, comment.id, reply.text)}
+                                  className="text-xs text-blue-400 hover:text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1"
+                                >
+                                  <SafeIcon icon={FiEdit2} className="w-3 h-3" /> Edit
+                                </button>
+                              )}
                               {/* Hide/Unhide button */}
                               <button
                                 onClick={() => handleHide(reply.id, reply.hidden)}
@@ -1096,10 +1152,41 @@ const CommentsTab = ({ userId, selectedAccount }) => {
                                 <SafeIcon icon={FiTrash2} className="w-3 h-3" /> Delete
                               </button>
                             </div>
-                            <p className={`mt-1 ${reply.hidden ? 'text-zinc-500 italic' : 'text-zinc-400'}`}>
-                              {reply.hidden && <span className="text-amber-400 text-xs mr-2">[Hidden]</span>}
-                              {reply.text}
-                            </p>
+                            {/* Edit Input */}
+                            {isEditing ? (
+                              <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="mt-2 flex gap-2"
+                              >
+                                <input
+                                  type="text"
+                                  value={editText}
+                                  onChange={(e) => setEditText(e.target.value)}
+                                  className="flex-1 bg-zinc-800 border border-blue-500/50 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"
+                                  onKeyDown={(e) => e.key === 'Enter' && handleEditReply()}
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={handleEditReply}
+                                  disabled={sending || !editText.trim()}
+                                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-xs font-medium"
+                                >
+                                  {sending ? '...' : 'Save'}
+                                </button>
+                                <button
+                                  onClick={cancelEditing}
+                                  className="px-3 py-1.5 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-xs font-medium"
+                                >
+                                  Cancel
+                                </button>
+                              </motion.div>
+                            ) : (
+                              <p className={`mt-1 ${reply.hidden ? 'text-zinc-500 italic' : 'text-zinc-400'}`}>
+                                {reply.hidden && <span className="text-amber-400 text-xs mr-2">[Hidden]</span>}
+                                {reply.text}
+                              </p>
+                            )}
                           </div>
                         );
                       })}
