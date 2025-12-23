@@ -1,275 +1,231 @@
 import React, { useEffect, useState } from 'react';
-import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import * as FiIcons from 'react-icons/fi';
-import SafeIcon from '../common/SafeIcon';
-
-const { FiArrowRight, FiPlay, FiImage, FiZap, FiLayout, FiTrendingUp, FiInstagram, FiCheck } = FiIcons;
+import { FiArrowRight, FiCheck, FiImage, FiVideo, FiInstagram, FiCalendar, FiCpu, FiTrendingUp } from 'react-icons/fi';
 
 const LandingPage = () => {
     const [scrolled, setScrolled] = useState(false);
-    const { scrollY } = useScroll();
-    const headerOpacity = useTransform(scrollY, [0, 100], [0, 1]);
-    const headerY = useTransform(scrollY, [0, 100], [-20, 0]);
 
     useEffect(() => {
-        const handleScroll = () => setScrolled(window.scrollY > 50);
+        const handleScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
     return (
-        <div className="min-h-screen bg-[#09090b] text-white selection:bg-white/20 font-sans overflow-x-hidden">
+        <div className="min-h-screen bg-black text-white selection:bg-white/20">
+
+            {/* Subtle Grid Background */}
+            <div className="fixed inset-0 pointer-events-none">
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+            </div>
 
             {/* Navigation */}
-            <motion.nav
-                className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[#09090b]/80 backdrop-blur-xl border-b border-white/5 py-4' : 'bg-transparent py-6'
-                    }`}
-            >
-                <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gradient-to-tr from-white to-zinc-500 rounded-lg flex items-center justify-center">
-                            <span className="font-bold text-black text-xl">Q</span>
+            <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-black/90 backdrop-blur-sm border-b border-white/5' : 'bg-transparent'}`}>
+                <div className="max-w-6xl mx-auto px-6 h-16 flex justify-between items-center">
+                    <Link to="/" className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-white rounded-md flex items-center justify-center">
+                            <span className="font-bold text-black text-lg">V</span>
                         </div>
-                        <span className="text-xl font-bold tracking-tight">Questera</span>
-                    </div>
+                        <span className="font-semibold text-white">Velos</span>
+                    </Link>
 
-                    <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
+                    <div className="hidden md:flex items-center gap-8 text-sm text-zinc-400">
                         <a href="#features" className="hover:text-white transition-colors">Features</a>
-                        <a href="#showcase" className="hover:text-white transition-colors">Showcase</a>
-                        <Link to="/pricing" className="hover:text-white transition-colors">Pricing</Link>
+                        <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
+                        <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <Link
-                            to="/login"
-                            className="text-sm font-medium text-zinc-400 hover:text-white transition-colors hidden sm:block"
-                        >
-                            Sign In
-                        </Link>
-                        <Link
-                            to="/login"
-                            className="bg-white text-black px-5 py-2.5 rounded-full text-sm font-bold hover:bg-zinc-200 transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-white/5"
-                        >
+                    <div className="flex items-center gap-3">
+                        <Link to="/login" className="text-sm text-zinc-400 hover:text-white transition-colors px-4 py-2">Log in</Link>
+                        <Link to="/login" className="text-sm font-medium bg-white text-black px-4 py-2 rounded-lg hover:bg-zinc-200 transition-colors">
                             Get Started
                         </Link>
                     </div>
                 </div>
-            </motion.nav>
+            </nav>
 
             {/* Hero Section */}
-            <section className="relative min-h-screen flex flex-col items-center justify-center pt-32 pb-20 px-6 overflow-hidden">
+            <section className="relative pt-32 pb-20 px-6">
+                <div className="max-w-4xl mx-auto text-center">
+                    {/* Badge */}
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 mb-8">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span className="text-xs text-zinc-400">Now with Veo 3.1 Video Generation</span>
+                    </div>
 
-                {/* Abstract Background Elements */}
-                <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/[0.03] rounded-full blur-[120px]" />
-                    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/[0.05] rounded-full blur-[100px]" />
-                    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/[0.05] rounded-full blur-[100px]" />
-                </div>
+                    {/* Headline */}
+                    <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
+                        AI for
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-zinc-500"> creators</span>
+                    </h1>
 
-                <div className="relative z-10 max-w-5xl mx-auto text-center space-y-8">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6 }}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm"
-                    >
-                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        <span className="text-xs font-medium tracking-wide uppercase text-zinc-300">New: Video Generation 3.0</span>
-                    </motion.div>
+                    <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+                        Generate images, create videos, schedule posts, and grow on Instagram.
+                        All powered by AI that learns your brand.
+                    </p>
 
-                    <motion.h1
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: 0.1 }}
-                        className="text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.1]"
-                    >
-                        Create the <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-zinc-200 to-zinc-500">
-                            Unimaginable
-                        </span>
-                    </motion.h1>
-
-                    <motion.p
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: 0.2 }}
-                        className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed"
-                    >
-                        The all-in-one AI platform for content creators. Generate stunning images, cinematic videos, and manage your social presence with next-gen intelligence.
-                    </motion.p>
-
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: 0.3 }}
-                        className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8"
-                    >
-                        <Link
-                            to="/login"
-                            className="w-full sm:w-auto px-8 py-4 rounded-full bg-white text-black font-bold text-lg hover:bg-zinc-200 transition-all transform hover:scale-105 shadow-xl shadow-white/10 flex items-center justify-center gap-2"
-                        >
-                            Start Creating Free
-                            <SafeIcon icon={FiArrowRight} className="w-5 h-5" />
+                    {/* CTAs */}
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+                        <Link to="/login" className="w-full sm:w-auto px-8 py-3 bg-white text-black rounded-lg font-semibold hover:bg-zinc-200 transition-colors flex items-center justify-center gap-2">
+                            Start Creating <FiArrowRight className="w-4 h-4" />
                         </Link>
-                        <button className="w-full sm:w-auto px-8 py-4 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-white font-medium text-lg backdrop-blur-sm transition-all flex items-center justify-center gap-2">
-                            <SafeIcon icon={FiPlay} className="w-5 h-5 fill-current" />
-                            Watch Demo
-                        </button>
-                    </motion.div>
-                </div>
+                        <a href="#how-it-works" className="w-full sm:w-auto px-8 py-3 border border-white/10 rounded-lg text-zinc-300 hover:bg-white/5 transition-colors">
+                            See how it works
+                        </a>
+                    </div>
 
-                {/* Hero Visual */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 40 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.4 }}
-                    className="relative mt-20 w-full max-w-6xl mx-auto"
-                >
-                    <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-purple-500/10 bg-[#18181b] aspect-[16/9] md:aspect-[21/9]">
-                        {/* Abstract UI Representation */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#18181b] to-[#09090b]">
-                            <div className="absolute top-0 left-0 right-0 h-12 bg-white/5 border-b border-white/5 flex items-center px-4 gap-2">
-                                <div className="flex gap-2">
-                                    <div className="w-3 h-3 rounded-full bg-red-500/20" />
-                                    <div className="w-3 h-3 rounded-full bg-yellow-500/20" />
-                                    <div className="w-3 h-3 rounded-full bg-green-500/20" />
-                                </div>
-                                <div className="flex-1 text-center text-xs font-mono text-zinc-600">questera_studio.app</div>
+                    {/* Terminal Preview */}
+                    <div className="max-w-2xl mx-auto">
+                        <div className="rounded-xl border border-white/10 bg-zinc-950 overflow-hidden">
+                            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
+                                <div className="w-3 h-3 rounded-full bg-zinc-700" />
+                                <div className="w-3 h-3 rounded-full bg-zinc-700" />
+                                <div className="w-3 h-3 rounded-full bg-zinc-700" />
+                                <span className="ml-2 text-xs text-zinc-500 font-mono">velos-ai</span>
                             </div>
-                            <div className="p-8 md:p-12 flex h-full items-center justify-center">
-                                <div className="text-center space-y-6">
-                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-xs font-mono mb-4 border border-blue-500/20">
-                                        Processing: "Futuristic city with neon rain..."
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-4 opacity-50 blur-sm scale-95 origin-center">
-                                        <div className="h-32 bg-zinc-800 rounded-lg animate-pulse" />
-                                        <div className="h-32 bg-zinc-800 rounded-lg animate-pulse delay-75" />
-                                        <div className="h-32 bg-zinc-800 rounded-lg animate-pulse delay-150" />
-                                    </div>
+                            <div className="p-6 font-mono text-sm text-left">
+                                <div className="text-zinc-500 mb-2"># Generate and schedule a post</div>
+                                <div className="text-emerald-400 mb-4">→ "Create a sunset beach photo, schedule for 7pm"</div>
+                                <div className="text-zinc-400 space-y-1">
+                                    <div><span className="text-zinc-600">→</span> Generating image...</div>
+                                    <div><span className="text-zinc-600">→</span> Optimizing for Instagram...</div>
+                                    <div><span className="text-white">✓</span> Scheduled for 7:00 PM today</div>
                                 </div>
                             </div>
                         </div>
-                        {/* Overlay Gradient */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#09090b] via-transparent to-transparent" />
                     </div>
-                </motion.div>
+                </div>
             </section>
 
-            {/* Features Grid */}
-            <section id="features" className="py-24 px-6 relative bg-[#0c0c0e]">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16 space-y-4">
-                        <h2 className="text-3xl md:text-5xl font-bold">Power beyond measure</h2>
-                        <p className="text-zinc-400 max-w-2xl mx-auto">Everything you need to dominate the digital landscape, all in one dashboard.</p>
+            {/* Trust Bar */}
+            <section className="py-12 border-y border-white/5">
+                <div className="max-w-6xl mx-auto px-6">
+                    <p className="text-center text-xs text-zinc-600 uppercase tracking-widest mb-8">Powered by</p>
+                    <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16 text-zinc-500">
+                        <span className="text-sm font-medium">Google Veo 3.1</span>
+                        <span className="text-sm font-medium">Gemini AI</span>
+                        <span className="text-sm font-medium">Instagram Graph API</span>
+                        <span className="text-sm font-medium">GPT-4</span>
+                    </div>
+                </div>
+            </section>
+
+            {/* Features Section */}
+            <section id="features" className="py-24 px-6">
+                <div className="max-w-6xl mx-auto">
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything you need to create and grow</h2>
+                        <p className="text-zinc-400 max-w-xl mx-auto">One platform for AI generation, scheduling, and analytics.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <FeatureCard
-                            icon={FiImage}
-                            title="Velos XL 1.0"
-                            description="Generate photorealistic images with our proprietary state-of-the-art model. Unmatched detail and adherence to prompts."
-                            delay={0}
+                            icon={<FiImage className="w-5 h-5" />}
+                            title="AI Image Generation"
+                            description="Generate stunning images from text. Use reference photos for personalized results."
                         />
                         <FeatureCard
-                            icon={FiLayout}
-                            title="Veo 3.1 Video"
-                            description="Turn text into cinematic video sequences. Control camera movement, lighting, and style with precision."
-                            delay={0.1}
+                            icon={<FiVideo className="w-5 h-5" />}
+                            title="Video Generation"
+                            description="Create videos with Veo 3.1. Support for start frames, end frames, and extensions."
                         />
                         <FeatureCard
-                            icon={FiInstagram}
-                            title="Social Suite"
-                            description="Direct integration with Instagram. Schedule posts, analyze performance, and automate your growth."
-                            delay={0.2}
+                            icon={<FiInstagram className="w-5 h-5" />}
+                            title="Instagram Integration"
+                            description="Direct connection to Instagram. Publish posts, carousels, reels, and stories."
                         />
                         <FeatureCard
-                            icon={FiZap}
-                            title="Smart Templates"
-                            description="Jumpstart your creativity with thousands of community-curated templates for any niche."
-                            delay={0.3}
+                            icon={<FiCalendar className="w-5 h-5" />}
+                            title="Smart Scheduling"
+                            description="Buffer-style calendar. Schedule posts for optimal engagement times."
                         />
                         <FeatureCard
-                            icon={FiTrendingUp}
-                            title="Deep Analytics"
-                            description="Track engagement, reach, and conversion. Let AI suggest the best times to post."
-                            delay={0.4}
+                            icon={<FiCpu className="w-5 h-5" />}
+                            title="AI Autopilot"
+                            description="Set it and forget it. AI learns your brand and creates content automatically."
                         />
                         <FeatureCard
-                            icon={FiCheck}
-                            title="Safe & Secure"
-                            description="Enterprise-grade security for your assets. Your creativity belongs to you, always."
-                            delay={0.5}
+                            icon={<FiTrendingUp className="w-5 h-5" />}
+                            title="Viral Content"
+                            description="Analyze competitors, find trending content, and generate viral ideas."
                         />
                     </div>
                 </div>
             </section>
 
-            {/* Showcase Section */}
-            <section id="showcase" className="py-24 bg-[#09090b] overflow-hidden">
-                <div className="max-w-7xl mx-auto px-6 mb-12">
-                    <h2 className="text-3xl md:text-5xl font-bold text-center">Made with Questera</h2>
-                </div>
+            {/* How it Works */}
+            <section id="how-it-works" className="py-24 px-6 border-y border-white/5">
+                <div className="max-w-6xl mx-auto">
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl md:text-4xl font-bold mb-4">How it works</h2>
+                        <p className="text-zinc-400">Three simple steps to transform your content workflow.</p>
+                    </div>
 
-                <div className="flex gap-6 animate-scroll overflow-x-auto pb-8 custom-scrollbar">
-                    {/* Placeholder Showcase Items */}
-                    {[...Array(6)].map((_, i) => (
-                        <div key={i} className="min-w-[300px] h-[400px] rounded-3xl overflow-hidden relative group border border-white/5 bg-[#18181b]">
-                            <div className={`w-full h-full bg-gradient-to-br ${i % 2 === 0 ? 'from-purple-500/20 to-blue-500/20' : 'from-green-500/20 to-yellow-500/20'} group-hover:scale-110 transition-transform duration-700`} />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-6">
-                                <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                                    <p className="text-white font-medium">Artistic Creation #{i + 1}</p>
-                                    <p className="text-zinc-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity delay-75">Generated with Velos XL</p>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                    <div className="grid md:grid-cols-3 gap-8">
+                        <StepCard
+                            number="01"
+                            title="Describe your vision"
+                            description="Tell Velos what you want to create in natural language. Add reference images for personalization."
+                        />
+                        <StepCard
+                            number="02"
+                            title="AI generates content"
+                            description="Our AI creates images or videos based on your description. Edit and refine as needed."
+                        />
+                        <StepCard
+                            number="03"
+                            title="Schedule & publish"
+                            description="Schedule posts to Instagram with optimal timing. Track performance with analytics."
+                        />
+                    </div>
                 </div>
             </section>
 
-            {/* Call to Action */}
-            <section className="py-24 px-6 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-b from-[#0c0c0e] to-[#09090b]" />
-
-                <div className="relative z-10 max-w-4xl mx-auto text-center bg-zinc-900/50 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-12 md:p-20 overflow-hidden shadow-2xl">
-                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/5 to-transparent opacity-50" />
-
-                    <div className="relative z-10 space-y-8">
-                        <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Ready to shape the future?</h2>
-                        <p className="text-xl text-zinc-400 max-w-xl mx-auto">
-                            Join thousands of creators using Questera to push the boundaries of what's possible.
-                        </p>
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            <Link
-                                to="/login"
-                                className="w-full sm:w-auto px-10 py-4 rounded-full bg-white text-black font-bold text-lg hover:bg-zinc-200 transition-all shadow-xl shadow-white/10 hover:scale-105"
-                            >
-                                Get Started Now
-                            </Link>
-                        </div>
+            {/* Pricing */}
+            <section id="pricing" className="py-24 px-6">
+                <div className="max-w-6xl mx-auto">
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl md:text-4xl font-bold mb-4">Simple pricing</h2>
+                        <p className="text-zinc-400">Start free, scale as you grow.</p>
                     </div>
+
+                    <div className="grid md:grid-cols-4 gap-4">
+                        <PricingCard title="Free" price="$0" features={["10 Credits", "1K Resolution", "Standard Speed", "Basic Styles"]} />
+                        <PricingCard title="Growth" price="$29" features={["100 Credits", "2K Resolution", "Fast Speed", "No Watermarks"]} highlight />
+                        <PricingCard title="Pro" price="$79" features={["500 Credits", "4K Resolution", "Video Generation", "Commercial Use"]} />
+                        <PricingCard title="Business" price="Custom" features={["Unlimited", "API Access", "Custom Models", "Team Seats"]} />
+                    </div>
+                </div>
+            </section>
+
+            {/* CTA */}
+            <section className="py-24 px-6 border-t border-white/5">
+                <div className="max-w-2xl mx-auto text-center">
+                    <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to start creating?</h2>
+                    <p className="text-zinc-400 mb-8">Join thousands of creators using Velos AI to produce content faster.</p>
+                    <Link to="/login" className="inline-flex items-center gap-2 px-8 py-3 bg-white text-black rounded-lg font-semibold hover:bg-zinc-200 transition-colors">
+                        Get Started Free <FiArrowRight className="w-4 h-4" />
+                    </Link>
                 </div>
             </section>
 
             {/* Footer */}
-            <footer className="py-12 border-t border-white/5 bg-[#09090b]">
-                <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 bg-zinc-800 rounded-md flex items-center justify-center">
-                            <span className="font-bold text-white text-xs">Q</span>
+            <footer className="border-t border-white/5 py-12 px-6">
+                <div className="max-w-6xl mx-auto">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 bg-white rounded flex items-center justify-center">
+                                <span className="font-bold text-black text-xs">V</span>
+                            </div>
+                            <span className="font-medium text-zinc-400">Velos AI</span>
                         </div>
-                        <span className="text-sm font-semibold text-zinc-400">Questera Inc.</span>
-                    </div>
-
-                    <div className="flex gap-8 text-sm text-zinc-500">
-                        <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-                        <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-                        <a href="#" className="hover:text-white transition-colors">Twitter</a>
-                        <a href="#" className="hover:text-white transition-colors">Instagram</a>
-                    </div>
-
-                    <div className="text-xs text-zinc-600">
-                        © 2024 Questera. All rights reserved.
+                        <div className="flex items-center gap-6 text-sm text-zinc-500">
+                            <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+                            <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
+                            <a href="#features" className="hover:text-white transition-colors">Features</a>
+                            <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+                        </div>
+                        <p className="text-xs text-zinc-600">© 2024 Questera Inc.</p>
                     </div>
                 </div>
             </footer>
@@ -277,24 +233,43 @@ const LandingPage = () => {
     );
 };
 
-const FeatureCard = ({ icon, title, description, delay }) => {
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay }}
-            className="group p-8 rounded-3xl bg-[#18181b] border border-white/5 hover:border-white/10 hover:bg-[#202024] transition-all duration-300"
-        >
-            <div className="w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-white/5">
-                <SafeIcon icon={icon} className="w-6 h-6 text-white" />
-            </div>
-            <h3 className="text-xl font-bold mb-3 text-white">{title}</h3>
-            <p className="text-zinc-400 leading-relaxed text-sm">
-                {description}
-            </p>
-        </motion.div>
-    );
-};
+// Sub-components
+const FeatureCard = ({ icon, title, description }) => (
+    <div className="p-6 rounded-xl border border-white/10 bg-zinc-950 hover:bg-zinc-900 transition-colors">
+        <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center mb-4 text-white">
+            {icon}
+        </div>
+        <h3 className="font-semibold mb-2">{title}</h3>
+        <p className="text-sm text-zinc-400 leading-relaxed">{description}</p>
+    </div>
+);
+
+const StepCard = ({ number, title, description }) => (
+    <div className="text-center">
+        <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center mx-auto mb-4 text-zinc-500 font-mono text-sm">
+            {number}
+        </div>
+        <h3 className="font-semibold mb-2">{title}</h3>
+        <p className="text-sm text-zinc-400 leading-relaxed">{description}</p>
+    </div>
+);
+
+const PricingCard = ({ title, price, features, highlight }) => (
+    <div className={`p-6 rounded-xl flex flex-col ${highlight ? 'bg-white text-black' : 'border border-white/10 bg-zinc-950'}`}>
+        <h3 className={`font-medium text-sm mb-1 ${highlight ? 'text-zinc-600' : 'text-zinc-500'}`}>{title}</h3>
+        <div className="text-2xl font-bold mb-4">{price}<span className="text-sm font-normal opacity-50">/mo</span></div>
+        <div className="space-y-2 mb-6 flex-1">
+            {features.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm">
+                    <FiCheck className={`w-4 h-4 ${highlight ? 'text-black' : 'text-zinc-500'}`} />
+                    <span>{f}</span>
+                </div>
+            ))}
+        </div>
+        <Link to="/login" className={`w-full py-2.5 rounded-lg font-medium text-sm text-center transition-colors ${highlight ? 'bg-black text-white hover:bg-zinc-800' : 'bg-white/5 hover:bg-white/10 text-white'}`}>
+            Get Started
+        </Link>
+    </div>
+);
 
 export default LandingPage;

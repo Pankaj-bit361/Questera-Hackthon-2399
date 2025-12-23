@@ -8,22 +8,23 @@
   --bg-secondary: #f9fafb;
   --bg-dark: #09090b;
   --bg-card-dark: #18181b;
-  
+
   /* Text Colors */
   --text-primary: #18181b;
   --text-secondary: #71717a;
   --text-inverted: #ffffff;
   --text-inverted-secondary: #a1a1aa;
-  
+
   /* Accents */
   --accent-black: #000000;
   --accent-gray: #27272a;
-  
+
   /* Inputs */
-  --input-bg: #f9fafb; /* Slightly darker for better contrast */
+  --input-bg: #f9fafb;
+  /* Slightly darker for better contrast */
   --input-border: #e4e4e7;
   --input-focus: #000000;
-  
+
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -41,7 +42,7 @@ body {
   .btn-black {
     @apply w-full bg-black text-white font-medium rounded-xl hover:bg-gray-800 transition-all duration-300 transform active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 shadow-lg;
   }
-  
+
   .glass-card-dark {
     @apply bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-3xl p-6 text-white;
     box-shadow: var(--shadow-dark);
@@ -52,10 +53,62 @@ body {
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
+  background: #3f3f46;
   border-radius: 3px;
+}
+
+@keyframes scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-scroll {
+  animation: scroll 40s linear infinite;
+}
+
+/* Blob Animations for Landing Page */
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* 3D Perspective */
+.perspective-2000 {
+  perspective: 2000px;
 }
