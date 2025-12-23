@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { FiArrowRight, FiCheck, FiImage, FiVideo, FiInstagram, FiCalendar, FiCpu, FiTrendingUp, FiZap, FiMessageSquare, FiPlay, FiHexagon, FiMenu, FiX } from 'react-icons/fi';
 import Lenis from 'lenis';
 import { motion, AnimatePresence } from 'framer-motion';
-import SafeIcon from '../common/SafeIcon';
 
 // Velos Logo Component
 const VelosLogo = ({ className = "w-7 h-7" }) => (
@@ -12,9 +11,7 @@ const VelosLogo = ({ className = "w-7 h-7" }) => (
 
 const LandingPage = () => {
     const [scrolled, setScrolled] = useState(false);
-    const [activeFeature, setActiveFeature] = useState(0);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const features = ['AI Image Generation', 'Video Creation', 'Instagram Autopilot', 'Smart Scheduling', 'Viral Analytics'];
 
     useEffect(() => {
         // Initialize Lenis smooth scroll
@@ -34,15 +31,9 @@ const LandingPage = () => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', handleScroll);
 
-        // Feature rotation interval
-        const featureInterval = setInterval(() => {
-            setActiveFeature((prev) => (prev + 1) % features.length);
-        }, 3000);
-
         return () => {
             window.removeEventListener('scroll', handleScroll);
             lenis.destroy();
-            clearInterval(featureInterval);
         };
     }, []);
 
@@ -68,9 +59,7 @@ const LandingPage = () => {
 
                     {/* Nav Links */}
                     <div className="flex items-center">
-                        <a href="#creation" className="px-4 py-2 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">Creation</a>
-                        <a href="#growth" className="px-4 py-2 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">Growth</a>
-                        <a href="#pricing" className="px-4 py-2 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">Pricing</a>
+                        <button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">Pricing</button>
                     </div>
 
                     {/* Divider */}
@@ -122,22 +111,22 @@ const LandingPage = () => {
                         >
                             <div className="px-4 py-6 space-y-2">
                                 {[
-                                    { label: 'Creation', href: '#creation', icon: FiImage },
-                                    { label: 'Growth', href: '#growth', icon: FiTrendingUp },
-                                    { label: 'Pricing', href: '#pricing', icon: FiZap },
+                                    { label: 'Pricing', targetId: 'pricing', icon: FiZap },
                                 ].map((item, i) => (
-                                    <a
+                                    <button
                                         key={i}
-                                        href={item.href}
-                                        onClick={() => setMobileMenuOpen(false)}
-                                        className="flex items-center gap-4 px-4 py-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors"
+                                        onClick={() => {
+                                            setMobileMenuOpen(false);
+                                            document.getElementById(item.targetId)?.scrollIntoView({ behavior: 'smooth' });
+                                        }}
+                                        className="flex items-center gap-4 px-4 py-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors w-full text-left"
                                     >
                                         <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
                                             <item.icon className="w-5 h-5 text-white" />
                                         </div>
                                         <span className="text-white font-medium">{item.label}</span>
                                         <FiArrowRight className="w-4 h-4 text-zinc-500 ml-auto" />
-                                    </a>
+                                    </button>
                                 ))}
 
                                 {/* Divider */}
@@ -158,152 +147,401 @@ const LandingPage = () => {
             </nav>
 
             {/* Hero Section */}
-            <section className="relative min-h-[110vh] flex flex-col justify-center px-6 pt-32 pb-20 overflow-hidden z-10">
-                <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-16 items-center">
+            <section className="relative min-h-screen flex flex-col justify-center px-6 pt-28 pb-16 overflow-hidden z-10">
+                <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-12 items-center">
+                    {/* Left Side - Content */}
                     <motion.div
-                        initial={{ opacity: 0, y: 40 }}
+                        initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 1, ease: [0.25, 0.1, 0.25, 1] }}
-                        className="space-y-10"
+                        transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
+                        className="space-y-8"
                     >
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.6, delay: 0.2 }}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-white/10 to-white/5 border border-white/10 backdrop-blur-md shadow-lg"
-                        >
-                            <span className="flex h-2 w-2 relative">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                            </span>
-                            <span className="text-[11px] uppercase tracking-[0.2em] font-medium text-zinc-300">System v2.0 Operational</span>
-                        </motion.div>
-
-                        <div className="space-y-2">
-                            <motion.h1
-                                initial={{ opacity: 0, y: 30 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.8, delay: 0.3 }}
-                                className="text-7xl md:text-8xl lg:text-9xl font-bold tracking-tighter leading-[0.9] text-white"
-                            >
-                                Create.
-                            </motion.h1>
-                            <motion.h1
-                                initial={{ opacity: 0, y: 30 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.8, delay: 0.5 }}
-                                className="text-7xl md:text-8xl lg:text-9xl font-bold tracking-tighter leading-[0.9]"
-                            >
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-zinc-200 via-zinc-400 to-zinc-600 animate-gradient">Infinite.</span>
-                            </motion.h1>
-                            <motion.h1
-                                initial={{ opacity: 0, y: 30 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.8, delay: 0.7 }}
-                                className="text-7xl md:text-8xl lg:text-9xl font-bold tracking-tighter leading-[0.9] text-white"
-                            >
-                                Reality.
-                            </motion.h1>
+                        {/* Headline */}
+                        <div>
+                            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.05]">
+                                <span className="text-white">Create.</span>
+                                <br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-zinc-400 to-zinc-600">Infinite.</span>
+                                <br />
+                                <span className="text-white">Reality.</span>
+                            </h1>
                         </div>
 
-                        <motion.p
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.8, delay: 0.9 }}
-                            className="max-w-xl text-lg text-zinc-400 leading-relaxed font-light border-l-2 border-white/30 pl-6"
-                        >
-                            The complete AI operating system for creators.
-                            From <span className="text-white font-medium">Concept</span> to <span className="text-white font-medium">Viral</span> at the speed of thought.
-                        </motion.p>
+                        {/* Description */}
+                        <p className="max-w-md text-base sm:text-lg text-zinc-500 leading-relaxed">
+                            The AI operating system for creators. Generate images, videos, and grow your Instagram — all on autopilot.
+                        </p>
 
-                        {/* Rotating Features */}
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 0.6, delay: 1.1 }}
-                            className="flex items-center gap-3"
-                        >
-                            <span className="text-sm text-zinc-500">Powered by</span>
-                            <div className="h-8 overflow-hidden relative min-w-[200px]">
-                                <AnimatePresence mode="wait">
-                                    <motion.div
-                                        key={activeFeature}
-                                        initial={{ y: 30, opacity: 0, filter: "blur(4px)" }}
-                                        animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
-                                        exit={{ y: -30, opacity: 0, filter: "blur(4px)" }}
-                                        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-                                        className="text-sm font-medium text-white bg-gradient-to-r from-white/15 to-white/5 px-4 py-1.5 rounded-full border border-white/20 backdrop-blur-sm absolute shadow-lg"
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            <span className="w-2 h-2 bg-green-400 rounded-full shadow-[0_0_8px_2px_rgba(74,222,128,0.6)]" />
-                                            {features[activeFeature]}
-                                        </span>
-                                    </motion.div>
-                                </AnimatePresence>
-                            </div>
-                        </motion.div>
-
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, delay: 1.3 }}
-                            className="flex flex-wrap items-center gap-4"
-                        >
-                            <Link to="/login" className="group px-8 py-4 bg-white text-black rounded-full font-bold text-lg hover:shadow-[0_0_40px_-5px_rgba(255,255,255,0.5)] transition-all duration-300 flex items-center gap-2 hover:scale-105">
-                                Launch Studio
-                                <FiArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        {/* CTA Buttons */}
+                        <div className="flex flex-wrap items-center gap-3">
+                            <Link to="/login" className="group px-6 py-3 bg-white text-black rounded-full font-semibold hover:bg-zinc-100 transition-all flex items-center gap-2">
+                                Get Started
+                                <FiArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                             </Link>
+                            <button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="px-6 py-3 rounded-full border border-white/20 text-white hover:bg-white/5 transition-colors font-medium">
+                                View Pricing
+                            </button>
+                        </div>
 
-                            <div className="flex items-center -space-x-3 pl-4">
-                                {[1, 2, 3, 4].map(i => (
-                                    <motion.div
+                        {/* Social Proof */}
+                        <div className="flex items-center gap-3 pt-4">
+                            <div className="flex -space-x-2">
+                                {[1, 2, 3].map(i => (
+                                    <div
                                         key={i}
-                                        initial={{ opacity: 0, scale: 0 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        transition={{ duration: 0.3, delay: 1.5 + (i * 0.1) }}
-                                        className="w-10 h-10 rounded-full border-2 border-black bg-zinc-800 flex items-center justify-center text-[10px] text-zinc-500 font-bold overflow-hidden hover:scale-110 hover:z-10 transition-transform"
+                                        className="w-8 h-8 rounded-full border-2 border-black bg-zinc-800 overflow-hidden"
                                     >
-                                        <img src={`https://i.pravatar.cc/100?img=${i + 10}`} className="w-full h-full object-cover" alt="User" />
-                                    </motion.div>
+                                        <img src={`https://i.pravatar.cc/80?img=${i + 10}`} className="w-full h-full object-cover" alt="" />
+                                    </div>
                                 ))}
                             </div>
-                            <span className="text-sm text-zinc-500">Used by 10k+ creators</span>
-                        </motion.div>
-                    </motion.div>
+                            <span className="text-sm text-zinc-500">10,000+ creators</span>
+                        </div>
 
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 1, delay: 0.2 }}
-                        className="relative h-[600px] hidden lg:block perspective-2000"
-                    >
-                        {/* Abstract UI composition */}
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full">
-                            {/* Central Hub */}
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-black rounded-3xl border border-white/10 shadow-2xl z-20 flex flex-col items-center justify-center gap-4 backdrop-blur-xl">
-                                <div className="w-20 h-20 bg-gradient-to-br from-white to-zinc-500 rounded-2xl flex items-center justify-center shadow-lg">
-                                    <FiCpu className="w-10 h-10 text-black" />
-                                </div>
-                                <div className="text-center">
-                                    <div className="font-bold text-lg">Velos Core</div>
-                                    <div className="text-xs text-zinc-500 font-mono">AI Autopilot Active</div>
+                        {/* Mobile Circuit Visual - Only visible on mobile/tablet */}
+                        <div className="lg:hidden relative mt-8">
+                            {/* Circuit Board SVG Background */}
+                            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 300" fill="none" preserveAspectRatio="xMidYMid slice">
+                                {/* Left circuits */}
+                                <path d="M -20 60 H 40 V 90 H 80" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                                <path d="M -20 100 H 30 V 140 H 70" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                                <path d="M -20 180 H 50 V 220 H 90" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                                <path d="M -20 240 H 40 V 270 H 80" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+
+                                {/* Right circuits */}
+                                <path d="M 420 50 H 360 V 80 H 320" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                                <path d="M 420 120 H 370 V 150 H 330" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                                <path d="M 420 190 H 350 V 220 H 310" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                                <path d="M 420 260 H 360 V 280 H 320" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+
+                                {/* Center connections */}
+                                <path d="M 80 90 H 120 V 130 H 150" stroke="white" strokeOpacity="0.15" strokeWidth="1" />
+                                <path d="M 320 150 H 280 V 170 H 250" stroke="white" strokeOpacity="0.15" strokeWidth="1" />
+
+                                {/* Animated current flows */}
+                                <motion.path
+                                    d="M -20 100 H 30 V 140 H 120 V 150"
+                                    stroke="white"
+                                    strokeOpacity="0.4"
+                                    strokeWidth="1.5"
+                                    strokeDasharray="6 10"
+                                    initial={{ strokeDashoffset: 0 }}
+                                    animate={{ strokeDashoffset: -80 }}
+                                    transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
+                                />
+                                <motion.path
+                                    d="M 420 120 H 370 V 150 H 280 V 150"
+                                    stroke="white"
+                                    strokeOpacity="0.4"
+                                    strokeWidth="1.5"
+                                    strokeDasharray="6 10"
+                                    initial={{ strokeDashoffset: 0 }}
+                                    animate={{ strokeDashoffset: 80 }}
+                                    transition={{ repeat: Infinity, duration: 3.5, ease: "linear", delay: 0.5 }}
+                                />
+
+                                {/* Circuit dots */}
+                                <circle cx="40" cy="60" r="2" fill="white" fillOpacity="0.25" />
+                                <circle cx="30" cy="100" r="2" fill="white" fillOpacity="0.25" />
+                                <circle cx="50" cy="180" r="2" fill="white" fillOpacity="0.25" />
+                                <circle cx="360" cy="50" r="2" fill="white" fillOpacity="0.25" />
+                                <circle cx="370" cy="120" r="2" fill="white" fillOpacity="0.25" />
+                                <circle cx="350" cy="190" r="2" fill="white" fillOpacity="0.25" />
+
+                                {/* Pulsing center dots */}
+                                <motion.circle
+                                    cx="120" cy="130" r="3" fill="white"
+                                    animate={{ fillOpacity: [0.2, 0.6, 0.2] }}
+                                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                                />
+                                <motion.circle
+                                    cx="280" cy="170" r="3" fill="white"
+                                    animate={{ fillOpacity: [0.2, 0.6, 0.2] }}
+                                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut", delay: 1 }}
+                                />
+                            </svg>
+
+                            {/* Glow effect */}
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-white/10 rounded-full blur-[80px]" />
+
+                            {/* Central Velos Core Card */}
+                            <div className="relative flex justify-center py-8">
+                                <div className="w-40 h-40 bg-zinc-900/95 rounded-2xl border border-white/20 shadow-2xl flex flex-col items-center justify-center gap-2 backdrop-blur-xl">
+                                    <div className="w-12 h-12 bg-gradient-to-br from-white to-zinc-400 rounded-xl flex items-center justify-center shadow-lg">
+                                        <FiCpu className="w-6 h-6 text-black" />
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="font-bold text-sm text-white">Velos Core</div>
+                                        <div className="text-[10px] text-zinc-500">AI Autopilot Active</div>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Orbiting Satellite Cards */}
-                            <FloatingCard icon={FiImage} title="Image Gen" delay={0} x={-180} y={-100} />
-                            <FloatingCard icon={FiPlay} title="Veo Video" delay={1} x={180} y={-80} />
-                            <FloatingCard icon={FiInstagram} title="Auto-Post" delay={2} x={-160} y={120} />
-                            <FloatingCard icon={FiTrendingUp} title="Viral AI" delay={3} x={160} y={100} />
-
-                            {/* Connecting Lines */}
-                            <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20">
-                                <motion.path d="M 300 300 L 120 200" stroke="white" strokeWidth="1" strokeDasharray="5,5" animate={{ strokeDashoffset: [0, 100] }} transition={{ repeat: Infinity, duration: 20, ease: "linear" }} />
-                                <motion.path d="M 300 300 L 480 220" stroke="white" strokeWidth="1" strokeDasharray="5,5" animate={{ strokeDashoffset: [0, 100] }} transition={{ repeat: Infinity, duration: 25, ease: "linear" }} />
-                                <motion.path d="M 300 300 L 140 420" stroke="white" strokeWidth="1" strokeDasharray="5,5" animate={{ strokeDashoffset: [0, 100] }} transition={{ repeat: Infinity, duration: 22, ease: "linear" }} />
-                                <motion.path d="M 300 300 L 460 400" stroke="white" strokeWidth="1" strokeDasharray="5,5" animate={{ strokeDashoffset: [0, 100] }} transition={{ repeat: Infinity, duration: 18, ease: "linear" }} />
-                            </svg>
+                            {/* Floating Feature Pills */}
+                            <div className="flex flex-wrap justify-center gap-2 mt-4">
+                                <motion.div
+                                    className="bg-zinc-900/80 backdrop-blur-sm rounded-full border border-white/10 px-3 py-1.5 flex items-center gap-1.5"
+                                    animate={{ y: [0, -4, 0] }}
+                                    transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                                >
+                                    <FiImage className="w-3 h-3 text-white" />
+                                    <span className="text-xs font-medium text-white">Image Gen</span>
+                                </motion.div>
+                                <motion.div
+                                    className="bg-zinc-900/80 backdrop-blur-sm rounded-full border border-white/10 px-3 py-1.5 flex items-center gap-1.5"
+                                    animate={{ y: [0, -4, 0] }}
+                                    transition={{ repeat: Infinity, duration: 3, ease: "easeInOut", delay: 0.3 }}
+                                >
+                                    <FiPlay className="w-3 h-3 text-white" />
+                                    <span className="text-xs font-medium text-white">Veo Video</span>
+                                </motion.div>
+                                <motion.div
+                                    className="bg-zinc-900/80 backdrop-blur-sm rounded-full border border-white/10 px-3 py-1.5 flex items-center gap-1.5"
+                                    animate={{ y: [0, -4, 0] }}
+                                    transition={{ repeat: Infinity, duration: 2.8, ease: "easeInOut", delay: 0.6 }}
+                                >
+                                    <FiInstagram className="w-3 h-3 text-white" />
+                                    <span className="text-xs font-medium text-white">Auto-Post</span>
+                                </motion.div>
+                                <motion.div
+                                    className="bg-zinc-900/80 backdrop-blur-sm rounded-full border border-white/10 px-3 py-1.5 flex items-center gap-1.5"
+                                    animate={{ y: [0, -4, 0] }}
+                                    transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut", delay: 0.9 }}
+                                >
+                                    <FiTrendingUp className="w-3 h-3 text-white" />
+                                    <span className="text-xs font-medium text-white">Viral AI</span>
+                                </motion.div>
+                            </div>
                         </div>
+                    </motion.div>
+
+                    {/* Right Side - Circuit Board Visual (Desktop only) */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 1, delay: 0.3 }}
+                        className="relative h-[550px] hidden lg:block"
+                    >
+                        {/* Full Circuit Board Pattern SVG with Animated Current */}
+                        <svg className="absolute inset-0 w-full h-full overflow-visible" viewBox="0 0 600 600" fill="none" preserveAspectRatio="xMidYMid slice">
+                            <defs>
+                                {/* Gradient for glowing current effect */}
+                                <linearGradient id="currentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor="white" stopOpacity="0" />
+                                    <stop offset="50%" stopColor="white" stopOpacity="0.8" />
+                                    <stop offset="100%" stopColor="white" stopOpacity="0" />
+                                </linearGradient>
+                            </defs>
+
+                            {/* LEFT SIDE CIRCUITS - Base traces */}
+                            <path d="M -50 80 H 60 V 120 H 100" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M -50 120 H 40 V 160 H 80 V 200" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M -50 160 H 20 V 220 H 60" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M -50 200 H 30 V 280 H 70 V 320 H 120" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M -50 280 H 50 V 340 H 100 V 380" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M -50 340 H 30 V 400 H 80" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M -50 400 H 40 V 460 H 90 V 500" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M -50 460 H 60 V 520 H 110" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+
+                            {/* RIGHT SIDE CIRCUITS - Base traces */}
+                            <path d="M 650 100 H 540 V 140 H 500" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M 650 140 H 560 V 180 H 520 V 220" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M 650 180 H 580 V 240 H 540" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M 650 220 H 570 V 300 H 530 V 340 H 480" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M 650 300 H 550 V 360 H 500 V 400" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M 650 360 H 570 V 420 H 520" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M 650 420 H 560 V 480 H 510 V 520" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M 650 480 H 540 V 540 H 490" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+
+                            {/* TOP & BOTTOM CIRCUITS */}
+                            <path d="M 180 -30 V 50 H 220 V 100" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M 260 -30 V 40 H 300 V 80 H 340" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M 340 -30 V 60 H 380 V 100" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M 420 -30 V 50 H 460 V 90" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M 160 630 V 540 H 200 V 500" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M 240 630 V 560 H 280 V 520 H 320" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M 360 630 V 550 H 400 V 510" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+                            <path d="M 440 630 V 540 H 480 V 500" stroke="white" strokeOpacity="0.12" strokeWidth="1" />
+
+                            {/* CENTER CONNECTIONS */}
+                            <path d="M 120 320 H 180 V 280 H 220" stroke="white" strokeOpacity="0.2" strokeWidth="1" />
+                            <path d="M 100 380 H 160 V 340 H 210" stroke="white" strokeOpacity="0.2" strokeWidth="1" />
+                            <path d="M 480 280 H 420 V 300 H 380" stroke="white" strokeOpacity="0.2" strokeWidth="1" />
+                            <path d="M 500 360 H 440 V 320 H 390" stroke="white" strokeOpacity="0.2" strokeWidth="1" />
+
+                            {/* ANIMATED CURRENT FLOWS - Dashed lines with animation */}
+                            {/* Left to center currents */}
+                            <motion.path
+                                d="M -50 200 H 30 V 280 H 70 V 320 H 120"
+                                stroke="white"
+                                strokeOpacity="0.4"
+                                strokeWidth="1.5"
+                                strokeDasharray="8 12"
+                                initial={{ strokeDashoffset: 0 }}
+                                animate={{ strokeDashoffset: -100 }}
+                                transition={{ repeat: Infinity, duration: 3, ease: "linear" }}
+                            />
+                            <motion.path
+                                d="M -50 280 H 50 V 340 H 100 V 380"
+                                stroke="white"
+                                strokeOpacity="0.35"
+                                strokeWidth="1.5"
+                                strokeDasharray="6 10"
+                                initial={{ strokeDashoffset: 0 }}
+                                animate={{ strokeDashoffset: -80 }}
+                                transition={{ repeat: Infinity, duration: 4, ease: "linear", delay: 0.5 }}
+                            />
+
+                            {/* Right to center currents */}
+                            <motion.path
+                                d="M 650 220 H 570 V 300 H 530 V 340 H 480"
+                                stroke="white"
+                                strokeOpacity="0.4"
+                                strokeWidth="1.5"
+                                strokeDasharray="8 12"
+                                initial={{ strokeDashoffset: 0 }}
+                                animate={{ strokeDashoffset: 100 }}
+                                transition={{ repeat: Infinity, duration: 3.5, ease: "linear", delay: 0.3 }}
+                            />
+                            <motion.path
+                                d="M 650 300 H 550 V 360 H 500 V 400"
+                                stroke="white"
+                                strokeOpacity="0.35"
+                                strokeWidth="1.5"
+                                strokeDasharray="6 10"
+                                initial={{ strokeDashoffset: 0 }}
+                                animate={{ strokeDashoffset: 80 }}
+                                transition={{ repeat: Infinity, duration: 4.5, ease: "linear", delay: 1 }}
+                            />
+
+                            {/* Top to center currents */}
+                            <motion.path
+                                d="M 260 -30 V 40 H 300 V 80 H 340"
+                                stroke="white"
+                                strokeOpacity="0.35"
+                                strokeWidth="1.5"
+                                strokeDasharray="6 10"
+                                initial={{ strokeDashoffset: 0 }}
+                                animate={{ strokeDashoffset: -60 }}
+                                transition={{ repeat: Infinity, duration: 2.5, ease: "linear", delay: 0.7 }}
+                            />
+
+                            {/* Bottom to center currents */}
+                            <motion.path
+                                d="M 240 630 V 560 H 280 V 520 H 320"
+                                stroke="white"
+                                strokeOpacity="0.35"
+                                strokeWidth="1.5"
+                                strokeDasharray="6 10"
+                                initial={{ strokeDashoffset: 0 }}
+                                animate={{ strokeDashoffset: 60 }}
+                                transition={{ repeat: Infinity, duration: 3, ease: "linear", delay: 1.2 }}
+                            />
+
+                            {/* CIRCUIT DOTS */}
+                            <circle cx="60" cy="80" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="60" cy="120" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="40" cy="160" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="30" cy="280" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="50" cy="340" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="30" cy="400" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="90" cy="500" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="540" cy="100" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="540" cy="140" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="560" cy="180" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="530" cy="340" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="550" cy="360" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="510" cy="520" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="490" cy="540" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="180" cy="50" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="300" cy="80" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="380" cy="100" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="460" cy="90" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="200" cy="500" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="320" cy="520" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="400" cy="510" r="2.5" fill="white" fillOpacity="0.25" />
+                            <circle cx="480" cy="500" r="2.5" fill="white" fillOpacity="0.25" />
+
+                            {/* Pulsing center dots */}
+                            <motion.circle
+                                cx="180" cy="280" r="3" fill="white"
+                                animate={{ fillOpacity: [0.2, 0.6, 0.2] }}
+                                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                            />
+                            <motion.circle
+                                cx="160" cy="340" r="3" fill="white"
+                                animate={{ fillOpacity: [0.2, 0.6, 0.2] }}
+                                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut", delay: 0.5 }}
+                            />
+                            <motion.circle
+                                cx="420" cy="300" r="3" fill="white"
+                                animate={{ fillOpacity: [0.2, 0.6, 0.2] }}
+                                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut", delay: 1 }}
+                            />
+                            <motion.circle
+                                cx="440" cy="320" r="3" fill="white"
+                                animate={{ fillOpacity: [0.2, 0.6, 0.2] }}
+                                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut", delay: 1.5 }}
+                            />
+                        </svg>
+
+                        {/* Glow Effect Behind Central Card */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/15 rounded-full blur-[120px]" />
+
+                        {/* Central Velos Core Card */}
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-zinc-900/95 rounded-3xl border border-white/20 shadow-2xl z-20 flex flex-col items-center justify-center gap-3 backdrop-blur-xl">
+                            <div className="w-14 h-14 bg-gradient-to-br from-white to-zinc-400 rounded-xl flex items-center justify-center shadow-lg">
+                                <FiCpu className="w-7 h-7 text-black" />
+                            </div>
+                            <div className="text-center">
+                                <div className="font-bold text-base text-white">Velos Core</div>
+                                <div className="text-xs text-zinc-500">AI Autopilot Active</div>
+                            </div>
+                        </div>
+
+                        {/* Floating Feature Cards with Animation */}
+                        {/* Image Gen - Left middle */}
+                        <motion.div
+                            className="absolute top-[38%] left-[0%] z-30 bg-zinc-900/90 backdrop-blur-sm rounded-xl border border-white/15 px-4 py-2.5 flex items-center gap-2.5 shadow-xl"
+                            animate={{ y: [0, -8, 0] }}
+                            transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                        >
+                            <div className="w-7 h-7 bg-zinc-800 rounded-lg flex items-center justify-center border border-white/10">
+                                <FiImage className="w-4 h-4 text-white" />
+                            </div>
+                            <span className="text-sm font-medium text-white">Image Gen</span>
+                        </motion.div>
+
+                        {/* Veo Video - Right upper */}
+                        <motion.div
+                            className="absolute top-[32%] right-[-5%] z-30 bg-zinc-900/90 backdrop-blur-sm rounded-xl border border-white/15 px-4 py-2.5 flex items-center gap-2.5 shadow-xl"
+                            animate={{ y: [0, -10, 0] }}
+                            transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut", delay: 0.5 }}
+                        >
+                            <span className="text-zinc-600 mr-1">&gt;</span>
+                            <span className="text-sm font-medium text-white">Veo Video</span>
+                        </motion.div>
+
+                        {/* Auto-Post - Left lower */}
+                        <motion.div
+                            className="absolute top-[58%] left-[0%] z-30 bg-zinc-900/90 backdrop-blur-sm rounded-xl border border-white/15 px-4 py-2.5 flex items-center gap-2.5 shadow-xl"
+                            animate={{ y: [0, -8, 0] }}
+                            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut", delay: 1 }}
+                        >
+                            <div className="w-7 h-7 bg-zinc-800 rounded-lg flex items-center justify-center border border-white/10">
+                                <FiInstagram className="w-4 h-4 text-white" />
+                            </div>
+                            <span className="text-sm font-medium text-white">Auto-Post</span>
+                        </motion.div>
+
+                        {/* Viral AI - Right lower */}
+                        <motion.div
+                            className="absolute top-[54%] right-[-5%] z-30 bg-zinc-900/90 backdrop-blur-sm rounded-xl border border-white/15 px-4 py-2.5 flex items-center gap-2.5 shadow-xl"
+                            animate={{ y: [0, -10, 0] }}
+                            transition={{ repeat: Infinity, duration: 3.2, ease: "easeInOut", delay: 1.5 }}
+                        >
+                            <span className="text-sm font-medium text-white">Viral AI</span>
+                        </motion.div>
                     </motion.div>
                 </div>
             </section>
@@ -604,9 +842,14 @@ const LandingPage = () => {
                             </p>
                             {/* Social Icons */}
                             <div className="flex gap-4">
-                                {['X', 'In', 'YT', 'GH'].map((social, i) => (
-                                    <a key={i} href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xs font-bold text-zinc-400 hover:bg-white/10 hover:text-white transition-all hover:scale-110">
-                                        {social}
+                                {[
+                                    { label: 'X', url: 'https://twitter.com' },
+                                    { label: 'In', url: 'https://linkedin.com' },
+                                    { label: 'YT', url: 'https://youtube.com' },
+                                    { label: 'GH', url: 'https://github.com' }
+                                ].map((social, i) => (
+                                    <a key={i} href={social.url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xs font-bold text-zinc-400 hover:bg-white/10 hover:text-white transition-all hover:scale-110">
+                                        {social.label}
                                     </a>
                                 ))}
                             </div>
@@ -616,10 +859,10 @@ const LandingPage = () => {
                         <div>
                             <h4 className="font-semibold text-white mb-6 text-sm uppercase tracking-wider">Product</h4>
                             <ul className="space-y-4 text-sm">
-                                <li><a href="#creation" className="text-zinc-500 hover:text-white transition-colors">Image Generation</a></li>
-                                <li><a href="#creation" className="text-zinc-500 hover:text-white transition-colors">Video Generation</a></li>
-                                <li><a href="#growth" className="text-zinc-500 hover:text-white transition-colors">Instagram Autopilot</a></li>
-                                <li><a href="#pricing" className="text-zinc-500 hover:text-white transition-colors">Pricing</a></li>
+                                <li><button onClick={() => document.getElementById('creation')?.scrollIntoView({ behavior: 'smooth' })} className="text-zinc-500 hover:text-white transition-colors">Image Generation</button></li>
+                                <li><button onClick={() => document.getElementById('creation')?.scrollIntoView({ behavior: 'smooth' })} className="text-zinc-500 hover:text-white transition-colors">Video Generation</button></li>
+                                <li><button onClick={() => document.getElementById('growth')?.scrollIntoView({ behavior: 'smooth' })} className="text-zinc-500 hover:text-white transition-colors">Instagram Autopilot</button></li>
+                                <li><button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="text-zinc-500 hover:text-white transition-colors">Pricing</button></li>
                             </ul>
                         </div>
 
@@ -627,10 +870,10 @@ const LandingPage = () => {
                         <div>
                             <h4 className="font-semibold text-white mb-6 text-sm uppercase tracking-wider">Resources</h4>
                             <ul className="space-y-4 text-sm">
-                                <li><a href="#" className="text-zinc-500 hover:text-white transition-colors">Documentation</a></li>
-                                <li><a href="#" className="text-zinc-500 hover:text-white transition-colors">API Reference</a></li>
-                                <li><a href="#" className="text-zinc-500 hover:text-white transition-colors">Tutorials</a></li>
-                                <li><a href="#" className="text-zinc-500 hover:text-white transition-colors">Blog</a></li>
+                                <li><span className="text-zinc-500 cursor-default">Documentation</span></li>
+                                <li><span className="text-zinc-500 cursor-default">API Reference</span></li>
+                                <li><span className="text-zinc-500 cursor-default">Tutorials</span></li>
+                                <li><span className="text-zinc-500 cursor-default">Blog</span></li>
                             </ul>
                         </div>
 
@@ -638,10 +881,10 @@ const LandingPage = () => {
                         <div>
                             <h4 className="font-semibold text-white mb-6 text-sm uppercase tracking-wider">Company</h4>
                             <ul className="space-y-4 text-sm">
-                                <li><a href="#" className="text-zinc-500 hover:text-white transition-colors">About Us</a></li>
-                                <li><a href="#" className="text-zinc-500 hover:text-white transition-colors">Careers <span className="ml-1 px-2 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded-full">Hiring</span></a></li>
-                                <li><a href="#" className="text-zinc-500 hover:text-white transition-colors">Contact</a></li>
-                                <li><a href="#" className="text-zinc-500 hover:text-white transition-colors">Press Kit</a></li>
+                                <li><span className="text-zinc-500 cursor-default">About Us</span></li>
+                                <li><span className="text-zinc-500 cursor-default">Careers <span className="ml-1 px-2 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded-full">Hiring</span></span></li>
+                                <li><span className="text-zinc-500 cursor-default">Contact</span></li>
+                                <li><span className="text-zinc-500 cursor-default">Press Kit</span></li>
                             </ul>
                         </div>
                     </div>
@@ -657,9 +900,9 @@ const LandingPage = () => {
                             </span>
                         </div>
                         <div className="flex gap-8 text-xs text-zinc-600">
-                            <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
-                            <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
-                            <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
+                            <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+                            <Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link>
+                            <span className="cursor-default">Cookie Policy</span>
                         </div>
                     </div>
                 </div>
@@ -667,25 +910,5 @@ const LandingPage = () => {
         </div>
     );
 };
-
-// Sub-components
-const FloatingCard = ({ icon, title, delay, x, y }) => (
-    <motion.div
-        animate={{
-            y: [y, y - 10, y],
-            x: [x, x + 5, x]
-        }}
-        transition={{ repeat: Infinity, duration: 4, delay, ease: "easeInOut" }}
-        className="absolute top-1/2 left-1/2 w-40 p-3 bg-zinc-900/80 backdrop-blur rounded-xl border border-white/5 flex items-center gap-3 shadow-xl"
-        style={{ marginLeft: -80, marginTop: -30 }} // Center anchor roughly
-    >
-        <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center border border-white/10">
-            <SafeIcon icon={icon} className="w-4 h-4 text-white" />
-        </div>
-        <span className="text-xs font-bold">{title}</span>
-    </motion.div>
-);
-
-
 
 export default LandingPage;
