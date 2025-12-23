@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import LoginPage from './components/LoginPage';
+import LandingPage from './components/LandingPage';
 import HomePage from './components/HomePage';
 import ChatPage from './components/ChatPage';
 import SettingsPage from './components/SettingsPage';
@@ -21,7 +22,8 @@ function App() {
     <>
       <Router>
         <Routes>
-          <Route path="/" element={<LoginPage />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/home" element={<HomePage />} />
           <Route path="/chat/:chatId" element={<ChatPage />} />
           <Route path="/video/:chatId" element={<VideoChatPage />} />
