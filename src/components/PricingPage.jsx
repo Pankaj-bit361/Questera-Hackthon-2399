@@ -35,12 +35,12 @@ const FEATURES_MAP = {
     "Priority support (24/7)"
   ],
   business: [
-    "Instant generation",
+    "Everything in Pro",
+    "1,500 credits/month",
     "API Access",
     "Dedicated account manager",
     "Custom model fine-tuning",
-    "Unlimited storage",
-    "Team collaboration"
+    "Priority 24/7 support"
   ]
 };
 

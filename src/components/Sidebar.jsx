@@ -250,13 +250,13 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
                   <SafeIcon icon={FiTrendingUp} className="w-4 h-4 text-emerald-400" />
                   <span className="text-[13px] font-medium">Analytics</span>
                 </button>
-                <button
+                {/* <button
                   onClick={() => navigate('/email-campaign')}
                   className={`w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-[#18181b] rounded-lg transition-colors ${location.pathname === '/email-campaign' ? 'bg-[#18181b] text-white' : ''}`}
                 >
                   <SafeIcon icon={FiMail} className="w-4 h-4 text-blue-400" />
                   <span className="text-[13px] font-medium">Email Campaign</span>
-                </button>
+                </button> */}
                 <button
                   onClick={() => navigate('/settings')}
                   className={`w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-[#18181b] rounded-lg transition-colors ${location.pathname === '/settings' ? 'bg-[#18181b] text-white' : ''}`}
