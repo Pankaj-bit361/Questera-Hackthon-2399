@@ -6,7 +6,7 @@ import SafeIcon from '../common/SafeIcon';
 import { imageAPI, videoAPI, creditsAPI } from '../lib/api';
 import { getUser, getUserId, logout as velosLogout } from '../lib/velosStorage';
 
-const { FiPlus, FiSearch, FiSettings, FiLogOut, FiZap, FiUser, FiCalendar, FiTrendingUp, FiVideo, FiImage } = FiIcons;
+const { FiPlus, FiSearch, FiSettings, FiLogOut, FiZap, FiUser, FiCalendar, FiTrendingUp, FiVideo, FiImage, FiMail } = FiIcons;
 
 const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
   const navigate = useNavigate();
@@ -249,6 +249,13 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
                 >
                   <SafeIcon icon={FiTrendingUp} className="w-4 h-4 text-emerald-400" />
                   <span className="text-[13px] font-medium">Analytics</span>
+                </button>
+                <button
+                  onClick={() => navigate('/email-campaign')}
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-[#18181b] rounded-lg transition-colors ${location.pathname === '/email-campaign' ? 'bg-[#18181b] text-white' : ''}`}
+                >
+                  <SafeIcon icon={FiMail} className="w-4 h-4 text-blue-400" />
+                  <span className="text-[13px] font-medium">Email Campaign</span>
                 </button>
                 <button
                   onClick={() => navigate('/settings')}

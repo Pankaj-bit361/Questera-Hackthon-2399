@@ -15,6 +15,7 @@ import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
 import AnalyticsPage from './components/AnalyticsPage';
 import VideoChatPage from './components/VideoChatPage';
+import EmailCampaignDashboard from './components/EmailCampaignDashboard';
 import './App.css';
 
 function App() {
@@ -35,6 +36,7 @@ function App() {
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/email-campaign" element={<EmailCampaignDashboard />} />
         </Routes>
       </Router>
       <ToastContainer
