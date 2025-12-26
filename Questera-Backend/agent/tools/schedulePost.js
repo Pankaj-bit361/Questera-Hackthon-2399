@@ -64,6 +64,7 @@ WHEN NOT TO USE:
 
 POST TYPES:
 - "image" (default): Regular Instagram feed post - permanent, shows in grid
+- "carousel": Multiple images in one post - swipeable, great for variations
 - "story": Instagram Story - ephemeral (24h), full-screen vertical format
 
 TIMING OPTIONS:
@@ -83,6 +84,13 @@ EXAMPLES:
 - "Post to my story" → Instagram story post
 - "Post to @mybrand account" → posts to specific connected account
 - "Schedule this for tomorrow with caption 'New product launch!'" → scheduled with custom caption
+- "Post these 4 variations as a carousel" → carousel post with multiple images
+
+CAROUSEL POSTS (MULTIPLE IMAGES):
+- Use postType="carousel" when posting multiple images
+- Provide imageUrls array with 2-10 image URLs
+- Great for variations, before/after, product showcases
+- Single imageUrl is ignored when imageUrls is provided
 
 ACCOUNT SELECTION:
 - If user has multiple Instagram accounts, specify accountUsername
@@ -98,9 +106,15 @@ IMPORTANT:
    parameters: {
       imageUrl: {
          type: 'string',
-         required: true,
-         description: 'URL of image to post. Usually the last generated image. Leave empty to auto-use last generated.',
+         required: false,
+         description: 'URL of single image to post. For carousel, use imageUrls instead. Leave empty to auto-use last generated.',
          example: 'https://storage.example.com/images/generated-abc123.jpg'
+      },
+      imageUrls: {
+         type: 'array',
+         required: false,
+         description: 'Array of image URLs for CAROUSEL posts (2-10 images). Takes priority over imageUrl when provided.',
+         example: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg', 'https://example.com/img3.jpg']
       },
       caption: {
          type: 'string',
@@ -117,8 +131,8 @@ IMPORTANT:
       postType: {
          type: 'string',
          required: false,
-         description: 'Post type: "image" for feed (default), "story" for Instagram Story (24h ephemeral)',
-         example: 'story'
+         description: 'Post type: "image" for single feed post (default), "carousel" for multiple images, "story" for Instagram Story',
+         example: 'carousel'
       },
       accountUsername: {
          type: 'string',
@@ -135,27 +149,54 @@ IMPORTANT:
    },
 
    execute: async (params, context) => {
-      const { caption, scheduledTime, accountUsername, hashtags, postType } = params;
-      const { userId, lastImageUrl } = context;
+      const { caption, scheduledTime, accountUsername, hashtags, postType, imageUrls } = params;
+      const { userId, lastImageUrl, variationImages } = context;
 
-      // Use provided imageUrl or fall back to last generated image
-      const imageUrl = params.imageUrl || lastImageUrl;
+      // Handle carousel vs single image
+      let finalImageUrls = [];
+      let finalImageUrl = null;
 
-      // Determine post type - default to 'image' (feed post), or 'story' for Stories
-      const finalPostType = postType?.toLowerCase() === 'story' ? 'story' : 'image';
+      if (imageUrls && imageUrls.length > 1) {
+         // Carousel mode - multiple images provided
+         finalImageUrls = imageUrls;
+         finalImageUrl = imageUrls[0]; // First image as fallback
+      } else if (variationImages && variationImages.length > 1 && (!postType || postType === 'carousel')) {
+         // Auto-detect: variations exist in context, use them as carousel
+         finalImageUrls = variationImages.map(v => v.imageUrl || v);
+         finalImageUrl = finalImageUrls[0];
+      } else {
+         // Single image mode
+         finalImageUrl = params.imageUrl || lastImageUrl;
+      }
+
+      // Determine post type
+      const typeStr = postType?.toLowerCase() || '';
+      let finalPostType = 'image';
+      if (typeStr === 'story') {
+         finalPostType = 'story';
+      } else if (typeStr === 'carousel' || finalImageUrls.length > 1) {
+         finalPostType = 'carousel';
+      }
+
       const isStory = finalPostType === 'story';
+      const isCarousel = finalPostType === 'carousel';
 
       console.log('📅 [SCHEDULE] Params:', JSON.stringify(params));
       console.log('📅 [SCHEDULE] Context lastImageUrl:', lastImageUrl);
-      console.log('📅 [SCHEDULE] Final imageUrl:', imageUrl);
-      console.log('📅 [SCHEDULE] Post type:', finalPostType, isStory ? '(Story)' : '(Feed)');
+      console.log('📅 [SCHEDULE] Final imageUrl:', finalImageUrl);
+      console.log('📅 [SCHEDULE] Final imageUrls count:', finalImageUrls.length);
+      console.log('📅 [SCHEDULE] Post type:', finalPostType, isStory ? '(Story)' : isCarousel ? '(Carousel)' : '(Feed)');
 
       if (!userId) {
          return { success: false, error: 'userId is required', message: 'Please log in first.' };
       }
 
-      if (!imageUrl) {
+      if (!finalImageUrl && finalImageUrls.length === 0) {
          return { success: false, error: 'imageUrl is required', message: 'No image found to schedule. Please generate or select an image first.' };
+      }
+
+      if (isCarousel && finalImageUrls.length < 2) {
+         return { success: false, error: 'Carousel requires at least 2 images', message: 'Please provide at least 2 images for a carousel post.' };
       }
 
       if (!scheduledTime) {
@@ -192,13 +233,14 @@ IMPORTANT:
          console.log('📅 [SCHEDULE] Calling schedulerService.schedulePost with accountId:', accountId, 'postType:', finalPostType);
          const post = await schedulerService.schedulePost(userId, {
             socialAccountId: accountId,
-            imageUrl,
+            imageUrl: finalImageUrl,
+            imageUrls: isCarousel ? finalImageUrls : [],
             caption: isStory ? '' : (caption || 'Posted with Velos AI ✨'), // Stories don't have captions
             hashtags: isStory ? '' : (hashtags || ''), // Stories don't have hashtags
             scheduledAt: parsedTime,
             postType: finalPostType
          });
-         console.log('📅 [SCHEDULE] Post created:', post?._id, 'Type:', finalPostType);
+         console.log('📅 [SCHEDULE] Post created:', post?._id, 'Type:', finalPostType, isCarousel ? `(${finalImageUrls.length} images)` : '');
 
          const scheduledDate = new Date(parsedTime);
          const timeStr = scheduledDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -211,10 +253,15 @@ IMPORTANT:
          const isImmediate = scheduledTime === 'now' || scheduledTime === 'immediately';
 
          // Add post type decision
+         const formatLabel = isStory ? 'Instagram Story' : isCarousel ? `Carousel (${finalImageUrls.length} images)` : 'Feed Post';
+         const formatReason = isStory ? 'Story for quick, ephemeral engagement'
+            : isCarousel ? 'Carousel for higher engagement with multiple visuals'
+            : 'Feed post for lasting visibility';
+
          decisions.push({
             type: 'format',
-            value: isStory ? 'Instagram Story' : 'Feed Post',
-            reason: isStory ? 'Story for quick, ephemeral engagement' : 'Feed post for lasting visibility'
+            value: formatLabel,
+            reason: formatReason
          });
 
          if (isImmediate) {
@@ -252,21 +299,29 @@ IMPORTANT:
             'Want me to also post this to your feed for more lasting visibility?',
             'I can schedule more stories throughout the day for consistent engagement.',
             'Should I add interactive elements like polls or questions to your next story?'
+         ] : isCarousel ? [
+            'Great choice! Carousels get 3x more engagement than single images.',
+            'Want me to schedule follow-up content to boost this post\'s reach?',
+            'Should I create more variations for your next carousel?'
          ] : [
             'Want me to schedule the same content for another account?',
             'I can create carousel posts for higher engagement if you have more images.',
             'Should I schedule follow-up content to boost this post\'s reach?'
          ];
 
-         const postTypeLabel = isStory ? 'Story' : 'Post';
+         const postTypeLabel = isStory ? 'Story' : isCarousel ? 'Carousel' : 'Post';
          const messageText = isStory
             ? `Story scheduled for ${timeStr}! It will be published to ${accountUsername || 'your default account'}'s Instagram Story.`
+            : isCarousel
+            ? `Carousel with ${finalImageUrls.length} images scheduled for ${timeStr}! It will be published to ${accountUsername || 'your default account'}.`
             : `Post scheduled for ${timeStr}! It will be published to ${accountUsername || 'your default account'}.`;
 
          return {
             success: true,
             postId: post._id,
             postType: finalPostType,
+            isCarousel,
+            imageCount: isCarousel ? finalImageUrls.length : 1,
             scheduledAt: parsedTime,
             status: post.status,
             message: messageText,
