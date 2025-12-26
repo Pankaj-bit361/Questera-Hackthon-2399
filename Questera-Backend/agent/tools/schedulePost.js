@@ -47,37 +47,90 @@ function parseRelativeTime(timeStr) {
 
 const schedulePostTool = {
    name: 'schedule_post',
-   description: 'Schedule or immediately post an image to Instagram feed OR story. Use "now" for immediate posting. Set postType to "story" for Instagram Stories.',
+   description: `Schedule or immediately post an image to Instagram feed OR story.
+
+WHEN TO USE:
+- User wants to POST or SCHEDULE content to Instagram
+- User says "post this", "schedule", "publish", "share to Instagram"
+- User says "post now", "post immediately", "share this"
+- User wants to post to their Instagram story
+- After generating an image, user wants to share it
+
+WHEN NOT TO USE:
+- User just wants to generate an image → use generate_image instead
+- User wants to edit an image first → use edit_image instead
+- User is asking about their accounts → use get_instagram_accounts instead
+- No image has been generated yet → generate one first
+
+POST TYPES:
+- "image" (default): Regular Instagram feed post - permanent, shows in grid
+- "story": Instagram Story - ephemeral (24h), full-screen vertical format
+
+TIMING OPTIONS:
+- "now" or "immediately": Posts within 1 minute
+- Relative time: "2 minutes", "1 hour", "3 hours", "1 day"
+- Supports: minutes, hours, days
+
+CAPTION BEST PRACTICES:
+- Keep captions engaging and relevant to the image
+- Stories don't use captions (caption parameter is ignored)
+- Include call-to-action when appropriate
+- Hashtags can be in caption or separate hashtags parameter
+
+EXAMPLES:
+- "Post this now" → immediate feed post with generated image
+- "Schedule for 2 hours from now" → delayed feed post
+- "Post to my story" → Instagram story post
+- "Post to @mybrand account" → posts to specific connected account
+- "Schedule this for tomorrow with caption 'New product launch!'" → scheduled with custom caption
+
+ACCOUNT SELECTION:
+- If user has multiple Instagram accounts, specify accountUsername
+- Use get_instagram_accounts first to see available accounts
+- If not specified, uses default/first connected account
+
+IMPORTANT:
+- Image must exist before scheduling (either generated or uploaded)
+- Stories don't support captions or hashtags
+- Use 9:16 aspect ratio for best story appearance
+- Feed posts work best with 1:1 or 4:5 aspect ratios`,
+
    parameters: {
       imageUrl: {
          type: 'string',
          required: true,
-         description: 'URL of the image to post'
+         description: 'URL of image to post. Usually the last generated image. Leave empty to auto-use last generated.',
+         example: 'https://storage.example.com/images/generated-abc123.jpg'
       },
       caption: {
          type: 'string',
          required: true,
-         description: 'Caption for the Instagram post (ignored for stories)'
+         description: 'Caption for feed post. Ignored for stories. Make it engaging with call-to-action.',
+         example: '✨ Exciting news! Our new collection just dropped. Link in bio! 🔗'
       },
       scheduledTime: {
          type: 'string',
          required: true,
-         description: 'When to post. Use "now" for immediate, or relative like "2 minutes", "1 hour"'
+         description: 'When to post: "now", "immediately", or relative like "30 minutes", "2 hours", "1 day"',
+         example: '2 hours'
       },
       postType: {
          type: 'string',
          required: false,
-         description: 'Type of post: "image" for feed post (default), "story" for Instagram Story'
+         description: 'Post type: "image" for feed (default), "story" for Instagram Story (24h ephemeral)',
+         example: 'story'
       },
       accountUsername: {
          type: 'string',
          required: false,
-         description: 'Instagram username to post to (e.g., "pixelfusionheroes")'
+         description: 'Instagram username to post to. Use get_instagram_accounts to see options. Omit for default account.',
+         example: 'mybrandofficial'
       },
       hashtags: {
          type: 'string',
          required: false,
-         description: 'Hashtags to add to the post (ignored for stories)'
+         description: 'Hashtags for feed posts (ignored for stories). Can also include in caption instead.',
+         example: '#newproduct #launch #exciting #brand'
       }
    },
 
