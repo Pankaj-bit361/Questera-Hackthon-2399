@@ -593,6 +593,8 @@ class InstagramController {
       }
 
       console.log('🎠 [INSTAGRAM] Publishing Carousel with', imageUrls.length, 'images...');
+      console.log('🎠 [INSTAGRAM] All image URLs:');
+      imageUrls.forEach((url, i) => console.log(`   ${i + 1}. ${url}`));
 
       const instagram = await Instagram.findOne({ userId });
       if (!instagram) {
