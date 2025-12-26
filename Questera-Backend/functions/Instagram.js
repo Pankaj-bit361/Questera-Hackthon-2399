@@ -638,11 +638,40 @@ class InstagramController {
       const { instagramBusinessAccountId, accessToken, instagramUsername } = account;
       const baseUrl = `https://graph.facebook.com/${this.apiVersion}`;
 
+      // Step 0: Validate all image URLs are accessible
+      console.log('🔍 [INSTAGRAM] Validating image URLs...');
+      const validImageUrls = [];
+      for (const imageUrl of imageUrls) {
+        try {
+          const checkResponse = await fetch(imageUrl, { method: 'HEAD' });
+          if (checkResponse.ok) {
+            validImageUrls.push(imageUrl);
+            console.log('✅ [INSTAGRAM] Image valid:', imageUrl.slice(-50));
+          } else {
+            console.warn('⚠️ [INSTAGRAM] Image not accessible (skipping):', imageUrl.slice(-50));
+          }
+        } catch (err) {
+          console.warn('⚠️ [INSTAGRAM] Image check failed (skipping):', imageUrl.slice(-50), err.message);
+        }
+      }
+
+      if (validImageUrls.length < 2) {
+        return {
+          status: 400,
+          json: {
+            error: `Only ${validImageUrls.length} valid images found. Instagram carousels require at least 2 images.`,
+            validUrls: validImageUrls,
+            originalCount: imageUrls.length
+          }
+        };
+      }
+      console.log(`🎠 [INSTAGRAM] ${validImageUrls.length}/${imageUrls.length} images are valid`);
+
       // Step 1: Create child containers for each image
       console.log('🎠 [INSTAGRAM] Creating child containers...');
       const childContainerIds = [];
 
-      for (const imageUrl of imageUrls) {
+      for (const imageUrl of validImageUrls) {
         const containerUrl = `${baseUrl}/${instagramBusinessAccountId}/media`;
         const containerParams = new URLSearchParams({
           image_url: imageUrl,
@@ -657,11 +686,23 @@ class InstagramController {
 
         if (containerData.error) {
           console.error('❌ [INSTAGRAM] Child container creation failed:', containerData.error);
-          return { status: 400, json: { error: containerData.error.message, details: containerData.error } };
+          // Continue with other images instead of failing completely
+          console.warn('⚠️ [INSTAGRAM] Skipping this image and continuing...');
+          continue;
         }
 
         childContainerIds.push(containerData.id);
         console.log('📦 [INSTAGRAM] Child container created:', containerData.id);
+      }
+
+      if (childContainerIds.length < 2) {
+        return {
+          status: 400,
+          json: {
+            error: `Only ${childContainerIds.length} child containers created. Instagram carousels require at least 2.`,
+            successfulContainers: childContainerIds.length
+          }
+        };
       }
 
       // Wait for all children to be ready
