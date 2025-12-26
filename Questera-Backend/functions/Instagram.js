@@ -727,12 +727,18 @@ class InstagramController {
       });
       const carouselData = await carouselResponse.json();
 
+      console.log('📦 [INSTAGRAM] Carousel API response:', JSON.stringify(carouselData));
+
       if (carouselData.error) {
         console.error('❌ [INSTAGRAM] Carousel container creation failed:', carouselData.error);
         return { status: 400, json: { error: carouselData.error.message, details: carouselData.error } };
       }
 
       const carouselContainerId = carouselData.id;
+      if (!carouselContainerId) {
+        console.error('❌ [INSTAGRAM] No carousel container ID returned:', carouselData);
+        return { status: 400, json: { error: 'Instagram API did not return a carousel container ID', details: carouselData } };
+      }
       console.log('📦 [INSTAGRAM] Carousel container created:', carouselContainerId);
 
       // Wait for carousel to be ready
