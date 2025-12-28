@@ -84,9 +84,10 @@ const LoginPage = () => {
         window.google.accounts.id.renderButton(googleButtonRef.current, {
           theme: 'outline',
           size: 'large',
-          width: googleButtonRef.current.offsetWidth,
+          width: googleButtonRef.current.offsetWidth || 400,
           text: 'continue_with',
-          shape: 'rectangular',
+          shape: 'pill',
+          logo_alignment: 'left',
         });
       }
     };
@@ -424,10 +425,15 @@ const LoginPage = () => {
                     </div>
                   </div>
 
-                  {/* Google Sign-In Button */}
+                  {/* Google Sign-In Button - styled to match Continue button height */}
                   <div
                     ref={googleButtonRef}
-                    className={`w-full flex justify-center ${googleLoading ? 'opacity-50 pointer-events-none' : ''}`}
+                    className={`w-full ${googleLoading ? 'opacity-50 pointer-events-none' : ''}`}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      minHeight: '56px',
+                    }}
                   >
                     {/* Google button will be rendered here by Google Identity Services */}
                   </div>
@@ -437,6 +443,18 @@ const LoginPage = () => {
                       <span>Signing in with Google...</span>
                     </div>
                   )}
+
+                  {/* Add CSS to scale Google button */}
+                  <style>{`
+                    #googleButtonRef iframe,
+                    [data-iframe-height] {
+                      height: 56px !important;
+                    }
+                    .g_id_signin {
+                      transform: scale(1.15);
+                      transform-origin: center;
+                    }
+                  `}</style>
                 </motion.form>
               ) : (
                 <motion.form
