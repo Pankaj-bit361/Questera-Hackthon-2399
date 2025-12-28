@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { API_BASE_URL } from '../config';
 
-const { FiCheck, FiX, FiLoader, FiExternalLink, FiCamera, FiTrendingUp, FiPlus, FiTrash2, FiUsers, FiLink, FiHeart, FiFileText } = FiIcons;
+const { FiCheck, FiX, FiLoader, FiExternalLink, FiCamera, FiTrendingUp, FiPlus, FiTrash2, FiUsers, FiLink, FiHeart, FiFileText, FiMessageCircle } = FiIcons;
 
 const InstagramIntegration = ({ userId }) => {
   const [accounts, setAccounts] = useState([]);
