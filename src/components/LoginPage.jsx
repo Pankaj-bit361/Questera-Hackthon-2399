@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, GOOGLE_CLIENT_ID } from '../config';
 import { isLoggedIn, setAuth, getAuthToken } from '../lib/velosStorage';
 
-const { FiMail, FiArrowRight, FiCheck, FiChevronLeft, FiZap, FiAlertCircle } = FiIcons;
+const { FiMail, FiArrowRight, FiChevronLeft, FiZap, FiAlertCircle } = FiIcons;
 
 // Helper to check if JWT token is expired
 const isTokenExpired = (token) => {
@@ -24,11 +24,13 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState('email');// 'email' or 'otp'
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState(new Array(6).fill(''));// 6 digits
   const [timer, setTimer] = useState(30);
   const [error, setError] = useState('');
   const otpInputRefs = useRef([]);
+  const googleButtonRef = useRef(null);
 
   // Check if user is already logged in with valid token - redirect to home
   useEffect(() => {
@@ -37,6 +39,67 @@ const LoginPage = () => {
       navigate('/home', { replace: true });
     }
   }, [navigate]);
+
+  // Handle Google Sign-In response
+  const handleGoogleResponse = useCallback(async (response) => {
+    if (response.credential) {
+      setGoogleLoading(true);
+      setError('');
+      try {
+        const res = await fetch(`${API_BASE_URL}/auth/google`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken: response.credential }),
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          setAuth(data.token, data.user);
+          navigate('/home');
+        } else {
+          setError(data.error || 'Google sign-in failed. Please try again.');
+        }
+      } catch (err) {
+        console.error('Google login error:', err);
+        setError('Google sign-in failed. Please try again.');
+      } finally {
+        setGoogleLoading(false);
+      }
+    }
+  }, [navigate]);
+
+  // Initialize Google Sign-In
+  useEffect(() => {
+    // Load Google Identity Services script
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.google && googleButtonRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleResponse,
+        });
+        window.google.accounts.id.renderButton(googleButtonRef.current, {
+          theme: 'outline',
+          size: 'large',
+          width: googleButtonRef.current.offsetWidth,
+          text: 'continue_with',
+          shape: 'rectangular',
+        });
+      }
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      // Cleanup
+      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
+  }, [handleGoogleResponse]);
 
   // OTP Timer countdown
   useEffect(() => {
@@ -338,7 +401,7 @@ const LoginPage = () => {
                   </div>
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || googleLoading}
                     className="flex items-center justify-center gap-2 group w-full py-4 text-lg font-bold bg-black text-white rounded-xl hover:bg-gray-900 disabled:opacity-70 transition-all shadow-lg"
                   >
                     {loading ? (
@@ -350,6 +413,30 @@ const LoginPage = () => {
                       </>
                     )}
                   </button>
+
+                  {/* Divider */}
+                  <div className="relative my-2">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-200"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-4 bg-white text-gray-500">or</span>
+                    </div>
+                  </div>
+
+                  {/* Google Sign-In Button */}
+                  <div
+                    ref={googleButtonRef}
+                    className={`w-full flex justify-center ${googleLoading ? 'opacity-50 pointer-events-none' : ''}`}
+                  >
+                    {/* Google button will be rendered here by Google Identity Services */}
+                  </div>
+                  {googleLoading && (
+                    <div className="flex items-center justify-center gap-2 text-gray-500 text-sm">
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                      <span>Signing in with Google...</span>
+                    </div>
+                  )}
                 </motion.form>
               ) : (
                 <motion.form
