@@ -191,6 +191,7 @@ const CreatePostModal = ({ isOpen, onClose, onSuccess, selectedDate = null }) =>
     // Validate account selection
     if (!selectedAccount) {
       setError('Please select an Instagram account');
+      setIsSubmitting(false);
       return;
     }
 
@@ -200,25 +201,47 @@ const CreatePostModal = ({ isOpen, onClose, onSuccess, selectedDate = null }) =>
         ? mediaList.map(m => ({ data: m.data, mimeType: m.mimeType }))
         : { data: mediaList[0].data, mimeType: mediaList[0].mimeType };
 
-      const result = await schedulerAPI.createManualPost({
-        userId,
-        accountId: selectedAccount,
-        media: mediaPayload,
-        caption,
-        hashtags,
-        postType: isCarousel ? 'carousel' : postType,
-        scheduledAt: finalDate.toISOString(),
-        // Buffer-like features
-        music,
-        tagProducts,
-        firstComment,
-      });
+      let result;
 
-      if (result.success) {
-        onSuccess?.(result.post);
-        handleClose();
+      // If "Publish Now" is selected, publish immediately without scheduling
+      if (scheduleMode === 'now') {
+        result = await schedulerAPI.publishNow({
+          userId,
+          accountId: selectedAccount,
+          media: mediaPayload,
+          caption,
+          hashtags,
+          postType: isCarousel ? 'carousel' : postType,
+        });
+
+        if (result.success) {
+          onSuccess?.({ ...result, status: 'published' });
+          handleClose();
+        } else {
+          setError(result.error || 'Failed to publish post');
+        }
       } else {
-        setError(result.error || 'Failed to schedule post');
+        // Schedule for later
+        result = await schedulerAPI.createManualPost({
+          userId,
+          accountId: selectedAccount,
+          media: mediaPayload,
+          caption,
+          hashtags,
+          postType: isCarousel ? 'carousel' : postType,
+          scheduledAt: finalDate.toISOString(),
+          // Buffer-like features
+          music,
+          tagProducts,
+          firstComment,
+        });
+
+        if (result.success) {
+          onSuccess?.(result.post);
+          handleClose();
+        } else {
+          setError(result.error || 'Failed to schedule post');
+        }
       }
     } catch (err) {
       setError(err.message || 'Something went wrong');
@@ -384,8 +407,8 @@ const CreatePostModal = ({ isOpen, onClose, onSuccess, selectedDate = null }) =>
                         type="button"
                         onClick={() => setSelectedAccount(acc.accountId)}
                         className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${selectedAccount === acc.accountId
-                            ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/40'
-                            : 'bg-zinc-900/50 border-white/5 hover:border-white/20'
+                          ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/40'
+                          : 'bg-zinc-900/50 border-white/5 hover:border-white/20'
                           }`}
                       >
                         {acc.profilePictureUrl ? (
@@ -735,7 +758,10 @@ const CreatePostModal = ({ isOpen, onClose, onSuccess, selectedDate = null }) =>
                   className="w-full py-4 bg-white hover:bg-zinc-200 text-black rounded-2xl font-bold text-sm transition-all shadow-xl shadow-white/5 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-3 group"
                 >
                   {isSubmitting ? (
-                    <div className="w-5 h-5 border-3 border-zinc-400 border-t-black rounded-full animate-spin" />
+                    <>
+                      <div className="w-5 h-5 border-3 border-zinc-400 border-t-black rounded-full animate-spin" />
+                      <span>{scheduleMode === 'now' ? 'Publishing...' : 'Scheduling...'}</span>
+                    </>
                   ) : (
                     <>
                       <span>{scheduleMode === 'now' ? 'Publish Post' : 'Confirm Schedule'}</span>

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { API_BASE_URL } from '../config';
 
-const { FiCheck, FiX, FiLoader, FiExternalLink, FiCamera, FiMessageCircle, FiTrendingUp, FiPlus, FiTrash2, FiUsers, FiLink, FiChevronDown, FiHeart, FiShare2, FiImage, FiVideo, FiFileText } = FiIcons;
+const { FiCheck, FiX, FiLoader, FiExternalLink, FiCamera, FiTrendingUp, FiPlus, FiTrash2, FiUsers, FiLink, FiHeart, FiFileText } = FiIcons;
 
 const InstagramIntegration = ({ userId }) => {
   const [accounts, setAccounts] = useState([]);
@@ -330,14 +330,6 @@ const InstagramIntegration = ({ userId }) => {
                                               <span className="flex items-center gap-1">
                                                 <SafeIcon icon={FiHeart} className="w-3 h-3 text-red-400" />
                                                 {post.likes}
-                                              </span>
-                                              <span className="flex items-center gap-1">
-                                                <SafeIcon icon={FiMessageCircle} className="w-3 h-3 text-blue-400" />
-                                                {post.comments}
-                                              </span>
-                                              <span className="flex items-center gap-1">
-                                                <SafeIcon icon={FiShare2} className="w-3 h-3 text-emerald-400" />
-                                                {post.shares}
                                               </span>
                                               <span className="text-zinc-600">
                                                 {new Date(post.createdTime).toLocaleDateString()}

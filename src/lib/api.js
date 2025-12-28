@@ -166,6 +166,26 @@ export const instagramAPI = {
     });
     return response.json();
   },
+
+  // Publish image directly to Instagram (immediate, no scheduling)
+  publishImage: async (userId, imageUrl, caption, accountId) => {
+    const response = await fetch(`${API_BASE_URL}/instagram/publish`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ userId, imageUrl, caption, accountId }),
+    });
+    return response.json();
+  },
+
+  // Publish story directly to Instagram (immediate)
+  publishStory: async (userId, imageUrl, accountId) => {
+    const response = await fetch(`${API_BASE_URL}/instagram/publish-story`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ userId, imageUrl, accountId }),
+    });
+    return response.json();
+  },
 };
 
 /**
@@ -527,6 +547,16 @@ export const schedulerAPI = {
       method: 'POST',
       headers: headers(),
       body: JSON.stringify({ media, type }),
+    });
+    return response.json();
+  },
+
+  // Publish immediately (no scheduling, direct to Instagram)
+  publishNow: async (postData) => {
+    const response = await fetch(`${API_BASE_URL}/scheduler/publish-now`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(postData),
     });
     return response.json();
   },

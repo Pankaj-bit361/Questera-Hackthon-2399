@@ -15,8 +15,9 @@ const AnalyticsPage = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
-  const [dateRange, setDateRange] = useState(30);
+  const [dateRange, setDateRange] = useState(90);
   const hasAutoRefreshed = useRef(false);
+  const isInitialLoad = useRef(true); // Track initial load to prevent double fetch
 
   // Account selector states
   const [accounts, setAccounts] = useState([]);
@@ -40,8 +41,12 @@ const AnalyticsPage = () => {
     }
   }, [userId]);
 
-  // Reload when dateRange or account changes
+  // Reload when dateRange or account changes (but NOT on initial load)
   useEffect(() => {
+    // Skip initial loads - loadAccountsAndRefresh handles the first fetch
+    if (isInitialLoad.current) {
+      return;
+    }
     if (userId && hasAutoRefreshed.current) {
       fetchAllData();
     }
@@ -53,39 +58,61 @@ const AnalyticsPage = () => {
     try {
       // Load accounts first
       const accountsRes = await analyticsAPI.getAccounts(userId);
+      let accountToUse = selectedAccount;
       if (accountsRes.success && accountsRes.accounts) {
         setAccounts(accountsRes.accounts);
         if (accountsRes.accounts.length > 0 && !selectedAccount) {
-          setSelectedAccount(accountsRes.accounts[0]);
+          accountToUse = accountsRes.accounts[0];
+          setSelectedAccount(accountToUse);
         }
       }
 
       // Auto-refresh engagement data from Instagram
       await analyticsAPI.refreshEngagement(userId);
 
-      // Then fetch all data
-      await fetchAllData();
+      // Then fetch all data with the account we just set
+      await fetchAllData(accountToUse);
+
+      // Mark initial load as complete AFTER fetch is done
+      isInitialLoad.current = false;
     } catch (error) {
       console.error('Error loading analytics:', error);
+      isInitialLoad.current = false;
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const fetchAllData = async () => {
+  const fetchAllData = async (accountOverride = null) => {
     if (!userId) return;
     setLoading(true);
     try {
-      const accountId = selectedAccount?.igBusinessId || null;
+      // Use override account if provided (for initial load), otherwise use selectedAccount
+      const account = accountOverride || selectedAccount;
+      const accountId = account?.igBusinessId || null;
 
-      // Fetch ALL posts from Instagram API directly (up to 2000 posts)
+      // Calculate how many posts to fetch based on date range
+      // Roughly estimate ~3 posts per day max, so 30 days = 90 posts, 90 days = 270 posts
+      const postsToFetch = dateRange >= 9999 ? 500 : Math.min(dateRange * 3, 200);
+      const shouldFetchAll = dateRange >= 365; // Only fetch all for "All time" or 1 year+
+
       const [instagramRes, dashboardRes, bestTimesRes, contentRes] = await Promise.all([
-        analyticsAPI.getInstagramDirect(userId, accountId, 100, true), // fetchAll=true
+        analyticsAPI.getInstagramDirect(userId, accountId, postsToFetch, shouldFetchAll),
         analyticsAPI.getDashboard(userId, dateRange, 100),
         analyticsAPI.getBestTimes(userId),
         analyticsAPI.getContentAnalysis(userId),
       ]);
+
+      console.log('[DEBUG] Instagram API Response:', {
+        success: instagramRes.success,
+        postsCount: instagramRes.posts?.length,
+        account: instagramRes.account,
+        error: instagramRes.error,
+        totals: instagramRes.totals,
+      });
+
+      console.log('[DEBUG] Instagram API Response:', instagramRes)
 
       if (instagramRes.success) setInstagramData(instagramRes);
       if (dashboardRes.success) setDashboard(dashboardRes);
@@ -166,9 +193,8 @@ const AnalyticsPage = () => {
                           setSelectedAccount(acc);
                           setShowAccountSelector(false);
                         }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors ${
-                          selectedAccount?.igBusinessId === acc.igBusinessId ? 'bg-white/10' : ''
-                        }`}
+                        className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors ${selectedAccount?.igBusinessId === acc.igBusinessId ? 'bg-white/10' : ''
+                          }`}
                       >
                         <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
                           <SafeIcon icon={FiInstagram} className="w-4 h-4 text-white" />
@@ -277,10 +303,16 @@ const OverviewTab = ({ instagramData, dashboard, formatNumber, dateRange }) => {
   }), { likes: 0, comments: 0, views: 0, reach: 0, saves: 0 });
 
   // Calculate stats from filtered posts
-  const totalPosts = posts.length || overview.totalPosts || 0;
-  const totalEngagement = (totals.likes || 0) + (totals.comments || 0) + (totals.saves || 0) || overview.totalEngagement || 0;
-  const totalViews = totals.views || overview.totalImpressions || 0;
-  const totalReach = totals.reach || overview.totalReach || 0;
+  // Only fallback to overview if we don't have live Instagram data
+  const hasLiveData = !!instagramData;
+
+  const totalPosts = hasLiveData ? posts.length : (overview.totalPosts || 0);
+
+  const liveEngagement = (totals.likes || 0) + (totals.comments || 0) + (totals.saves || 0);
+  const totalEngagement = hasLiveData ? liveEngagement : (overview.totalEngagement || 0);
+
+  const totalViews = hasLiveData ? (totals.views || 0) : (overview.totalImpressions || 0);
+  const totalReach = hasLiveData ? (totals.reach || 0) : (overview.totalReach || 0);
   const avgEngagement = totalPosts > 0 ? Math.round(totalEngagement / totalPosts) : 0;
 
   const stats = [
@@ -1118,7 +1150,7 @@ const CommentsTab = ({ userId, selectedAccount }) => {
                     <div className="mt-3 ml-4 space-y-2 border-l-2 border-zinc-800 pl-4">
                       {comment.replies.map((reply) => {
                         const isOwnReply = reply.username?.toLowerCase() === accountName?.toLowerCase() ||
-                                          reply.username?.toLowerCase() === selectedAccount?.username?.toLowerCase();
+                          reply.username?.toLowerCase() === selectedAccount?.username?.toLowerCase();
                         const isEditing = editingReply?.replyId === reply.id;
                         return (
                           <div key={reply.id} className="text-sm group">
