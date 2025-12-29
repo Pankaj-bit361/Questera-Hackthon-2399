@@ -36,8 +36,8 @@ const PrivacyPolicy = () => {
             <section>
               <h2 className="text-xl font-semibold text-white mb-3">1. Introduction</h2>
               <p>
-                Welcome to Velos AI ("we," "our," or "us"). We are committed to protecting your privacy and personal data. 
-                This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our 
+                Welcome to Velos AI ("we," "our," or "us"). We are committed to protecting your privacy and personal data.
+                This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our
                 AI-powered image generation platform at velosapps.com.
               </p>
             </section>
@@ -60,8 +60,10 @@ const PrivacyPolicy = () => {
               <h2 className="text-xl font-semibold text-white mb-3">3. Instagram Integration</h2>
               <p className="mb-3">When you connect your Instagram account, we request the following permissions:</p>
               <ul className="list-disc list-inside space-y-2 ml-4">
+                <li><strong>public_profile:</strong> Read your basic public profile information</li>
                 <li><strong>instagram_basic:</strong> Read your Instagram profile information</li>
-                <li><strong>instagram_content_publish:</strong> Publish photos and videos on your behalf</li>
+                <li><strong>instagram_business_basic:</strong> Access your Instagram Business account information</li>
+                <li><strong>instagram_business_content_publish:</strong> Publish photos, videos, stories and reels to your Instagram Business account</li>
                 <li><strong>instagram_manage_comments:</strong> Read and respond to comments</li>
                 <li><strong>instagram_manage_insights:</strong> Access analytics and performance metrics</li>
                 <li><strong>pages_show_list:</strong> See your connected Facebook Pages</li>
@@ -90,8 +92,8 @@ const PrivacyPolicy = () => {
             <section>
               <h2 className="text-xl font-semibold text-white mb-3">5. Data Storage & Security</h2>
               <p>
-                Your data is stored securely using industry-standard encryption. Images are stored on AWS S3 with 
-                appropriate access controls. We retain your data for as long as your account is active or as needed 
+                Your data is stored securely using industry-standard encryption. Images are stored on AWS S3 with
+                appropriate access controls. We retain your data for as long as your account is active or as needed
                 to provide services. You can request data deletion at any time.
               </p>
             </section>
@@ -135,7 +137,7 @@ const PrivacyPolicy = () => {
             <section>
               <h2 className="text-xl font-semibold text-white mb-3">9. Changes to This Policy</h2>
               <p>
-                We may update this Privacy Policy from time to time. We will notify you of significant changes 
+                We may update this Privacy Policy from time to time. We will notify you of significant changes
                 by posting the new policy on this page and updating the "Last updated" date.
               </p>
             </section>
