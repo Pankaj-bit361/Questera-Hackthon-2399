@@ -17,6 +17,7 @@ const agentRouter = require('./routes/Agent');
 const autopilotRouter = require('./routes/Autopilot');
 const videoRouter = require('./routes/Video');
 const emailCampaignRouter = require('./routes/EmailCampaign');
+const emailRouter = require('./routes/Email');
 const authMiddleware = require('./middlewares/auth');
 const connectDB = require('./db');
 const SchedulerController = require('./functions/Scheduler');
@@ -43,6 +44,7 @@ app.get('/', (req, res) => {
 
 // Public routes
 app.use('/api/auth', authRouter);
+app.use('/api/email', emailRouter); // Universal Email Service (Public)
 
 // Protected routes
 app.use('/api/image', imageRouter);

@@ -155,6 +155,176 @@ class EmailService {
     const html = this.wrapInTemplate('Post Failed - Velos', emailContent);
     return this.sendEmail(email, 'Scheduled Post Failed', html);
   }
+
+  /**
+   * Send OTP email
+   * @param {string} email - Recipient email
+   * @param {string} otp - OTP code
+   * @param {number} expiryMinutes - OTP expiry time in minutes (default: 10)
+   */
+  async sendOTPEmail(email, otp, expiryMinutes = 10) {
+    const emailContent = `
+      <p style="margin: 0 0 32px 0; font-size: 16px; line-height: 26px; color: #52525b; font-weight: 500;">
+        Use the code below to securely verify your account.
+      </p>
+
+      <div style="background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 20px; padding: 24px 0; margin-bottom: 32px;">
+        <span style="font-family: 'Courier New', Courier, monospace; font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #000000; display: block; line-height: 1;">${otp}</span>
+      </div>
+
+      <p style="margin: 0; font-size: 14px; color: #a1a1aa; line-height: 20px;">
+        This code will expire in <strong style="color: #71717a;">${expiryMinutes} minutes</strong>.<br>If you didn't request this, please ignore this email.
+      </p>
+    `;
+
+    const html = this.wrapInTemplate('Verification Code', emailContent);
+    return this.sendEmail(email, 'Your Verification Code', html);
+  }
+
+  /**
+   * Send user invite email
+   * @param {string} email - Recipient email
+   * @param {string} inviterName - Name of the person inviting
+   * @param {string} inviteLink - Invitation link
+   * @param {string} appName - Application name (optional)
+   */
+  async sendUserInviteEmail(email, inviterName, inviteLink, appName = 'Velos') {
+    const emailContent = `
+      <p style="margin: 0 0 32px 0; font-size: 16px; line-height: 26px; color: #52525b; font-weight: 500;">
+        <strong style="color: #18181b;">${inviterName}</strong> has invited you to join ${appName}!
+      </p>
+
+      <div style="background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 20px; padding: 24px; margin-bottom: 32px; text-align: left;">
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #52525b; line-height: 1.6;">
+          ${appName} helps you create stunning AI-powered content in seconds. Join ${inviterName} and thousands of other creators.
+        </p>
+      </div>
+
+      <a href="${inviteLink}" style="display: inline-block; background-color: #000000; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 600; font-size: 15px; margin-bottom: 24px;">
+        Accept Invitation
+      </a>
+
+      <p style="margin: 0; font-size: 14px; color: #a1a1aa; line-height: 20px;">
+        Or copy and paste this link into your browser:<br>
+        <span style="color: #71717a; word-break: break-all;">${inviteLink}</span>
+      </p>
+    `;
+
+    const html = this.wrapInTemplate(`You're Invited to ${appName}`, emailContent);
+    return this.sendEmail(email, `${inviterName} invited you to ${appName}`, html);
+  }
+
+  /**
+   * Send welcome email
+   * @param {string} email - Recipient email
+   * @param {string} name - User's name
+   * @param {string} dashboardLink - Link to dashboard (optional)
+   */
+  async sendWelcomeEmail(email, name, dashboardLink = null) {
+    const emailContent = `
+      <p style="margin: 0 0 32px 0; font-size: 16px; line-height: 26px; color: #52525b; font-weight: 500;">
+        Welcome to Velos, <strong style="color: #18181b;">${name}</strong>! 🎉
+      </p>
+
+      <div style="background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 20px; padding: 24px; margin-bottom: 24px; text-align: left;">
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #52525b; line-height: 1.6;">
+          We're excited to have you on board! Here's what you can do with Velos:
+        </p>
+        <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #52525b; line-height: 1.8;">
+          <li>Generate stunning AI images in seconds</li>
+          <li>Schedule posts across social media platforms</li>
+          <li>Automate your content creation workflow</li>
+          <li>Track analytics and grow your audience</li>
+        </ul>
+      </div>
+
+      ${dashboardLink ? `
+      <a href="${dashboardLink}" style="display: inline-block; background-color: #000000; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 600; font-size: 15px; margin-bottom: 24px;">
+        Get Started
+      </a>
+      ` : ''}
+
+      <p style="margin: 0; font-size: 14px; color: #a1a1aa; line-height: 20px;">
+        Need help? Reply to this email and we'll be happy to assist you.
+      </p>
+    `;
+
+    const html = this.wrapInTemplate('Welcome to Velos', emailContent);
+    return this.sendEmail(email, 'Welcome to Velos! 🎉', html);
+  }
+
+  /**
+   * Send password reset email
+   * @param {string} email - Recipient email
+   * @param {string} resetLink - Password reset link
+   * @param {number} expiryMinutes - Link expiry time in minutes (default: 30)
+   */
+  async sendPasswordResetEmail(email, resetLink, expiryMinutes = 30) {
+    const emailContent = `
+      <p style="margin: 0 0 32px 0; font-size: 16px; line-height: 26px; color: #52525b; font-weight: 500;">
+        We received a request to reset your password. Click the button below to create a new password.
+      </p>
+
+      <a href="${resetLink}" style="display: inline-block; background-color: #000000; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 600; font-size: 15px; margin-bottom: 24px;">
+        Reset Password
+      </a>
+
+      <p style="margin: 0 0 24px 0; font-size: 14px; color: #a1a1aa; line-height: 20px;">
+        Or copy and paste this link into your browser:<br>
+        <span style="color: #71717a; word-break: break-all;">${resetLink}</span>
+      </p>
+
+      <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+        <p style="margin: 0; font-size: 14px; color: #991b1b; line-height: 1.5;">
+          ⚠️ This link will expire in <strong>${expiryMinutes} minutes</strong>. If you didn't request a password reset, please ignore this email.
+        </p>
+      </div>
+    `;
+
+    const html = this.wrapInTemplate('Reset Your Password', emailContent);
+    return this.sendEmail(email, 'Reset Your Password', html);
+  }
+
+  /**
+   * Send notification email
+   * @param {string} email - Recipient email
+   * @param {string} title - Notification title
+   * @param {string} message - Notification message
+   * @param {string} actionLink - Optional action link
+   * @param {string} actionText - Optional action button text
+   */
+  async sendNotificationEmail(email, title, message, actionLink = null, actionText = 'View Details') {
+    const emailContent = `
+      <p style="margin: 0 0 32px 0; font-size: 16px; line-height: 26px; color: #52525b; font-weight: 500;">
+        ${message}
+      </p>
+
+      ${actionLink ? `
+      <a href="${actionLink}" style="display: inline-block; background-color: #000000; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 600; font-size: 15px; margin-bottom: 24px;">
+        ${actionText}
+      </a>
+      ` : ''}
+
+      <p style="margin: 0; font-size: 14px; color: #a1a1aa; line-height: 20px;">
+        This is an automated notification from Velos.
+      </p>
+    `;
+
+    const html = this.wrapInTemplate(title, emailContent);
+    return this.sendEmail(email, title, html);
+  }
+
+  /**
+   * Send custom email with HTML content
+   * @param {string} email - Recipient email
+   * @param {string} subject - Email subject
+   * @param {string} htmlContent - Custom HTML content (will be wrapped in template)
+   * @param {boolean} useTemplate - Whether to wrap content in Velos template (default: true)
+   */
+  async sendCustomEmail(email, subject, htmlContent, useTemplate = true) {
+    const html = useTemplate ? this.wrapInTemplate(subject, htmlContent) : htmlContent;
+    return this.sendEmail(email, subject, html);
+  }
 }
 
 module.exports = EmailService;
