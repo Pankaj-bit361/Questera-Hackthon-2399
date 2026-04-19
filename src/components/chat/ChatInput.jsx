@@ -3,7 +3,7 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../../common/SafeIcon';
 import { ASPECT_RATIOS, STYLES } from './constants';
 
-const { FiSend, FiImage, FiX, FiMaximize, FiPaperclip, FiLoader } = FiIcons;
+const { FiSend, FiX, FiPaperclip, FiLoader, FiGlobe, FiSearch } = FiIcons;
 
 const ChatInput = ({
   prompt,
@@ -14,7 +14,7 @@ const ChatInput = ({
   onUpdateOverride,
   referenceImages,
   onAddImage,
-  onRemoveImage
+  onRemoveImage,
 }) => {
   const fileInputRef = useRef(null);
   const [isFocused, setIsFocused] = useState(false);
@@ -27,27 +27,42 @@ const ChatInput = ({
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
+    const files = Array.from(e.target.files || []);
+    files.forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64Data = reader.result.split(',')[1];
-        onAddImage({
-          data: base64Data,
-          mimeType: file.type,
-          preview: reader.result
-        });
+        onAddImage({ data: base64Data, mimeType: file.type, preview: reader.result });
       };
       reader.readAsDataURL(file);
-    }
+    });
     e.target.value = null;
   };
+
+  const webSearchOn = !!overrides.useGoogleSearch;
+  const imgSearchOn = !!overrides.useImageSearch;
+
+  const toggleWebSearch = () => {
+    const next = !webSearchOn;
+    onUpdateOverride('useGoogleSearch', next || null);
+    // Disable image search if web search is turned off
+    if (!next) onUpdateOverride('useImageSearch', null);
+  };
+
+  const toggleImageSearch = () => {
+    const next = !imgSearchOn;
+    onUpdateOverride('useImageSearch', next || null);
+    // Image search requires web search to be on too
+    if (next) onUpdateOverride('useGoogleSearch', true);
+  };
+
+  const hasActiveItems = referenceImages.length > 0 || overrides.aspectRatio || overrides.style;
 
   return (
     <div className="relative group">
 
-      {/* Active Settings / Reference Bar - Shows only when items exist */}
-      {(referenceImages.length > 0 || overrides.aspectRatio || overrides.style) && (
+      {/* Reference images / active override chips */}
+      {hasActiveItems && (
         <div className="absolute bottom-full left-0 mb-3 ml-1 flex gap-2 overflow-x-auto max-w-full pb-2 scrollbar-hide">
           {referenceImages.map((img, idx) => (
             <div key={idx} className="relative w-14 h-14 rounded-xl overflow-hidden border border-white/10 group/img shadow-lg flex-shrink-0">
@@ -62,18 +77,22 @@ const ChatInput = ({
           ))}
 
           {overrides.aspectRatio && (
-            <div className="h-14 px-3 rounded-xl bg-zinc-900 border border-white/10 flex flex-col justify-center text-xs min-w-[80px] shadow-lg">
+            <div className="relative h-14 px-3 rounded-xl bg-zinc-900 border border-white/10 flex flex-col justify-center text-xs min-w-[80px] shadow-lg">
               <span className="text-zinc-500 mb-0.5">Ratio</span>
               <span className="text-white font-medium">{ASPECT_RATIOS.find(r => r.value === overrides.aspectRatio)?.label}</span>
-              <button onClick={() => onUpdateOverride('aspectRatio', null)} className="absolute top-1 right-1 text-zinc-500 hover:text-white"><SafeIcon icon={FiX} className="w-3 h-3" /></button>
+              <button onClick={() => onUpdateOverride('aspectRatio', null)} className="absolute top-1 right-1 text-zinc-500 hover:text-white">
+                <SafeIcon icon={FiX} className="w-3 h-3" />
+              </button>
             </div>
           )}
 
           {overrides.style && (
-            <div className="h-14 px-3 rounded-xl bg-zinc-900 border border-white/10 flex flex-col justify-center text-xs min-w-[80px] shadow-lg">
+            <div className="relative h-14 px-3 rounded-xl bg-zinc-900 border border-white/10 flex flex-col justify-center text-xs min-w-[80px] shadow-lg">
               <span className="text-zinc-500 mb-0.5">Style</span>
               <span className="text-white font-medium">{STYLES.find(s => s.value === overrides.style)?.label}</span>
-              <button onClick={() => onUpdateOverride('style', null)} className="absolute top-1 right-1 text-zinc-500 hover:text-white"><SafeIcon icon={FiX} className="w-3 h-3" /></button>
+              <button onClick={() => onUpdateOverride('style', null)} className="absolute top-1 right-1 text-zinc-500 hover:text-white">
+                <SafeIcon icon={FiX} className="w-3 h-3" />
+              </button>
             </div>
           )}
         </div>
@@ -92,28 +111,61 @@ const ChatInput = ({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder="Describe your imagination..."
-          className="w-full max-h-48 bg-transparent text-white p-4 pr-32 resize-none outline-none scrollbar-hide text-[15px] leading-relaxed min-h-[60px]"
+          className="w-full max-h-48 bg-transparent text-white p-4 pr-44 resize-none outline-none scrollbar-hide text-[15px] leading-relaxed min-h-[60px]"
           rows={1}
         />
 
-        {/* Bottom Toolbar inside Input */}
-        <div className="absolute bottom-2 right-2 flex items-center gap-2">
+        {/* Bottom Toolbar */}
+        <div className="absolute bottom-2 right-2 flex items-center gap-1">
 
-          {/* Quick Tools */}
-          <div className="flex items-center gap-1 mr-2">
+          {/* Attach image */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+            title="Upload reference image (up to 14)"
+          >
+            <SafeIcon icon={FiPaperclip} className="w-5 h-5" />
+          </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*"
+            multiple
+            onChange={handleFileChange}
+          />
+
+          {/* Web Search toggle */}
+          <button
+            onClick={toggleWebSearch}
+            title={webSearchOn ? 'Web Search ON — click to disable' : 'Enable Google Search grounding'}
+            className={`p-2 rounded-xl transition-all ${
+              webSearchOn
+                ? 'text-blue-400 bg-blue-500/10 border border-blue-500/30'
+                : 'text-zinc-500 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <SafeIcon icon={FiGlobe} className="w-5 h-5" />
+          </button>
+
+          {/* Image Search toggle (only shown when web search is on) */}
+          {webSearchOn && (
             <button
-              onClick={() => fileInputRef.current?.click()}
-              className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
-              title="Upload Reference"
+              onClick={toggleImageSearch}
+              title={imgSearchOn ? 'Image Search ON — click to disable' : 'Also search Google Images'}
+              className={`p-2 rounded-xl transition-all ${
+                imgSearchOn
+                  ? 'text-purple-400 bg-purple-500/10 border border-purple-500/30'
+                  : 'text-zinc-500 hover:text-white hover:bg-white/5'
+              }`}
             >
-              <SafeIcon icon={FiPaperclip} className="w-5 h-5" />
+              <SafeIcon icon={FiSearch} className="w-5 h-5" />
             </button>
-            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-          </div>
+          )}
 
-          <div className="w-px h-5 bg-white/10"></div>
+          <div className="w-px h-5 bg-white/10 mx-1" />
 
-          {/* Send Button */}
+          {/* Send */}
           <button
             onClick={onSend}
             disabled={!prompt.trim() || loading}
@@ -125,14 +177,31 @@ const ChatInput = ({
               }
             `}
           >
-            {loading ? (
-              <SafeIcon icon={FiLoader} className="w-5 h-5 animate-spin" />
-            ) : (
-              <SafeIcon icon={FiSend} className="w-5 h-5" />
-            )}
+            {loading
+              ? <SafeIcon icon={FiLoader} className="w-5 h-5 animate-spin" />
+              : <SafeIcon icon={FiSend} className="w-5 h-5" />
+            }
           </button>
         </div>
       </div>
+
+      {/* Active grounding indicator */}
+      {(webSearchOn || imgSearchOn) && (
+        <div className="flex items-center gap-2 mt-2 ml-1">
+          {webSearchOn && (
+            <span className="text-[10px] text-blue-400 flex items-center gap-1">
+              <SafeIcon icon={FiGlobe} className="w-3 h-3" />
+              Web Search ON
+            </span>
+          )}
+          {imgSearchOn && (
+            <span className="text-[10px] text-purple-400 flex items-center gap-1">
+              <SafeIcon icon={FiSearch} className="w-3 h-3" />
+              Image Search ON
+            </span>
+          )}
+        </div>
+      )}
 
     </div>
   );

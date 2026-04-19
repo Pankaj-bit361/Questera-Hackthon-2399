@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import { toast } from 'react-toastify';
@@ -10,7 +11,7 @@ import SafeIcon from '../common/SafeIcon';
 import Sidebar from './Sidebar';
 import { API_BASE_URL } from '../config';
 import { getUserId, getUser } from '../lib/velosStorage';
-import { videoAPI, instagramAPI } from '../lib/api';
+import { videoAPI, instagramAPI, schedulerAPI } from '../lib/api';
 
 const { FiChevronLeft, FiSend, FiVideo, FiImage, FiX, FiLoader, FiPlay, FiPlus, FiFilm, FiChevronDown, FiChevronUp, FiMaximize2, FiDownload, FiCalendar, FiClock, FiInstagram, FiRefreshCw, FiCheck, FiZap } = FiIcons;
 
@@ -69,6 +70,87 @@ const PremiumSelect = ({ options, value, onChange, placeholder = "Select an opti
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+};
+
+// Compact pill-style option picker — portal-based to escape any stacking context
+const SettingPill = ({ label, options, value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef(null);
+  const dropRef = useRef(null);
+
+  const recalc = () => {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.top + window.scrollY, left: r.left + window.scrollX, width: r.width, btnHeight: r.height });
+    }
+  };
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (
+        btnRef.current && !btnRef.current.contains(e.target) &&
+        dropRef.current && !dropRef.current.contains(e.target)
+      ) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleOpen = () => {
+    recalc();
+    setOpen(o => !o);
+  };
+
+  // Dropdown rendered via portal — positions above the button
+  const dropdown = open ? ReactDOM.createPortal(
+    <div
+      ref={dropRef}
+      style={{
+        position: 'absolute',
+        top: pos.top - 8, // will translate up via transform
+        left: pos.left,
+        zIndex: 99999,
+        transform: 'translateY(-100%)',
+      }}
+    >
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, y: 6, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 6, scale: 0.96 }}
+          transition={{ duration: 0.1 }}
+          className="bg-[#1c1c1f] border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[80px]"
+        >
+          {options.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`w-full px-3 py-2 text-left text-xs font-medium transition-colors whitespace-nowrap ${value === opt.value ? 'bg-white text-black' : 'text-zinc-300 hover:bg-white/5'}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </motion.div>
+      </AnimatePresence>
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <div className="relative inline-block">
+      <button
+        ref={btnRef}
+        onClick={handleOpen}
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl hover:border-white/25 transition-colors"
+      >
+        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{label}</span>
+        <span className="text-xs font-bold text-white">{value}</span>
+        <SafeIcon icon={FiChevronDown} className={`w-3 h-3 text-zinc-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {dropdown}
     </div>
   );
 };
@@ -152,6 +234,26 @@ const VideoChatPage = () => {
   const [selectedAccount, setSelectedAccount] = useState('');
   const [viralContent, setViralContent] = useState(null);
   const [captionTone, setCaptionTone] = useState('brand'); // 'brand', 'creator', 'marketing'
+  const [selectedModel, setSelectedModel] = useState(location.state?.videoModel || 'veo'); // 'veo' | 'wan' | 'seedance'
+
+  // KIE model settings
+  const [kieSettings, setKieSettings] = useState({
+    resolution: '720p',
+    aspectRatio: '16:9',
+    duration: 8,
+    generateAudio: true,
+    webSearch: false,
+  });
+
+  // Veo settings
+  const [veoSettings, setVeoSettings] = useState({
+    resolution: '720p',
+    aspectRatio: '16:9',
+    duration: 8,
+  });
+  const [showSettings, setShowSettings] = useState(false);
+  const [referenceVideos, setReferenceVideos] = useState([]); // { file, preview, url }
+  const [referenceAudios, setReferenceAudios] = useState([]); // { file, url }
 
   const messagesEndRef = useRef(null);
   const hasInitialized = useRef(false);
@@ -344,6 +446,25 @@ const VideoChatPage = () => {
     }
   };
 
+  // Convert a File object to base64 string
+  const fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  // Upload a base64 image to S3 and return a public URL (needed for KIE models)
+  const uploadImageToS3 = async (imageObj) => {
+    if (!imageObj?.data) return null;
+    const result = await schedulerAPI.uploadMedia(
+      { data: imageObj.data, mimeType: imageObj.mimeType || 'image/png' },
+      'image'
+    );
+    console.log('[uploadImageToS3] result:', result);
+    return result?.url || null;
+  };
+
   const handleGenerate = async (inputPrompt = prompt, inputRefs = referenceImages, inputStartFrame = startFrame, inputEndFrame = endFrame, videoToExtend = extendingVideo) => {
     if (!inputPrompt.trim() && inputRefs.length === 0 && !inputStartFrame && !inputEndFrame && !videoToExtend) return;
 
@@ -363,68 +484,85 @@ const VideoChatPage = () => {
     };
     setMessages(prev => [...prev, userMsg]);
     setPrompt('');
-    setExtendingVideo(null); // Clear extending state
-
-    // Reset inputs
+    setExtendingVideo(null);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
-    console.log('[VideoChatPage] Generating video with:', {
-      prompt: inputPrompt,
-      refsCount: inputRefs.length,
-      hasStartFrame: !!inputStartFrame,
-      hasEndFrame: !!inputEndFrame,
-      extendingFrom: videoToExtend ? 'yes' : 'no',
-    });
-
     try {
-      // Prepare body - send base64 data directly
-      const body = {
-        userId,
-        prompt: inputPrompt,
-        videoChatId: currentChatId === 'new' ? undefined : currentChatId,
-        // Send base64 data for images
-        referenceImages: inputRefs.map(img => ({
-          data: img.data,
-          mimeType: img.mimeType || 'image/png',
-        })),
-      };
+      let data;
 
-      // Add start frame with base64 data
-      if (inputStartFrame?.data) {
-        body.startFrame = {
-          data: inputStartFrame.data,
-          mimeType: inputStartFrame.mimeType || 'image/png',
+      if (selectedModel === 'wan') {
+        // Wan 2.7 needs image URLs — upload to S3 first
+        toast.info('Uploading images...', { autoClose: 2000 });
+        const firstFrameUrl = inputStartFrame ? await uploadImageToS3(inputStartFrame) : null;
+        const lastFrameUrl  = inputEndFrame   ? await uploadImageToS3(inputEndFrame)   : null;
+
+        if (!firstFrameUrl) {
+          toast.error('Wan 2.7 requires a Start Frame image');
+          setLoading(false);
+          return;
+        }
+
+        data = await videoAPI.generateWan({
+          userId,
+          prompt: inputPrompt,
+          videoChatId: currentChatId === 'new' ? undefined : currentChatId,
+          firstFrameUrl,
+          ...(lastFrameUrl && { lastFrameUrl }),
+          resolution: kieSettings.resolution,
+          duration: kieSettings.duration,
+        });
+
+      } else if (selectedModel === 'seedance' || selectedModel === 'seedance-fast') {
+        // Seedance 2.0 needs image URLs
+        toast.info('Uploading images...', { autoClose: 2000 });
+        const firstFrameUrl       = inputStartFrame ? await uploadImageToS3(inputStartFrame) : null;
+        const lastFrameUrl        = inputEndFrame   ? await uploadImageToS3(inputEndFrame)   : null;
+        const referenceImageUrls  = await Promise.all(inputRefs.map(uploadImageToS3)).then(urls => urls.filter(Boolean));
+
+        data = await (selectedModel === 'seedance-fast' ? videoAPI.generateSeedanceFast : videoAPI.generateSeedance)({
+          userId,
+          prompt: inputPrompt,
+          videoChatId: currentChatId === 'new' ? undefined : currentChatId,
+          ...(firstFrameUrl && { firstFrameUrl }),
+          ...(lastFrameUrl  && { lastFrameUrl }),
+          ...(referenceImageUrls.length && { referenceImageUrls }),
+          ...(referenceVideos.length && { referenceVideoUrls: referenceVideos.map(v => v.url) }),
+          ...(referenceAudios.length && { referenceAudioUrls: referenceAudios.map(a => a.url) }),
+          resolution: kieSettings.resolution,
+          aspectRatio: kieSettings.aspectRatio,
+          duration: kieSettings.duration,
+          generateAudio: kieSettings.generateAudio,
+          webSearch: kieSettings.webSearch,
+        });
+
+      } else {
+        // Default: Google Veo
+        const body = {
+          userId,
+          prompt: inputPrompt,
+          videoChatId: currentChatId === 'new' ? undefined : currentChatId,
+          referenceImages: inputRefs.map(img => ({ data: img.data, mimeType: img.mimeType || 'image/png' })),
+          resolution: veoSettings.resolution,
+          aspectRatio: veoSettings.aspectRatio,
+          durationSeconds: (veoSettings.resolution === '1080p' || veoSettings.resolution === '4k') ? 8 : veoSettings.duration,
         };
+        if (inputStartFrame?.data) body.startFrame = { data: inputStartFrame.data, mimeType: inputStartFrame.mimeType || 'image/png' };
+        if (inputEndFrame?.data)   body.endFrame   = { data: inputEndFrame.data,   mimeType: inputEndFrame.mimeType   || 'image/png' };
+        if (videoToExtend)         body.lastVideoUrl = videoToExtend;
+
+        const res = await fetch(`${API_BASE_URL}/video/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        data = await res.json();
       }
-
-      // Add end frame with base64 data
-      if (inputEndFrame?.data) {
-        body.endFrame = {
-          data: inputEndFrame.data,
-          mimeType: inputEndFrame.mimeType || 'image/png',
-        };
-      }
-
-      // Add video to extend
-      if (videoToExtend) {
-        body.lastVideoUrl = videoToExtend;
-      }
-
-      const res = await fetch(`${API_BASE_URL}/video/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json();
 
       if (data.success) {
         if (currentChatId === 'new' && data.videoChatId) {
           setCurrentChatId(data.videoChatId);
           navigate(`/video/${data.videoChatId}`, { replace: true });
         }
-
-        // Add assistant message
         setMessages(prev => [...prev, data.message]);
         toast.success('Video generated!');
       } else {
@@ -502,14 +640,19 @@ const VideoChatPage = () => {
             >
               <SafeIcon icon={FiChevronLeft} className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-lg">
-                <SafeIcon icon={FiFilm} className="w-4 h-4 text-black" />
-              </div>
-              <div>
-                <h1 className="text-sm font-bold text-white tracking-wide">Video Studio</h1>
-                <p className="text-[10px] text-zinc-500 font-mono">Veo 3.1 Model</p>
-              </div>
+            {/* Model Selector */}
+            <div className="w-44">
+              <PremiumSelect
+                options={[
+                  { value: 'veo', label: 'Veo 3.1' },
+                  { value: 'seedance', label: 'Seedance 2.0' },
+                  { value: 'seedance-fast', label: 'Seedance Fast' },
+                ]}
+                value={selectedModel}
+                onChange={setSelectedModel}
+                icon={FiVideo}
+                placeholder="Select Model"
+              />
             </div>
           </div>
         </header>
@@ -568,14 +711,21 @@ const VideoChatPage = () => {
                           </div>
                           {/* Video action buttons */}
                           <div className="flex items-center gap-2 mt-3 flex-wrap">
-                            <button
-                              onClick={() => handleExtendVideo(msg.videoUrl)}
-                              disabled={loading}
-                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-black bg-white hover:bg-zinc-200 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <SafeIcon icon={FiMaximize2} className="w-3 h-3" />
-                              Extend
-                            </button>
+                            {(() => {
+                              const canExtend = !msg.videoResolution || msg.videoResolution === '720p';
+                              return (
+                                <button
+                                  onClick={() => handleExtendVideo(msg.videoUrl)}
+                                  disabled={loading || !canExtend}
+                                  title={!canExtend ? `Extension only works on 720p videos (this is ${msg.videoResolution})` : 'Extend video'}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-black bg-white hover:bg-zinc-200 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-zinc-600 disabled:text-zinc-400"
+                                >
+                                  <SafeIcon icon={FiMaximize2} className="w-3 h-3" />
+                                  Extend{!canExtend && ` (720p only)`}
+                                </button>
+                              );
+                            })()}
+
                             <button
                               onClick={() => openScheduleModal(msg.videoUrl, msg.content, idx)}
                               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-zinc-800 hover:bg-zinc-700 border border-white/10 rounded-lg transition-all"
@@ -632,9 +782,181 @@ const VideoChatPage = () => {
         <div className="relative z-40 bg-[#09090b] pt-4 pb-6">
           <div className="w-full max-w-3xl mx-auto px-4">
             <div className={`
-                relative bg-[#18181b] border transition-all duration-300 rounded-3xl overflow-hidden
+                relative bg-[#18181b] border transition-all duration-300 rounded-3xl overflow-visible
                 ${isInputFocused ? 'border-zinc-600 shadow-2xl' : 'border-white/10 shadow-lg'}
               `}>
+
+              {/* Veo Settings Panel */}
+              <AnimatePresence>
+                {selectedModel === 'veo' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-visible"
+                  >
+                    <div className="px-4 pt-3 pb-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mr-1">Veo 3.1</span>
+                        <div className="w-px h-3 bg-white/10 mr-1" />
+                        <SettingPill
+                          label="Resolution"
+                          value={veoSettings.resolution}
+                          onChange={v => setVeoSettings(s => ({ ...s, resolution: v, duration: (v === '1080p' || v === '4k') ? 8 : s.duration }))}
+                          options={[
+                            { value: '720p', label: '720p' },
+                            { value: '1080p', label: '1080p' },
+                            { value: '4k', label: '4K' },
+                          ]}
+                        />
+                        <SettingPill
+                          label="Aspect"
+                          value={veoSettings.aspectRatio}
+                          onChange={v => setVeoSettings(s => ({ ...s, aspectRatio: v }))}
+                          options={[
+                            { value: '16:9', label: '16:9' },
+                            { value: '9:16', label: '9:16' },
+                          ]}
+                        />
+                        <SettingPill
+                          label="Duration"
+                          value={`${veoSettings.duration}s`}
+                          onChange={v => setVeoSettings(s => ({ ...s, duration: parseInt(v) }))}
+                          options={
+                            (veoSettings.resolution === '1080p' || veoSettings.resolution === '4k')
+                              ? [{ value: '8', label: '8s' }]
+                              : [
+                                  { value: '4', label: '4s' },
+                                  { value: '6', label: '6s' },
+                                  { value: '8', label: '8s' },
+                                ]
+                          }
+                        />
+                        {(veoSettings.resolution === '1080p' || veoSettings.resolution === '4k') && (
+                          <span className="text-[10px] text-amber-400/80 font-medium">· 8s required for {veoSettings.resolution}</span>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* KIE Model Settings Panel */}
+              <AnimatePresence>
+                {(selectedModel === 'seedance' || selectedModel === 'seedance-fast') && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-visible"
+                  >
+                    <div className="px-4 pt-3 pb-1 space-y-2">
+
+                      {/* Row 1: model label + settings pills */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mr-1">
+                          {selectedModel === 'seedance-fast' ? 'Seedance Fast' : 'Seedance 2.0'}
+                        </span>
+                        <div className="w-px h-3 bg-white/10 mr-1" />
+                        <SettingPill
+                          label="Resolution"
+                          value={kieSettings.resolution}
+                          onChange={v => setKieSettings(s => ({ ...s, resolution: v }))}
+                          options={[
+                            { value: '480p', label: '480p' },
+                            { value: '720p', label: '720p' },
+                          ]}
+                        />
+                        <SettingPill
+                          label="Aspect"
+                          value={kieSettings.aspectRatio}
+                          onChange={v => setKieSettings(s => ({ ...s, aspectRatio: v }))}
+                          options={['16:9','9:16','1:1','4:3','3:4','21:9'].map(r => ({ value: r, label: r }))}
+                        />
+                        <SettingPill
+                          label="Duration"
+                          value={`${kieSettings.duration}s`}
+                          onChange={v => setKieSettings(s => ({ ...s, duration: Number(v) }))}
+                          options={[4,5,6,7,8,10,12,15].map(d => ({ value: d, label: `${d}s` }))}
+                        />
+                        <div className="w-px h-3 bg-white/10 mx-0.5" />
+                        {/* Audio toggle */}
+                        <button
+                          onClick={() => setKieSettings(s => ({ ...s, generateAudio: !s.generateAudio }))}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                            kieSettings.generateAudio
+                              ? 'bg-white text-black border-white'
+                              : 'bg-transparent text-zinc-500 border-white/10 hover:border-white/25 hover:text-zinc-300'
+                          }`}
+                        >
+                          🔊 Audio
+                        </button>
+                      </div>
+
+                      {/* Row 2: Reference media uploads */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Reference Videos */}
+                        {referenceVideos.map((v, i) => (
+                          <div key={i} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-900 border border-white/10 rounded-xl">
+                            <SafeIcon icon={FiFilm} className="w-3 h-3 text-violet-400" />
+                            <span className="text-xs text-zinc-300 max-w-[72px] truncate">{v.file.name}</span>
+                            <span className="text-[10px] text-zinc-600">{Math.round(v.duration)}s</span>
+                            <button onClick={() => setReferenceVideos(p => p.filter((_, j) => j !== i))} className="text-zinc-600 hover:text-red-400 ml-0.5">
+                              <SafeIcon icon={FiX} className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                        {referenceVideos.length < 1 && (
+                          <label className="flex items-center gap-1.5 px-2.5 py-1.5 border border-dashed border-white/10 rounded-xl text-[11px] font-medium text-zinc-500 hover:text-white hover:border-white/25 cursor-pointer transition-all">
+                            <SafeIcon icon={FiFilm} className="w-3 h-3" />
+                            Ref Video
+                            <input type="file" accept="video/mp4,video/quicktime" className="hidden" onChange={async (e) => {
+                              const file = e.target.files[0];
+                              if (!file) return;
+                              const duration = await new Promise(resolve => {
+                                const video = document.createElement('video');
+                                video.preload = 'metadata';
+                                video.onloadedmetadata = () => { URL.revokeObjectURL(video.src); resolve(video.duration); };
+                                video.src = URL.createObjectURL(file);
+                              });
+                              const totalExisting = referenceVideos.reduce((sum, v) => sum + (v.duration || 0), 0);
+                              if (duration > 15) { toast.error(`Video is ${Math.round(duration)}s — max 15s`); e.target.value = ''; return; }
+                              if (totalExisting + duration > 15) { toast.error(`Total reference video duration cannot exceed 15s`); e.target.value = ''; return; }
+                              const result = await schedulerAPI.uploadMedia({ data: await fileToBase64(file), mimeType: file.type }, 'video');
+                              if (result?.url) setReferenceVideos(p => [...p, { file, url: result.url, duration }]);
+                              e.target.value = '';
+                            }} />
+                          </label>
+                        )}
+
+                        {/* Reference Audios */}
+                        {referenceAudios.map((a, i) => (
+                          <div key={i} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-900 border border-white/10 rounded-xl">
+                            <span className="text-xs">🎵</span>
+                            <span className="text-xs text-zinc-300 max-w-[72px] truncate">{a.file.name}</span>
+                            <button onClick={() => setReferenceAudios(p => p.filter((_, j) => j !== i))} className="text-zinc-600 hover:text-red-400 ml-0.5">
+                              <SafeIcon icon={FiX} className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                        {referenceAudios.length < 1 && (
+                          <label className="flex items-center gap-1.5 px-2.5 py-1.5 border border-dashed border-white/10 rounded-xl text-[11px] font-medium text-zinc-500 hover:text-white hover:border-white/25 cursor-pointer transition-all">
+                            🎵 Ref Audio
+                            <input type="file" accept="audio/mpeg,audio/wav" className="hidden" onChange={async (e) => {
+                              const file = e.target.files[0];
+                              if (!file) return;
+                              const result = await schedulerAPI.uploadMedia({ data: await fileToBase64(file), mimeType: file.type }, 'audio');
+                              if (result?.url) setReferenceAudios(p => [...p, { file, url: result.url }]);
+                              e.target.value = '';
+                            }} />
+                          </label>
+                        )}
+                      </div>
+
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Extending Video Indicator */}
               {extendingVideo && (

@@ -27,6 +27,10 @@ const imageMessageSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    // Gemini thought signature — must be passed back in multi-turn editing so the model
+    // can reference what it previously generated. Stored per assistant message.
+    thoughtSignature: String,
+    imageMimeType: String,
     // Viral content for Instagram posts
     viralContent: {
         title: String,

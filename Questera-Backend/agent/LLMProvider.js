@@ -161,6 +161,7 @@ class OpenRouterProvider extends LLMProvider {
       return parsed;
    }
 
+
    parseJSON(text, fallback = {}) {
       let cleaned = (text || '').trim();
 

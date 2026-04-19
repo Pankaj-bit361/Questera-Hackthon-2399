@@ -43,6 +43,8 @@ const videoMessageSchema = new mongoose.Schema({
     // Google File reference (required for video extend - only Veo-generated videos can be extended)
     // Stored as Mixed type since it can be an object from generatedVideo.video
     googleFile: mongoose.Schema.Types.Mixed,
+    // Resolution at which this video was generated (needed to validate extension eligibility)
+    videoResolution: String,
 },
     { timestamps: true }
 );

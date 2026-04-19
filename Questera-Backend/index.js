@@ -18,6 +18,8 @@ const autopilotRouter = require('./routes/Autopilot');
 const videoRouter = require('./routes/Video');
 const emailCampaignRouter = require('./routes/EmailCampaign');
 const emailRouter = require('./routes/Email');
+const geminiDirectRouter = require('./routes/GeminiDirect');
+const geminiAgentRouter = require('./routes/GeminiAgent');
 const authMiddleware = require('./middlewares/auth');
 const connectDB = require('./db');
 const SchedulerController = require('./functions/Scheduler');
@@ -36,6 +38,7 @@ app.use((req, res, next) => {
     res.setTimeout(480000); // 8 minutes
     next();
 });
+
 
 // Test route
 app.get('/', (req, res) => {
@@ -62,6 +65,8 @@ app.use('/api/agent', agentRouter); // AI Agent
 app.use('/api/autopilot', autopilotRouter); // Autopilot System
 app.use('/api/video', videoRouter); // Video Generation
 app.use('/api/email-campaign', emailCampaignRouter); // Email Campaign Dashboard
+app.use('/api/gemini', geminiDirectRouter); // Direct Gemini API (no agent)
+app.use('/api/gemini', geminiAgentRouter);  // Gemini Agent (tool-calling router)
 
 // Database connection and Server Start
 const startServer = async () => {

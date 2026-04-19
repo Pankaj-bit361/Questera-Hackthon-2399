@@ -35,7 +35,7 @@ class ImageController {
         this.ai = new GoogleGenAI({
             apiKey: process.env.GEMINI_API_KEY,
         });
-        this.model = 'gemini-3-pro-image-preview'; // Verify this model name is correct for your access
+        this.model = 'gemini-3.1-flash-image-preview'; // Multi-turn editing model per Gemini docs
 
         // Initialize S3 client
         this.s3 = new S3Client({
@@ -46,6 +46,109 @@ class ImageController {
             },
         });
         this.bucketName = process.env.AWS_S3_BUCKET_NAME;
+    }
+
+    /**
+     * Build multi-turn contents array from conversation history.
+     * Per Gemini docs: pass previous user + model turns so the model knows what
+     * it previously generated and can edit it correctly.
+     * Limits to last HISTORY_TURNS turns to avoid excessive S3 fetches.
+     */
+    /**
+     * Build multi-turn contents array for generateContentStream.
+     *
+     * Requires thinking to be enabled (thinkingConfig.thinkingLevel = 'MINIMAL') so
+     * the model attaches thought_signatures to its generated image parts. We store those
+     * signatures in DB and replay them here so Gemini can reference what it previously
+     * generated — enabling true multi-turn image editing across stateless HTTP requests.
+     *
+     * Any pair whose assistant turn has no stored thought_signature (messages generated
+     * before this fix) is skipped to avoid a 400 INVALID_ARGUMENT error.
+     */
+    async buildMultiTurnContents(imageChatId, currentParts, historyTurns = 4) {
+        if (!imageChatId) return [{ role: 'user', parts: currentParts }];
+
+        try {
+            const messages = await ImageMessage.find({ imageChatId })
+                .sort({ createdAt: 1 })
+                .lean();
+
+            if (messages.length === 0) return [{ role: 'user', parts: currentParts }];
+
+            const recent = messages.slice(-(historyTurns * 2));
+
+            // Group into user+assistant pairs
+            const pairs = [];
+            let pendingUser = null;
+            for (const msg of recent) {
+                if (msg.role === 'user') {
+                    pendingUser = msg;
+                } else if (msg.role === 'assistant' && msg.imageUrl && pendingUser) {
+                    pairs.push({ user: pendingUser, assistant: msg });
+                    pendingUser = null;
+                }
+            }
+
+            const contents = [];
+
+            for (const { user: userMsg, assistant: assistantMsg } of pairs) {
+                // Skip pairs with no stored thought_signature — replaying model image
+                // turns without one causes a 400 from Gemini.
+                if (!assistantMsg.thoughtSignature) {
+                    console.warn(`[HISTORY] Skipping pair (no thought_signature): ${assistantMsg.imageUrl?.slice(-40)}`);
+                    continue;
+                }
+
+                // User turn (text + any reference images they uploaded)
+                const userParts = [{ text: userMsg.content || '' }];
+                contents.push({ role: 'user', parts: userParts });
+
+                // Model turn — re-fetch the generated image and attach the stored signature
+                try {
+                    const res = await fetch(assistantMsg.imageUrl);
+                    const buf = Buffer.from(await res.arrayBuffer());
+                    const base64 = buf.toString('base64');
+                    const mimeType = assistantMsg.imageMimeType || 'image/jpeg';
+
+                    const modelParts = [];
+                    if (assistantMsg.content && assistantMsg.content !== 'Image generated successfully') {
+                        modelParts.push({ text: assistantMsg.content });
+                    }
+                    // Use camelCase — the @google/genai SDK expects camelCase for request inputs.
+                    // snake_case (thought_signature) is only used in response parsing.
+                    modelParts.push({
+                        inlineData: { mimeType, data: base64 },
+                        thoughtSignature: assistantMsg.thoughtSignature,
+                    });
+
+                    contents.push({ role: 'model', parts: modelParts });
+                } catch (e) {
+                    console.warn('[HISTORY] Failed to fetch image from S3, dropping pair:', assistantMsg.imageUrl?.slice(-40));
+                    contents.pop(); // remove the user turn we just pushed
+                }
+            }
+
+            // Append the current user request
+            contents.push({ role: 'user', parts: currentParts });
+
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log(`📜 [MULTI-TURN] ${contents.length} turns (${pairs.length} pairs checked)`);
+            contents.forEach((turn, i) => {
+                const summary = turn.parts.map(p => {
+                    if (p.text) return `text("${p.text.slice(0, 50)}...")`;
+                    if (p.inlineData) return `image(${p.inlineData.mimeType}, ${Math.round((p.inlineData.data?.length || 0) / 1024)}KB, ${(p.thoughtSignature || p.thought_signature) ? '✅sig' : '❌no-sig'})`;
+                    return 'unknown';
+                }).join(', ');
+                console.log(`  Turn ${i + 1} [${turn.role}]: ${summary}`);
+            });
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+            return contents;
+
+        } catch (error) {
+            console.error('[MULTI-TURN] Error building history:', error.message);
+            return [{ role: 'user', parts: currentParts }];
+        }
     }
 
     /**
@@ -154,6 +257,9 @@ class ImageController {
 
             const config = {
                 responseModalities: ['IMAGE', 'TEXT'],
+                // MINIMAL thinking is required for the model to attach thought_signatures
+                // to its generated image parts — without these we can't do multi-turn editing.
+                thinkingConfig: { thinkingBudget: 1024 },
                 ...(finalSettings.temperature && { temperature: finalSettings.temperature }),
                 ...(finalSettings.topP && { topP: finalSettings.topP }),
                 imageConfig: imageConfig,
@@ -224,32 +330,11 @@ class ImageController {
                 }
             }
 
-            const contents = [
-                {
-                    role: 'user',
-                    parts,
-                },
-            ];
-
-            // Debug: Log contents summary (truncated to avoid huge base64 strings)
-            const contentsSummary = {
-                role: contents[0].role,
-                partsCount: contents[0].parts.length,
-                parts: contents[0].parts.map((part, idx) => {
-                    if (part.text) {
-                        return { type: 'text', preview: part.text.slice(0, 100) + (part.text.length > 100 ? '...' : '') };
-                    } else if (part.inlineData) {
-                        return {
-                            type: 'inlineData',
-                            mimeType: part.inlineData.mimeType,
-                            dataLength: part.inlineData.data?.length || 0,
-                            dataPreview: part.inlineData.data?.slice(0, 50) + '...'
-                        };
-                    }
-                    return { type: 'unknown', keys: Object.keys(part) };
-                })
-            };
-            console.log('📋 [GENERATE] Contents being sent to Gemini:', JSON.stringify(contentsSummary, null, 2));
+            // Build multi-turn contents (includes previous model image turns with thought_signatures)
+            const isEditMode = isEdit || (imageChatId && parts.length > 0);
+            const contents = isEditMode
+                ? await this.buildMultiTurnContents(imageChatId, parts)
+                : [{ role: 'user', parts }];
 
             console.log('🤖 [GENERATE] Calling Gemini API...');
             console.time('gemini-api-call');
@@ -264,59 +349,43 @@ class ImageController {
 
             const generatedImages = [];
             let textResponse = '';
+            let capturedThoughtSignature = null;
             let chunkCount = 0;
 
             for await (const chunk of response) {
                 chunkCount++;
-                console.log(`📦 [GENERATE] Processing chunk #${chunkCount}...`);
+                if (!chunk.candidates?.[0]?.content?.parts) continue;
 
-                if (!chunk.candidates || !chunk.candidates[0].content || !chunk.candidates[0].content.parts) {
-                    console.log(`⚠️ [GENERATE] Chunk #${chunkCount} has no valid parts, skipping...`);
-                    continue;
-                }
+                for (const part of chunk.candidates[0].content.parts) {
+                    if (part.thought) continue; // Skip thinking parts
 
-                const parts = chunk.candidates[0].content.parts;
-
-                for (const part of parts) {
                     if (part.inlineData) {
-                        console.log(`🖼️ [GENERATE] Found image in chunk #${chunkCount}, uploading to S3...`);
-                        console.time(`s3-upload-chunk-${chunkCount}`);
-
-                        const inlineData = part.inlineData;
-                        const buffer = Buffer.from(inlineData.data || '', 'base64');
-
-                        console.log(`📊 [GENERATE] Image buffer size: ${buffer.length} bytes`);
-
-                        const imageUrl = await this.uploadToS3(buffer, inlineData.mimeType);
-                        console.timeEnd(`s3-upload-chunk-${chunkCount}`);
-                        console.log(`✅ [GENERATE] Image uploaded:`, imageUrl);
-
-                        generatedImages.push({
-                            mimeType: inlineData.mimeType,
-                            url: imageUrl,
-                        });
-
-                        // For edit operations, only generate 1 image
-                        if (isEdit && generatedImages.length >= 1) {
-                            console.log('✏️ [GENERATE] Edit operation complete - stopping after 1 image');
-                            break;
+                        // Capture thought_signature — present when thinkingConfig is enabled
+                        const sig = part.thought_signature || part.thoughtSignature || null;
+                        if (sig && !capturedThoughtSignature) {
+                            capturedThoughtSignature = sig;
+                            console.log(`🔑 [GENERATE] Captured thought_signature (${sig.length} chars)`);
                         }
+
+                        const buffer = Buffer.from(part.inlineData.data || '', 'base64');
+                        const imageUrl = await this.uploadToS3(buffer, part.inlineData.mimeType);
+                        console.log(`✅ [GENERATE] Image uploaded:`, imageUrl);
+                        generatedImages.push({ mimeType: part.inlineData.mimeType, url: imageUrl });
+                        if (isEdit && generatedImages.length >= 1) break;
                     }
 
-                    if (chunk.text) {
-                        console.log(`💬 [GENERATE] Got text in chunk #${chunkCount}:`, chunk.text.substring(0, 100));
-                        textResponse += chunk.text;
+                    if (part.text) {
+                        const sig = part.thought_signature || part.thoughtSignature || null;
+                        if (sig && !capturedThoughtSignature) capturedThoughtSignature = sig;
+                        textResponse += part.text;
                     }
                 }
 
-                // Break outer loop if edit is complete
-                if (isEdit && generatedImages.length >= 1) {
-                    break;
-                }
+                if (isEdit && generatedImages.length >= 1) break;
             }
 
             console.timeEnd('gemini-api-call');
-            console.log(`✅ [GENERATE] Stream processing complete. Chunks: ${chunkCount}, Images: ${generatedImages.length}`);
+            console.log(`✅ [GENERATE] Done. Images: ${generatedImages.length}, signature: ${capturedThoughtSignature ? '✅' : '❌'}`);
 
             const chatId = imageChatId || 'chat-' + uuidv4();
             const messageId = 'm' + uuidv4();
@@ -346,9 +415,11 @@ class ImageController {
                     userId,
                     content: textResponse || 'Image generated successfully',
                     imageUrl: generatedImages.length > 0 ? generatedImages[0].url : null,
+                    imageMimeType: generatedImages[0]?.mimeType || 'image/jpeg',
+                    thoughtSignature: capturedThoughtSignature || null,
                     imageChatId: chatId,
                     messageId: 'm-' + uuidv4(),
-                    viralContent: viralContent || null, // Save viral content for Instagram posts
+                    viralContent: viralContent || null,
                 });
                 console.log('✅ [GENERATE] Assistant message saved');
 
@@ -402,6 +473,8 @@ class ImageController {
                     messageId,
                     images: generatedImages,
                     imageUrl: generatedImages.length > 0 ? generatedImages[0].url : null,
+                    imageMimeType: generatedImages[0]?.mimeType || 'image/jpeg',
+                    thoughtSignature: capturedThoughtSignature || null,
                     textResponse,
                     userMessage,
                     assistantMessage,

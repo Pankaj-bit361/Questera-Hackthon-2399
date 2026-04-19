@@ -1,7 +1,10 @@
 const express = require('express');
 const videoRouter = express.Router();
-const VideoController = require('../functions/Video');
+const { VideoController, KieVideoController, SeedanceVideoController, SeedanceFastVideoController } = require('../functions/Video');
 const videoController = new VideoController();
+const kieVideoController = new KieVideoController();
+const seedanceVideoController = new SeedanceVideoController();
+const seedanceFastVideoController = new SeedanceFastVideoController();
 
 // Generate video
 videoRouter.post('/generate', async (req, res) => {
@@ -73,6 +76,39 @@ videoRouter.delete('/message/:messageId', async (req, res) => {
 videoRouter.delete('/conversation/:videoChatId', async (req, res) => {
     try {
         const { status, json } = await videoController.deleteConversation(req);
+        return res.status(status).json(json);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// ── KIE Wan 2.7 Image-to-Video ──
+videoRouter.post('/generate-wan', async (req, res) => {
+    try {
+        const { status, json } = await kieVideoController.generate(req);
+        return res.status(status).json(json);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// ── Bytedance Seedance 2.0 ──
+videoRouter.post('/generate-seedance', async (req, res) => {
+    try {
+        const { status, json } = await seedanceVideoController.generate(req);
+        return res.status(status).json(json);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// ── Bytedance Seedance 2.0 Fast ──
+videoRouter.post('/generate-seedance-fast', async (req, res) => {
+    try {
+        const { status, json } = await seedanceFastVideoController.generate(req);
         return res.status(status).json(json);
     } catch (error) {
         console.log(error);

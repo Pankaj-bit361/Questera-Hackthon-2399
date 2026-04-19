@@ -83,9 +83,82 @@ export const imageAPI = {
 };
 
 /**
- * Video API - Video generation with Veo
+ * Gemini Direct API - Full-featured direct image generation/editing.
+ *
+ * generate(payload) — all fields optional except prompt:
+ *   prompt          {string}    required
+ *   userId          {string}
+ *   imageChatId     {string}    existing chat (creates new if omitted)
+ *   history         {Array}     multi-turn history turns
+ *   images          {Array}     reference images [{data, mimeType}] up to 14
+ *   model           {string}    'flash'|'pro'|'flash2'  (default: 'flash')
+ *   aspectRatio     {string}    '1:1','4:5','16:9','9:16','3:2','2:3','4:3','3:4',
+ *                               '1:4','4:1','1:8','8:1'
+ *   imageSize       {string}    '512'(flash only),'1K','2K','4K'  (default: '2K')
+ *   thinkingLevel   {string}    'minimal'|'High'  (default: 'minimal')
+ *   includeThoughts {boolean}   return thought summaries in response
+ *   useGoogleSearch {boolean}   enable Google Search grounding
+ *   useImageSearch  {boolean}   enable Google Image Search (flash only)
+ *   useWebSearch    {boolean}   enable Web Search alongside image search
+ *   textOnly        {boolean}   TEXT-only response (no image generation)
+ */
+export const geminiAPI = {
+  generate: async (payload) => {
+    const response = await fetch(`${API_BASE_URL}/gemini/generate`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(payload),
+    });
+    return response.json();
+  },
+  agent: async (payload) => {
+    const response = await fetch(`${API_BASE_URL}/gemini/agent`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (response.status === 402) {
+      throw Object.assign(new Error(data.message || 'Insufficient credits'), { code: 'INSUFFICIENT_CREDITS' });
+    }
+    return data;
+  },
+};
+
+/**
+ * Video API - Video generation with Veo, Wan 2.7, Seedance 2.0
  */
 export const videoAPI = {
+  // Generate with Wan 2.7 Image-to-Video (KIE.ai)
+  generateWan: async (payload) => {
+    const response = await fetch(`${API_BASE_URL}/video/generate-wan`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(payload),
+    });
+    return response.json();
+  },
+
+  // Generate with Bytedance Seedance 2.0 (KIE.ai)
+  generateSeedance: async (payload) => {
+    const response = await fetch(`${API_BASE_URL}/video/generate-seedance`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(payload),
+    });
+    return response.json();
+  },
+
+  // Generate with Bytedance Seedance 2.0 Fast (KIE.ai)
+  generateSeedanceFast: async (payload) => {
+    const response = await fetch(`${API_BASE_URL}/video/generate-seedance-fast`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(payload),
+    });
+    return response.json();
+  },
+
   // Get User Video Conversations
   getUserConversations: async (userId) => {
     const response = await fetch(`${API_BASE_URL}/video/user/${userId}/conversations`, {
