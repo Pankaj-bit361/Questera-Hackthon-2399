@@ -322,7 +322,7 @@ router.post('/agent', async (req, res) => {
         if (userId && !imageChatId) {
             const newChat = await ImageChat.create({
                 userId,
-                imageChatId: uuidv4(),
+                imageChatId: `chat-${uuidv4()}`,
                 name: message.slice(0, 60),
             });
             imageChatId = newChat.imageChatId;
