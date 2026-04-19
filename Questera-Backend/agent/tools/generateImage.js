@@ -160,6 +160,8 @@ IMPORTANT:
          images: result.json.images,
          imageChatId: result.json.imageChatId,
          creditsRemaining: result.json.creditsRemaining,
+         imageMimeType: result.json.imageMimeType || 'image/jpeg',
+         thoughtSignature: result.json.thoughtSignature || null,
          // Cognitive Layer - makes the agent feel smart
          cognitive: {
             thinkingSteps,

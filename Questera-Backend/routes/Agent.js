@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createImageAgent } = require('../agent');
+const { createImageAgentV2 } = require('../agent/ImageAgentV2');
 const RouterAgent = require('../agent/RouterAgent');
 const PromptValidator = require('../agent/PromptValidator');
 const { FailureHandler } = require('../agent/FailureResponses');
@@ -21,7 +21,7 @@ function getAgent() {
          console.warn('⚠️ [AGENT] OPENROUTER_API_KEY not set - agent disabled');
          return null;
       }
-      agent = createImageAgent();
+      agent = createImageAgentV2();
    }
    return agent;
 }
@@ -37,7 +37,7 @@ function getRouterAgent() {
 }
 
 // Helper to save a message and link it to the Image document
-async function saveMessage(chatId, userId, role, content, images = []) {
+async function saveMessage(chatId, userId, role, content, images = [], extra = {}) {
    const msgData = {
       messageId: `msg-${uuidv4()}`,
       imageChatId: chatId,
@@ -45,6 +45,10 @@ async function saveMessage(chatId, userId, role, content, images = []) {
       content,
       userId
    };
+
+   // Persist thought_signature and mimeType for multi-turn Gemini editing
+   if (extra.thoughtSignature) msgData.thoughtSignature = extra.thoughtSignature;
+   if (extra.imageMimeType) msgData.imageMimeType = extra.imageMimeType;
 
    // Add images if provided - handle both URL strings and base64 data objects
    if (images && images.length > 0) {
@@ -375,8 +379,11 @@ router.post('/stream', async (req, res) => {
          await saveMessage(chatId, userId, 'assistant', result.message);
          emit({ type: 'done', data: { imageChatId: chatId, intent: 'conversation', cognitive } });
       } else if (toolResult.imageUrl) {
-         // Image generation - save assistant message with image
-         await saveMessage(chatId, userId, 'assistant', 'Image generated successfully', [toolResult.imageUrl]);
+         // Image generation - save assistant message with image + thoughtSignature for multi-turn
+         await saveMessage(chatId, userId, 'assistant', result.message || 'Image generated successfully', [toolResult.imageUrl], {
+            imageMimeType: toolResult.imageMimeType || 'image/jpeg',
+            thoughtSignature: toolResult.thoughtSignature || null,
+         });
          emit({
             type: 'image', data: {
                imageUrl: toolResult.imageUrl,

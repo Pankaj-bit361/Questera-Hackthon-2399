@@ -57,6 +57,11 @@ class ToolRegistry {
    list() {
       return Array.from(this.tools.keys());
    }
+
+   // Used by ToolsAgentExecutor — returns full tool definitions for native tool calling
+   getAll() {
+      return this.getDefinitions();
+   }
 }
 
 

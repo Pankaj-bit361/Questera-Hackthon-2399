@@ -13,7 +13,125 @@ import { API_BASE_URL } from '../../config';
 
 const { FiUser, FiZap, FiDownload, FiRefreshCw, FiCheck, FiX, FiChevronDown, FiTrash2, FiCopy, FiCalendar, FiClock, FiInstagram, FiMaximize2 } = FiIcons;
 
-const MessageList = ({ messages, loading, streamingStatus, onDeleteMessage, selectedImageForEdit, onSelectImageForEdit, onClearSelectedImage, onSuggestionClick }) => {
+// Inline account picker rendered inside the assistant message bubble
+const AccountPicker = ({ accounts, pendingPost, onScheduled }) => {
+  const [selected, setSelected] = useState(accounts[0]?.id || null);
+  const [status, setStatus] = useState(null);
+  const [confirmedMsg, setConfirmedMsg] = useState('');
+
+  // Date/time state — default to agent's suggested time or 1hr from now
+  const defaultDate = pendingPost.scheduledAt ? new Date(pendingPost.scheduledAt) : new Date(Date.now() + 60 * 60 * 1000);
+  const [scheduleDate, setScheduleDate] = useState(defaultDate.toISOString().slice(0, 10)); // YYYY-MM-DD
+  const [scheduleTime, setScheduleTime] = useState(
+    defaultDate.toTimeString().slice(0, 5) // HH:MM
+  );
+
+  const handleConfirm = async () => {
+    if (!selected || status) return;
+    setStatus('scheduling');
+    try {
+      const scheduledAt = new Date(`${scheduleDate}T${scheduleTime}`).toISOString();
+      const result = await schedulerAPI.createPost({
+        userId: pendingPost.userId,
+        imageUrl: pendingPost.imageUrl,
+        caption: pendingPost.caption,
+        hashtags: pendingPost.hashtags || '',
+        platform: 'instagram',
+        accountId: selected,
+        scheduledAt,
+      });
+      if (result.success) {
+        const acc = accounts.find(a => a.id === selected);
+        const time = new Date(scheduledAt).toLocaleString('en-US', {
+          weekday: 'short', month: 'short', day: 'numeric',
+          hour: 'numeric', minute: '2-digit', hour12: true,
+        });
+        const msg = `Scheduled to @${acc?.username || 'account'} for ${time}.`;
+        setConfirmedMsg(msg);
+        setStatus('done');
+        onScheduled?.(acc?.username, scheduledAt);
+      } else {
+        setStatus('error');
+      }
+    } catch {
+      setStatus('error');
+    }
+  };
+
+  if (status === 'done') {
+    return (
+      <div className="flex items-center gap-2 px-4 py-3 bg-emerald-950/60 border border-emerald-500/30 rounded-2xl text-sm text-emerald-400 font-medium">
+        <SafeIcon icon={FiCheck} className="w-4 h-4 shrink-0" />
+        {confirmedMsg}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-1 p-4 bg-zinc-900 border border-white/10 rounded-2xl space-y-3 w-72">
+      {/* Account selection */}
+      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Choose account</p>
+      <div className="space-y-2">
+        {accounts.map(acc => (
+          <button
+            key={acc.id}
+            onClick={() => setSelected(acc.id)}
+            className={`w-full flex items-center gap-3 p-2.5 rounded-xl border transition-all text-left ${
+              selected === acc.id
+                ? 'bg-white/10 border-white/30 text-white'
+                : 'bg-zinc-800/50 border-white/5 text-zinc-400 hover:border-white/20 hover:text-white'
+            }`}
+          >
+            {acc.profilePictureUrl ? (
+              <img src={acc.profilePictureUrl} alt={acc.username} className="w-8 h-8 rounded-full object-cover ring-1 ring-white/10" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center ring-1 ring-white/10 shrink-0">
+                <span className="text-xs font-bold text-white">{acc.username?.[0]?.toUpperCase()}</span>
+              </div>
+            )}
+            <span className="text-sm font-medium">@{acc.username}</span>
+            {selected === acc.id && <SafeIcon icon={FiCheck} className="w-3.5 h-3.5 ml-auto text-emerald-400" />}
+          </button>
+        ))}
+      </div>
+
+      {/* Date & Time picker */}
+      <div className="border-t border-white/5 pt-3 space-y-2">
+        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Schedule time</p>
+        <div className="flex gap-2">
+          <input
+            type="date"
+            value={scheduleDate}
+            min={new Date().toISOString().slice(0, 10)}
+            onChange={e => setScheduleDate(e.target.value)}
+            className="flex-1 bg-zinc-800 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30 transition-colors [color-scheme:dark]"
+          />
+          <input
+            type="time"
+            value={scheduleTime}
+            onChange={e => setScheduleTime(e.target.value)}
+            className="w-24 bg-zinc-800 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/30 transition-colors [color-scheme:dark]"
+          />
+        </div>
+      </div>
+
+      <button
+        onClick={handleConfirm}
+        disabled={!selected || !scheduleDate || !scheduleTime || status === 'scheduling'}
+        className="w-full flex items-center justify-center gap-2 py-2.5 bg-white text-black rounded-xl text-xs font-bold hover:bg-zinc-200 transition-all disabled:opacity-50"
+      >
+        {status === 'scheduling' ? (
+          <><div className="w-3.5 h-3.5 border-2 border-zinc-400 border-t-black rounded-full animate-spin" /> Scheduling...</>
+        ) : (
+          <><SafeIcon icon={FiInstagram} className="w-3.5 h-3.5" /> Confirm Schedule</>
+        )}
+      </button>
+      {status === 'error' && <p className="text-xs text-red-400 text-center">Failed to schedule. Please try again.</p>}
+    </div>
+  );
+};
+
+const MessageList = ({ messages, loading, streamingStatus, onDeleteMessage, selectedImageForEdit, onSelectImageForEdit, onClearSelectedImage, onSuggestionClick, onScheduleConfirmed }) => {
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
   const [publishingIdx, setPublishingIdx] = useState(null);
@@ -471,6 +589,69 @@ const MessageList = ({ messages, loading, streamingStatus, onDeleteMessage, sele
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* Variations Grid */}
+              {msg.role === 'assistant' && msg.variations && msg.variations.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">
+                    {msg.variations.filter(v => v.imageUrl).length} Variations
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {msg.variations.filter(v => v.imageUrl).map((v, vIdx) => (
+                      <div
+                        key={vIdx}
+                        className={`relative group/vimg rounded-2xl overflow-hidden border transition-all cursor-pointer ${
+                          selectedImageForEdit?.url === v.imageUrl
+                            ? 'border-white ring-1 ring-white/20'
+                            : 'border-white/10 hover:border-white/30'
+                        }`}
+                        onClick={() => onSelectImageForEdit?.(v.imageUrl, idx)}
+                      >
+                        <img
+                          src={v.imageUrl}
+                          alt={`Variation ${vIdx + 1}`}
+                          className="w-full h-auto object-cover block"
+                          loading="lazy"
+                        />
+                        {/* Hover overlay */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/vimg:opacity-100 transition-opacity flex items-end p-2 gap-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDownload(v.imageUrl); }}
+                            className="p-1.5 rounded-lg bg-white/10 backdrop-blur-md text-white hover:bg-white/20 transition-colors"
+                            title="Download"
+                          >
+                            <SafeIcon icon={FiDownload} className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); window.open(v.imageUrl, '_blank'); }}
+                            className="p-1.5 rounded-lg bg-white/10 backdrop-blur-md text-white hover:bg-white/20 transition-colors"
+                            title="Expand"
+                          >
+                            <SafeIcon icon={FiMaximize2} className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        {selectedImageForEdit?.url === v.imageUrl && (
+                          <div className="absolute top-2 left-2 px-2 py-0.5 bg-white text-black rounded-full text-[9px] font-bold">
+                            SELECTED
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-black/60 backdrop-blur-sm text-zinc-300 rounded-md text-[9px] font-medium">
+                          {vIdx + 1}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Account Picker — multi-account schedule selection */}
+              {msg.role === 'assistant' && msg.selectAccount && (
+                <AccountPicker
+                  accounts={msg.selectAccount.accounts}
+                  pendingPost={msg.selectAccount.pendingPost}
+                  onScheduled={(username, scheduledAt) => onScheduleConfirmed?.(username, scheduledAt, msg.selectAccount.pendingPost.imageUrl)}
+                />
               )}
 
               {/* Viral Content - Clean Dark Theme */}

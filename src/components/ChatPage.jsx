@@ -3,7 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import SafeIcon from '../common/SafeIcon';
-import { imageAPI, agentAPI, creditsAPI, chatAPI } from '../lib/api';
+import { imageAPI, geminiAPI, creditsAPI } from '../lib/api';
 import { getUserId, getUser } from '../lib/velosStorage';
 
 // Components
@@ -37,15 +37,18 @@ const ChatPage = () => {
   const [projectSettings, setProjectSettings] = useState({ ...DEFAULT_PROJECT_SETTINGS });
   const [savingSettings, setSavingSettings] = useState(false);
 
-  // Per-message overrides
+  // Per-message overrides (nulls mean "use project setting")
   const [messageOverrides, setMessageOverrides] = useState({
     aspectRatio: null,
     imageSize: null,
     style: null,
+    useGoogleSearch: null,
+    useImageSearch: null,
   });
 
   const [referenceImages, setReferenceImages] = useState([]);
   const hasInitialized = useRef(false);
+  const skipNextFetch = useRef(false); // Set to true after navigating from 'new' to avoid re-fetching
 
   // Selected image for editing - user can click an image to select it for the next edit
   const [selectedImageForEdit, setSelectedImageForEdit] = useState(null); // { url, idx }
@@ -53,10 +56,13 @@ const ChatPage = () => {
   // Credits state
   const [credits, setCredits] = useState({ balance: 0, plan: 'free', planName: 'Free' });
 
-  // Streaming state
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingText, setStreamingText] = useState('');
-  const [streamingStatus, setStreamingStatus] = useState(null); // { stage, message }
+  // Agent history — text-only turns for the routing agent (grows every turn)
+  const [agentHistory, setAgentHistory] = useState([]);
+  // Gemini history — full image turns with inlineData + thoughtSignature (grows on image turns only)
+  const [geminiHistory, setGeminiHistory] = useState([]);
+
+  // Loading status for UI feedback (passed to MessageList fallback)
+  const [streamingStatus] = useState(null);
 
   // Fetch user's credits
   const fetchCredits = async () => {
@@ -87,15 +93,19 @@ const ChatPage = () => {
       if (initialPrompt || initialImages.length > 0) {
         hasInitialized.current = true;
         setLoadingChat(false);
-        // Use Agent for all generation - unified path to avoid duplicate scheduling
         if (initialPrompt) {
-          generateWithAgent(initialPrompt, null, initialImages);
+          generateDirect(initialPrompt, null, initialImages);
         }
       } else {
         setLoadingChat(false);
       }
     } else if (chatId && chatId !== 'new') {
-      fetchConversation();
+      if (skipNextFetch.current) {
+        skipNextFetch.current = false;
+        setLoadingChat(false);
+      } else {
+        fetchConversation();
+      }
     } else {
       setLoadingChat(false);
     }
@@ -105,9 +115,19 @@ const ChatPage = () => {
     try {
       setLoadingChat(true);
       const data = await imageAPI.getConversation(chatId);
-      setMessages(data.messages || []);
+      const msgs = data.messages || [];
+      setMessages(msgs);
       setChatTitle(data.name || data.title || 'Untitled Creation');
       setCurrentChatId(chatId);
+
+      // Restore agentHistory from saved messages (text-only, for routing context)
+      const restored = msgs
+        .filter(m => m.content?.trim())
+        .map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }],
+        }));
+      setAgentHistory(restored);
 
       if (data.imageSettings) {
         setProjectSettings({ ...DEFAULT_PROJECT_SETTINGS, ...data.imageSettings });
@@ -119,504 +139,139 @@ const ChatPage = () => {
     }
   };
 
-  const generateImage = async (userPrompt, existingChatId, initialImages = null) => {
-    setLoading(true);
-
-    // Prepare overrides
-    const overrides = {};
-    if (messageOverrides.aspectRatio) overrides.aspectRatio = messageOverrides.aspectRatio;
-    if (messageOverrides.imageSize) overrides.imageSize = messageOverrides.imageSize;
-    if (messageOverrides.style) overrides.style = messageOverrides.style;
-
-    // Use initialImages if provided (from handleSend or HomePage navigation), otherwise use referenceImages state
-    // IMPORTANT: If initialImages is an array (even empty), use it. Only fall back to state if null/undefined.
-    const imagesToUse = initialImages !== null && initialImages !== undefined ? initialImages : referenceImages;
-    const refImagesForApi = imagesToUse.map(img => ({
-      data: img.data,
-      mimeType: img.mimeType
-    }));
-
-    console.log('🔍 [GENERATE-START] initialImages:', initialImages?.length ?? 'null/undefined');
-    console.log('🔍 [GENERATE-START] referenceImages state:', referenceImages.length);
-    console.log('🔍 [GENERATE-START] imagesToUse:', imagesToUse.length);
-    console.log('🔍 [GENERATE-START] refImagesForApi:', refImagesForApi);
-    if (refImagesForApi.length > 0) {
-      console.log('🔍 [GENERATE-START] First image data length:', refImagesForApi[0]?.data?.length);
-    }
-
-    // Use selected image if available, otherwise fall back to last generated image
-    // IMPORTANT: Find the last image BEFORE adding the new user message to state
-    let imageUrlForEdit = selectedImageForEdit?.url || null;
-    if (!imageUrlForEdit) {
-      // Fall back to last generated image - search in reverse
-      const assistantMessages = messages.filter(m => m.role === 'assistant' && m.imageUrl);
-      if (assistantMessages.length > 0) {
-        imageUrlForEdit = assistantMessages[assistantMessages.length - 1].imageUrl;
-      }
-    }
-
-    // Debug logging
-    console.log('🔍 [EDIT-DEBUG] Messages count:', messages.length);
-    console.log('🔍 [EDIT-DEBUG] Selected image for edit:', selectedImageForEdit?.url);
-    console.log('🔍 [EDIT-DEBUG] Found last image URL:', imageUrlForEdit);
-    console.log('🔍 [EDIT-DEBUG] Assistant messages with images:', messages.filter(m => m.role === 'assistant' && m.imageUrl).map(m => m.imageUrl));
-
-    // If user selected an image for edit and no new reference images uploaded,
-    // pass the selected image URL as a reference image
-    let finalRefImagesForApi = refImagesForApi;
-    if (selectedImageForEdit?.url && refImagesForApi.length === 0) {
-      console.log('📸 [SMART-CHAT] Adding selected image as reference:', selectedImageForEdit.url);
-      finalRefImagesForApi = [{ data: selectedImageForEdit.url, mimeType: 'image/jpeg' }];
-    }
-
-    const tempUserMsg = { role: 'user', content: userPrompt, referenceImages: imagesToUse.map(r => r.preview) };
-    setMessages(prev => [...prev, tempUserMsg]);
-
-    // Clear selected image after use
-    setSelectedImageForEdit(null);
-
-    try {
-      const user = getUser();
-      if (!user?.userId) throw new Error('User not logged in');
-
-      // Step 1: Use smart chat API to understand intent and get prompts
-      const chatResponse = await chatAPI.chat({
-        userId: user.userId,
-        message: userPrompt,
-        imageChatId: existingChatId,
-        referenceImages: finalRefImagesForApi,
-        lastImageUrl: imageUrlForEdit, // Pass selected or last image for edit/remix operations
-      });
-
-      // Handle conversation-only responses (no image generation)
-      if (chatResponse.intent === 'conversation' || chatResponse.intent === 'question') {
-        const aiMsg = {
-          role: 'assistant',
-          content: chatResponse.message,
-        };
-        setMessages(prev => [...prev, aiMsg]);
-        setMessageOverrides({ aspectRatio: null, imageSize: null, style: null });
-        setReferenceImages([]);
-        setLoading(false);
-        return;
-      }
-
-      // Handle schedule intent - just show the message, don't generate new images
-      if (chatResponse.intent === 'schedule' || chatResponse.type === 'scheduled') {
-        const aiMsg = {
-          role: 'assistant',
-          content: chatResponse.message,
-          isScheduled: true,
-          scheduledPost: chatResponse.post,
-        };
-        setMessages(prev => [...prev, aiMsg]);
-        setMessageOverrides({ aspectRatio: null, imageSize: null, style: null });
-        setReferenceImages([]);
-        setLoading(false);
-        return;
-      }
-
-      // Handle edit/remix - needs to pass the previous image as reference
-      if (chatResponse.intent === 'edit' || chatResponse.intent === 'remix') {
-        // Add AI acknowledgment message
-        if (chatResponse.message) {
-          const ackMsg = { role: 'assistant', content: chatResponse.message };
-          setMessages(prev => [...prev, ackMsg]);
-        }
-
-        // If needs image but doesn't have one, stop here
-        if (chatResponse.needsImage) {
-          setLoading(false);
-          return;
-        }
-
-        // Use the edit prompt with the last image as reference
-        const promptToUse = chatResponse.prompt || userPrompt;
-
-        // Prepare images for edit - prioritize user-uploaded reference images
-        let imagesToSend = refImagesForApi;
-
-        console.log('🖼️ [EDIT] refImagesForApi length:', refImagesForApi.length);
-        console.log('🖼️ [EDIT] imagesToUse length:', imagesToUse.length);
-        console.log('🖼️ [EDIT] referenceImages state length:', referenceImages.length);
-
-        // Only use last generated image if user didn't upload a reference image
-        if (imagesToSend.length === 0 && chatResponse.useLastImage && chatResponse.lastImageUrl) {
-          // Pass the URL directly to the backend - it will fetch the image server-side
-          // This is more reliable than fetching in the browser (avoids CORS/network issues)
-          console.log('🖼️ [EDIT] No reference image uploaded, using last generated image:', chatResponse.lastImageUrl);
-          imagesToSend = [{
-            data: chatResponse.lastImageUrl, // Backend will detect URL and fetch it
-            mimeType: 'image/jpeg',
-          }];
-        } else if (refImagesForApi.length > 0) {
-          console.log('🖼️ [EDIT] Using user-uploaded reference image for edit');
-        }
-
-        // If edit was requested but no image URL available, inform user
-        if (chatResponse.useLastImage && !chatResponse.lastImageUrl && imagesToSend.length === 0) {
-          console.warn('⚠️ [EDIT] No image available for edit operation');
-          const errorMsg = {
-            role: 'assistant',
-            content: "I need an image to edit! Please click on an image in the chat or upload the image you want me to modify.",
-          };
-          setMessages(prev => [...prev, errorMsg]);
-          setLoading(false);
-          return;
-        }
-
-        console.log('🖼️ [EDIT] Final imagesToSend length:', imagesToSend.length);
-        console.log('🖼️ [EDIT] Sending to /image/generate with images:', imagesToSend.length > 0 ? 'YES' : 'NO');
-
-        // Generate edited image
-        const data = await imageAPI.generate({
-          prompt: promptToUse,
-          originalMessage: userPrompt, // Keep original user message for UI display
-          userId: user.userId,
-          imageChatId: existingChatId || chatResponse.imageChatId,
-          isEdit: true, // Tell backend this is an edit operation
-          ...overrides,
-          images: imagesToSend.length > 0 ? imagesToSend : undefined,
-        });
-
-        if (!existingChatId && data.imageChatId) {
-          setCurrentChatId(data.imageChatId);
-          setChatTitle(userPrompt.slice(0, 30) + '...');
-          navigate(`/chat/${data.imageChatId}`, { replace: true });
-        }
-
-        // Handle insufficient credits error
-        if (data.code === 'INSUFFICIENT_CREDITS' || data.error === 'Insufficient credits') {
-          const errorMsg = {
-            role: 'assistant',
-            content: "⚡ You've run out of credits! Please upgrade your plan to continue generating images.",
-            isError: true
-          };
-          setMessages(prev => [...prev, errorMsg]);
-          setLoading(false);
-          return;
-        }
-
-        const aiMsg = {
-          role: 'assistant',
-          content: data.textResponse || 'Here\'s your edited image!',
-          imageUrl: data.imageUrl || (data.images && data.images[0]?.url),
-        };
-        setMessages(prev => [...prev, aiMsg]);
-        setMessageOverrides({ aspectRatio: null, imageSize: null, style: null });
-        setReferenceImages([]);
-
-        // Update credits after successful edit
-        if (data.creditsRemaining !== undefined) {
-          setCredits(prev => ({ ...prev, balance: data.creditsRemaining }));
-        } else {
-          fetchCredits();
-        }
-
-        setLoading(false);
-        return;
-      }
-
-      // Step 2: For image generation, use the generated prompt with the image API
-      if (chatResponse.contentJob || chatResponse.prompt) {
-        // Add AI acknowledgment message
-        if (chatResponse.message) {
-          const ackMsg = { role: 'assistant', content: chatResponse.message };
-          setMessages(prev => [...prev, ackMsg]);
-        }
-
-        // Use the enhanced prompt from the orchestrator
-        const promptToUse = chatResponse.prompt || chatResponse.contentJob?.prompts?.[0] || userPrompt;
-
-        // Generate image using the existing image API
-        const data = await imageAPI.generate({
-          prompt: promptToUse,
-          originalMessage: userPrompt, // Keep original user message for UI display
-          userId: user.userId,
-          imageChatId: existingChatId || chatResponse.imageChatId,
-          viralContent: chatResponse.viralContent, // Pass viral content for saving
-          ...overrides,
-          images: refImagesForApi.length > 0 ? refImagesForApi : undefined,
-        });
-
-        // Handle insufficient credits error
-        if (data.code === 'INSUFFICIENT_CREDITS' || data.error === 'Insufficient credits') {
-          const errorMsg = {
-            role: 'assistant',
-            content: "⚡ You've run out of credits! Please upgrade your plan to continue generating images.",
-            isError: true
-          };
-          setMessages(prev => [...prev, errorMsg]);
-          setLoading(false);
-          return;
-        }
-
-        if (!existingChatId && data.imageChatId) {
-          setCurrentChatId(data.imageChatId);
-          setChatTitle(userPrompt.slice(0, 30) + '...');
-          navigate(`/chat/${data.imageChatId}`, { replace: true });
-        }
-
-        const aiMsg = {
-          role: 'assistant',
-          content: data.textResponse || '',
-          imageUrl: data.imageUrl || (data.images && data.images[0]?.url),
-          // Store job info for campaign/batch tracking
-          contentJob: chatResponse.contentJob,
-          // Include viral content for posts
-          viralContent: chatResponse.viralContent,
-        };
-        setMessages(prev => [...prev, aiMsg]);
-
-        // Update credits after successful generation (Moved inside the block where data is defined)
-        if (data.creditsRemaining !== undefined) {
-          setCredits(prev => ({ ...prev, balance: data.creditsRemaining }));
-        } else {
-          fetchCredits(); // Fallback: fetch fresh credits
-        }
-      }
-
-      setMessageOverrides({ aspectRatio: null, imageSize: null, style: null });
-      setReferenceImages([]);
-
-    } catch (error) {
-      console.error('Failed to generate:', error);
-      // Fallback to direct image generation if smart chat fails
-      try {
-        const user = getUser();
-        const data = await imageAPI.generate({
-          prompt: userPrompt,
-          userId: user?.userId,
-          imageChatId: existingChatId,
-          ...overrides,
-          images: referenceImages.length > 0 ? referenceImages.map(img => ({ data: img.data, mimeType: img.mimeType })) : undefined,
-        });
-
-        // Handle insufficient credits error
-        if (data.code === 'INSUFFICIENT_CREDITS' || data.error === 'Insufficient credits') {
-          const errorMsg = {
-            role: 'assistant',
-            content: "⚡ You've run out of credits! Please upgrade your plan to continue generating images.",
-            isError: true
-          };
-          setMessages(prev => [...prev, errorMsg]);
-          return;
-        }
-
-        if (!existingChatId && data.imageChatId) {
-          setCurrentChatId(data.imageChatId);
-          setChatTitle(userPrompt.slice(0, 30) + '...');
-          navigate(`/chat/${data.imageChatId}`, { replace: true });
-        }
-
-        const aiMsg = {
-          role: 'assistant',
-          content: data.textResponse || "Here is your generated image.",
-          imageUrl: data.imageUrl || (data.images && data.images[0]?.url),
-        };
-        setMessages(prev => [...prev, aiMsg]);
-        setMessageOverrides({ aspectRatio: null, imageSize: null, style: null });
-        setReferenceImages([]);
-
-        // Update credits after successful fallback generation
-        if (data.creditsRemaining !== undefined) {
-          setCredits(prev => ({ ...prev, balance: data.creditsRemaining }));
-        } else {
-          fetchCredits();
-        }
-      } catch (fallbackError) {
-        console.error('Fallback also failed:', fallbackError);
-        const errorMsg = { role: 'assistant', content: "Sorry, I encountered an error while generating the image. Please try again." };
-        setMessages(prev => [...prev, errorMsg]);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Ref to prevent duplicate requests
   const requestInFlightRef = useRef(false);
 
-  const generateWithAgent = async (userPrompt, existingChatId, initialImages = null) => {
-    // Prevent duplicate requests
-    if (requestInFlightRef.current) {
-      console.log('⚠️ [AGENT] Request already in flight, skipping duplicate');
-      return;
-    }
+  const generateDirect = async (userPrompt, existingChatId, initialImages = null) => {
+    if (requestInFlightRef.current) return;
     requestInFlightRef.current = true;
     setLoading(true);
-    setIsStreaming(true);
-    setStreamingText('');
-    setStreamingStatus({ stage: 'connecting', message: 'Connecting...' });
 
     const imagesToUse = initialImages !== null && initialImages !== undefined ? initialImages : referenceImages;
     const refImagesForApi = imagesToUse.map(img => ({ data: img.data, mimeType: img.mimeType }));
 
-    // lastImageUrl is ONLY needed if user didn't upload reference images
-    let imageUrlForEdit = null;
-    if (refImagesForApi.length === 0) {
-      imageUrlForEdit = selectedImageForEdit?.url || null;
-      if (!imageUrlForEdit) {
-        const assistantMessages = messages.filter(m => m.role === 'assistant' && m.imageUrl);
-        if (assistantMessages.length > 0) {
-          imageUrlForEdit = assistantMessages[assistantMessages.length - 1].imageUrl;
-        }
-      }
-    }
+    // Find last image URL BEFORE adding temp user message (edit fallback)
+    const lastImageUrl = selectedImageForEdit?.url ||
+      messages.filter(m => m.role === 'assistant' && m.imageUrl).at(-1)?.imageUrl || null;
 
     const tempUserMsg = { role: 'user', content: userPrompt, referenceImages: imagesToUse.map(r => r.preview) };
     setMessages(prev => [...prev, tempUserMsg]);
     setSelectedImageForEdit(null);
 
-    // Add placeholder for streaming response
-    const streamingMsgId = Date.now();
+    const placeholderId = Date.now();
     setMessages(prev => [...prev, {
       role: 'assistant',
       content: '',
       isStreaming: true,
-      streamingId: streamingMsgId,
-      streamingStage: 'connecting',
-      streamingMessage: 'Connecting...',
+      streamingId: placeholderId,
+      streamingMessage: 'Thinking...',
     }]);
 
-    let accumulatedText = '';
-    let cognitive = null;
-    let finalIntent = null;
-
-    // Helper to update streaming message
-    const updateStreamingMsg = (updates) => {
-      setMessages(prev => prev.map(m =>
-        m.streamingId === streamingMsgId ? { ...m, ...updates } : m
-      ));
-    };
+    // Progressive status stages — cycles through messages while waiting
+    const stages = [
+      { delay: 1500, message: 'Understanding your request...' },
+      { delay: 3500, message: 'Generating image...' },
+      { delay: 8000, message: 'Refining details...' },
+      { delay: 16000, message: 'Almost there...' },
+      { delay: 28000, message: 'Finalizing...' },
+    ];
+    const stageTimers = stages.map(({ delay, message }) =>
+      setTimeout(() => {
+        setMessages(prev => prev.map(m =>
+          m.streamingId === placeholderId ? { ...m, streamingMessage: message } : m
+        ));
+      }, delay)
+    );
+    const clearStages = () => stageTimers.forEach(clearTimeout);
 
     try {
       const user = getUser();
       if (!user?.userId) throw new Error('User not logged in');
 
-      await agentAPI.chatStream({
-        userId: user.userId,
+      const data = await geminiAPI.agent({
         message: userPrompt,
-        imageChatId: existingChatId,
-        referenceImages: refImagesForApi,
-        lastImageUrl: imageUrlForEdit,
-      }, {
-        onInit: (data) => {
-          if (!existingChatId && data.chatId) {
-            setCurrentChatId(data.chatId);
-            setChatTitle(userPrompt.slice(0, 30) + '...');
-            navigate(`/chat/${data.chatId}`, { replace: true });
-          }
-          updateStreamingMsg({ streamingStage: 'init', streamingMessage: 'Connected' });
-        },
-        onThinking: (data) => {
-          setStreamingStatus({ stage: data.stage, message: data.message });
-          updateStreamingMsg({ streamingStage: data.stage, streamingMessage: data.message });
-        },
-        onIntent: (data) => {
-          const intentLabel = {
-            'generate_image': '🎨 Creating image...',
-            'edit_image': '✏️ Editing image...',
-            'generate_and_post': '🎨📱 Creating & scheduling...',
-            'schedule_post': '📅 Scheduling post...',
-            'chat': '💬 Responding...',
-            'website_content': '🌐 Analyzing website...',
-          }[data.intent] || `Processing: ${data.intent}`;
-          updateStreamingMsg({ streamingStage: 'intent', streamingMessage: intentLabel, detectedIntent: data.intent });
-        },
-        onToolCall: (data) => {
-          const toolLabel = {
-            'generate_image': '🎨 Generating image...',
-            'edit_image': '✏️ Editing image...',
-            'schedule_post': '📅 Scheduling post...',
-            'extract_website': '🌐 Extracting website...',
-            'deep_research': '🔬 Researching...',
-            'get_accounts': '📱 Getting accounts...',
-            'create_variations': '🔄 Creating variations...',
-            'reply': '💬 Composing reply...',
-          }[data.tool] || `Using ${data.tool}...`;
-          updateStreamingMsg({ streamingStage: 'tool', streamingMessage: toolLabel, currentTool: data.tool });
-        },
-        onToolResult: (data) => {
-          cognitive = data.cognitive || cognitive;
-          // Show cognitive layer immediately when available
-          if (data.cognitive) {
-            updateStreamingMsg({ cognitive: data.cognitive, streamingMessage: 'Processing result...' });
-          }
-        },
-        onAnswerStart: (data) => {
-          cognitive = data.thought ? { thought: data.thought } : cognitive;
-          setStreamingStatus(null);
-          updateStreamingMsg({ streamingStage: 'answering', streamingMessage: null });
-        },
-        onToken: (data) => {
-          accumulatedText += data.token;
-          setStreamingText(accumulatedText);
-          updateStreamingMsg({ content: accumulatedText, streamingMessage: null });
-        },
-        onAnswerEnd: () => {
-          updateStreamingMsg({ isStreaming: false, cognitive, streamingMessage: null });
-        },
-        onImage: (data) => {
-          finalIntent = 'image_generation';
-          cognitive = data.cognitive || cognitive;
-          updateStreamingMsg({
-            content: 'Here is your image!',
-            imageUrl: data.imageUrl || data.images?.[0]?.url,
-            isStreaming: false,
-            cognitive,
-            streamingMessage: null,
-          });
-          if (data.creditsRemaining !== undefined) {
-            setCredits(prev => ({ ...prev, balance: data.creditsRemaining }));
-          } else {
-            fetchCredits();
-          }
-        },
-        onScheduled: (data) => {
-          finalIntent = 'schedule';
-          cognitive = data.cognitive || cognitive;
-          updateStreamingMsg({ content: data.message, isScheduled: true, isStreaming: false, cognitive, streamingMessage: null });
-        },
-        onAccounts: (data) => {
-          finalIntent = 'accounts';
-          cognitive = data.cognitive || cognitive;
-          updateStreamingMsg({ content: data.message, isStreaming: false, cognitive, streamingMessage: null });
-        },
-        onClarification: (data) => {
-          updateStreamingMsg({ content: data.message, isStreaming: false, streamingMessage: null });
-        },
-        onMessage: (data) => {
-          cognitive = data.cognitive || cognitive;
-          updateStreamingMsg({ content: data.content, isStreaming: false, cognitive, streamingMessage: null });
-        },
-        onDone: (data) => {
-          finalIntent = data.intent || finalIntent;
-          cognitive = data.cognitive || cognitive;
-          updateStreamingMsg({ isStreaming: false, streamingMessage: null });
-        },
-        onError: (data) => {
-          const errorMsg = data.message?.includes('credit')
-            ? "⚡ You've run out of credits!"
-            : (data.message || 'Something went wrong');
-          updateStreamingMsg({ content: errorMsg, isStreaming: false, isError: true, streamingMessage: null });
-        },
+        userId: user.userId,
+        imageChatId: existingChatId || null,
+        agentHistory: agentHistory.slice(-30),    // last 15 turns (intent context)
+        geminiHistory: geminiHistory.slice(-14),  // last 7 image turns (user + model pairs)
+        images: refImagesForApi,
+        lastImageUrl,
+        model: projectSettings.model || 'flash',
+        thinkingLevel: projectSettings.thinkingLevel || 'minimal',
+        aspectRatio: messageOverrides.aspectRatio || (projectSettings.aspectRatio !== 'auto' ? projectSettings.aspectRatio : undefined),
+        imageSize: messageOverrides.imageSize || projectSettings.imageSize || '2K',
+        useGoogleSearch: messageOverrides.useGoogleSearch || false,
+        useImageSearch: messageOverrides.useImageSearch || false,
       });
 
-      setMessageOverrides({ aspectRatio: null, imageSize: null, style: null });
-      setReferenceImages([]);
-    } catch (error) {
-      console.error('Agent error:', error);
+      if (data.error) throw new Error(data.error);
+
+      if (!existingChatId && data.imageChatId) {
+        setCurrentChatId(data.imageChatId);
+        setChatTitle(userPrompt.slice(0, 30) + '...');
+        skipNextFetch.current = true;
+        navigate(`/chat/${data.imageChatId}`, { replace: true });
+      }
+
+      // Always update agentHistory (text turns — every interaction)
+      if (data.agentTurn) {
+        setAgentHistory(prev => [
+          ...prev,
+          { role: 'user', parts: [{ text: userPrompt }] },
+          data.agentTurn,
+        ]);
+      }
+
+      // Only update geminiHistory when an image was generated/edited
+      if (data.geminiTurn) {
+        setGeminiHistory(prev => [
+          ...prev,
+          { role: 'user', parts: [{ text: userPrompt }] },
+          data.geminiTurn,  // full parts with inlineData + thoughtSignature
+        ]);
+      }
+
+      clearStages();
+
+      // Replace placeholder with final message
       setMessages(prev => prev.map(m =>
-        m.streamingId === streamingMsgId
-          ? { ...m, content: 'Sorry, something went wrong. Please try again.', isStreaming: false }
+        m.streamingId === placeholderId
+          ? {
+              role: 'assistant',
+              content: data.text || (data.imageUrl ? 'Here is your image!' : 'How can I help you?'),
+              imageUrl: data.imageUrl || null,
+              variations: data.intent === 'create_variations' ? data.variations : null,
+              isScheduled: data.intent === 'schedule_post',
+              // Account picker for multi-account scheduling
+              selectAccount: data.intent === 'select_account' ? {
+                accounts: data.accounts,
+                pendingPost: data.pendingPost,
+              } : null,
+              isStreaming: false,
+            }
           : m
       ));
+
+      setMessageOverrides({ aspectRatio: null, imageSize: null, style: null, useGoogleSearch: null, useImageSearch: null });
+      setReferenceImages([]);
+      fetchCredits();
+    } catch (error) {
+      clearStages();
+      console.error('Agent error:', error);
+      const isCredits = error.code === 'INSUFFICIENT_CREDITS';
+      const errorMsg = isCredits
+        ? error.message
+        : 'Sorry, something went wrong. Please try again.';
+      if (isCredits) toast.error(error.message);
+      setMessages(prev => prev.map(m =>
+        m.streamingId === placeholderId
+          ? { role: 'assistant', content: errorMsg, isStreaming: false, isError: true }
+          : m
+      ));
+      setMessageOverrides({ aspectRatio: null, imageSize: null, style: null, useGoogleSearch: null, useImageSearch: null });
     } finally {
       requestInFlightRef.current = false;
       setLoading(false);
-      setIsStreaming(false);
-      setStreamingStatus(null);
     }
   };
 
@@ -629,14 +284,13 @@ const ChatPage = () => {
     const currentRefImages = [...referenceImages];
     console.log('📤 [HANDLE-SEND] Sending with referenceImages:', currentRefImages.length, currentRefImages);
 
-    generateWithAgent(userPrompt, currentChatId !== 'new' ? currentChatId : null, currentRefImages);
+    generateDirect(userPrompt, currentChatId !== 'new' ? currentChatId : null, currentRefImages);
   };
 
   // Handle Quick Action suggestion clicks
   const handleSuggestionClick = (suggestion) => {
     if (loading) return;
-    // Send the suggestion as a new message
-    generateWithAgent(suggestion, currentChatId !== 'new' ? currentChatId : null, []);
+    generateDirect(suggestion, currentChatId !== 'new' ? currentChatId : null, []);
   };
 
   const saveProjectSettings = async () => {
@@ -753,6 +407,14 @@ const ChatPage = () => {
             onSelectImageForEdit={(url, idx) => setSelectedImageForEdit({ url, idx })}
             onClearSelectedImage={() => setSelectedImageForEdit(null)}
             onSuggestionClick={handleSuggestionClick}
+            onScheduleConfirmed={(username, scheduledAt, imageUrl) => {
+              const time = new Date(scheduledAt).toLocaleString('en-US', {
+                weekday: 'short', month: 'short', day: 'numeric',
+                hour: 'numeric', minute: '2-digit', hour12: true,
+              });
+              const summary = `[schedule_post] Scheduled image (${imageUrl}) to @${username} for ${time}`;
+              setAgentHistory(prev => [...prev, { role: 'model', parts: [{ text: summary }] }]);
+            }}
           />
         </div>
 

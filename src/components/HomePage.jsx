@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
@@ -7,7 +8,45 @@ import Sidebar from './Sidebar';
 import { API_BASE_URL } from '../config';
 
 
-const { FiArrowRight, FiUpload, FiGrid, FiImage, FiEye, FiX, FiVideo, FiZap } = FiIcons;
+const { FiArrowRight, FiUpload, FiGrid, FiImage, FiEye, FiX, FiVideo, FiZap, FiChevronDown } = FiIcons;
+
+const VIDEO_MODELS = [
+  { value: 'veo',           label: 'Veo 3.1',         desc: 'Google' },
+  { value: 'seedance',      label: 'Seedance 2.0',    desc: 'Bytedance' },
+  { value: 'seedance-fast', label: 'Seedance Fast',   desc: 'Bytedance · faster' },
+];
+
+const ModelDropdown = ({ value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const selected = VIDEO_MODELS.find(m => m.value === value);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-white/10 rounded-xl text-xs font-bold text-white hover:border-white/30 transition-colors"
+      >
+        <SafeIcon icon={FiVideo} className="w-3.5 h-3.5 text-zinc-400" />
+        {selected?.label}
+        <SafeIcon icon={FiChevronDown} className={`w-3.5 h-3.5 text-zinc-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute bottom-full mb-2 left-0 w-52 bg-[#18181b] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+          {VIDEO_MODELS.map(m => (
+            <button
+              key={m.value}
+              onClick={() => { onChange(m.value); setOpen(false); }}
+              className={`w-full px-4 py-2.5 text-left flex items-center justify-between hover:bg-white/5 transition-colors ${value === m.value ? 'bg-white/10' : ''}`}
+            >
+              <span className={`text-sm font-bold ${value === m.value ? 'text-white' : 'text-zinc-400'}`}>{m.label}</span>
+              <span className="text-[10px] text-zinc-600">{m.desc}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -24,6 +63,7 @@ const HomePage = () => {
   // Video-specific state
   const [startFrame, setStartFrame] = useState(null);
   const [endFrame, setEndFrame] = useState(null);
+  const [videoModel, setVideoModel] = useState('veo'); // 'veo' | 'wan' | 'seedance'
 
   // Fetch templates from database on mount
   useEffect(() => {
@@ -71,9 +111,10 @@ const HomePage = () => {
       navigate('/video/new', {
         state: {
           prompt: prompt.trim(),
-          referenceImages: uploadedImages.slice(0, 3), // Max 3 for video
+          referenceImages: uploadedImages.slice(0, 3),
           startFrame,
           endFrame,
+          videoModel,
         }
       });
     } else {
@@ -338,7 +379,11 @@ const HomePage = () => {
                   {/* Video-specific: Start Frame */}
                   {mode === 'video' && (
                     <label
-                      className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wide rounded-xl transition-colors cursor-pointer ${startFrame ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'text-zinc-500 hover:text-white hover:bg-white/5 border border-transparent'}`}
+                      className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wide rounded-xl transition-colors cursor-pointer ${
+                        startFrame
+                          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                          : 'text-zinc-500 hover:text-white hover:bg-white/5 border border-transparent'
+                      }`}
                       title="Upload Start Frame"
                     >
                       <span>Start</span>
@@ -368,7 +413,11 @@ const HomePage = () => {
                   )}
 
                   <div className="h-5 w-px bg-white/5 mx-2"></div>
-                  <span className="text-xs text-zinc-600 font-bold uppercase tracking-widest">{mode === 'video' ? 'Veo 3.1' : 'Velos XL 1.0'}</span>
+                  {mode === 'video' ? (
+                    <ModelDropdown value={videoModel} onChange={setVideoModel} />
+                  ) : (
+                    <span className="text-xs text-zinc-600 font-bold uppercase tracking-widest">Velos XL 1.0</span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3">
