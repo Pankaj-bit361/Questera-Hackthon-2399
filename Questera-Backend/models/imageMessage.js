@@ -53,4 +53,7 @@ const imageMessageSchema = new mongoose.Schema({
     { timestamps: true }
 );
 
+imageMessageSchema.index({ imageChatId: 1, createdAt: 1 });
+imageMessageSchema.index({ userId: 1, createdAt: -1 });
+
 module.exports = mongoose.model('ImageMessage', imageMessageSchema);

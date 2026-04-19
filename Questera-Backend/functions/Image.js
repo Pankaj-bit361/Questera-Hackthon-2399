@@ -496,18 +496,24 @@ class ImageController {
      * Get conversation history
      */
     async getConversation(req, res) {
+        const t0 = Date.now();
         try {
             const { imageChatId } = req.params;
-            const conversation = await Image.findOne({ imageChatId })
-                .populate('messages');
+            console.log(`📂 [CONVERSATION] Fetching ${imageChatId}`);
+
+            const [conversation, messages] = await Promise.all([
+                Image.findOne({ imageChatId }).lean(),
+                ImageMessage.find({ imageChatId }).sort({ createdAt: 1 }).select('-thoughtSignature').lean(),
+            ]);
 
             if (!conversation) {
                 return { status: 404, json: { error: 'Conversation not found' } };
             }
 
-            return { status: 200, json: conversation };
+            console.log(`✅ [CONVERSATION] Done in ${Date.now() - t0}ms — ${messages.length} messages`);
+            return { status: 200, json: { ...conversation, messages } };
         } catch (error) {
-            console.error('Error fetching conversation:', error);
+            console.error(`❌ [CONVERSATION] Failed in ${Date.now() - t0}ms:`, error.message);
             return { status: 500, json: { error: error.message } };
         }
     }
@@ -519,21 +525,7 @@ class ImageController {
                 .sort({ createdAt: -1 })
                 .lean();
 
-            // Get first message for each conversation as title
-            const conversationsWithTitles = await Promise.all(
-                conversations.map(async (conv) => {
-                    const firstMessage = await ImageMessage.findOne({ imageChatId: conv.imageChatId })
-                        .sort({ createdAt: 1 })
-                        .lean();
-
-                    return {
-                        ...conv,
-                        title: firstMessage?.prompt?.slice(0, 50) || 'Untitled',
-                    };
-                })
-            );
-
-            return { status: 200, json: { conversations: conversationsWithTitles } };
+            return { status: 200, json: { conversations } };
         } catch (error) {
             console.error('Error fetching user conversations:', error);
             return { status: 500, json: { error: error.message } };
