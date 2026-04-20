@@ -35,8 +35,8 @@ app.use(express.urlencoded({ limit: '200mb', extended: true }));
 
 // Increase timeout for long-running requests (image generation can take 60+ seconds)
 app.use((req, res, next) => {
-    req.setTimeout(480000); // 8 minutes
-    res.setTimeout(480000); // 8 minutes
+    req.setTimeout(1000000);
+    res.setTimeout(1000000);
     next();
 });
 
