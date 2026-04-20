@@ -30,7 +30,8 @@ const app = express();
 const port = process.env.PORT || 8080;
 
 app.use(cors());
-app.use(express.json({ limit: '50mb' })); // Increase limit for image uploads
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '200mb', extended: true }));
 
 // Increase timeout for long-running requests (image generation can take 60+ seconds)
 app.use((req, res, next) => {
