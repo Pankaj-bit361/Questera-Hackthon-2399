@@ -20,7 +20,7 @@ WHEN NOT TO USE:
 - User wants RESEARCH → use deep_research
 - User provides a WEBSITE URL for brand content → use extract_website
 - User wants VARIATIONS of an image → use create_variations
-- User asks about their ACCOUNTS → use get_instagram_accounts
+- User asks about their ACCOUNTS → use get_social_accounts
 - User wants to manage AUTOPILOT → use autopilot
 
 RESPONSE GUIDELINES:

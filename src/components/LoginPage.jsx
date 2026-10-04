@@ -6,6 +6,12 @@ import SafeIcon from '../common/SafeIcon';
 import { API_BASE_URL, GOOGLE_CLIENT_ID } from '../config';
 import { isLoggedIn, setAuth, getAuthToken } from '../lib/velosStorage';
 
+// Back to the page the user was on when their login expired (?next=), only within this app.
+const afterLogin = () => {
+  const next = new URLSearchParams(window.location.search).get('next') || '';
+  return next.startsWith('/') && !next.startsWith('//') ? next : '/home';
+};
+
 const { FiMail, FiArrowRight, FiChevronLeft, FiZap, FiAlertCircle } = FiIcons;
 
 // Helper to check if JWT token is expired
@@ -36,7 +42,7 @@ const LoginPage = () => {
   useEffect(() => {
     const token = getAuthToken();
     if (token && isLoggedIn() && !isTokenExpired(token)) {
-      navigate('/home', { replace: true });
+      navigate(afterLogin(), { replace: true });
     }
   }, [navigate]);
 
@@ -55,7 +61,7 @@ const LoginPage = () => {
 
         if (res.ok && data.success) {
           setAuth(data.token, data.user);
-          navigate('/home');
+          navigate(afterLogin());
         } else {
           setError(data.error || 'Google sign-in failed. Please try again.');
         }
@@ -192,7 +198,7 @@ const LoginPage = () => {
       if (response.ok) {
         // Store auth data using velosStorage
         setAuth(data.token, data.user);
-        navigate('/home');
+        navigate(afterLogin());
       } else {
         setError(data.error || 'Invalid verification code.');
       }

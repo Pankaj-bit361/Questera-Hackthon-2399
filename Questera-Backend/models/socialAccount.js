@@ -40,6 +40,23 @@ const socialAccountSchema = new mongoose.Schema({
   tokenExpiresAt: {
     type: Date,
   },
+  refreshTokenExpiresAt: {
+    type: Date,
+  },
+  // OAuth scopes actually granted by the platform (may be fewer than requested)
+  scopes: [{
+    type: String,
+  }],
+  // LinkedIn-specific: the URN posts are authored as.
+  // urn:li:person:{sub} for a member, urn:li:organization:{id} for a company page.
+  authorUrn: {
+    type: String,
+  },
+  authorType: {
+    type: String,
+    enum: ['member', 'organization'],
+    default: 'member',
+  },
   // Instagram-specific: Need page ID for posting
   instagramBusinessAccountId: {
     type: String,

@@ -156,8 +156,8 @@ IMPORTANT:
  * Check autopilot status and brand info completeness
  */
 async function checkAutopilotStatus(userId, chatId) {
-  const config = await AutopilotConfig.findOne({ userId, chatId });
-  const memory = await AutopilotMemory.findOne({ userId, chatId });
+  const config = await AutopilotConfig.findOne({ userId });
+  const memory = await AutopilotMemory.findOne({ userId });
 
   const brandComplete = memory?.brand &&
     memory.brand.targetAudience &&
@@ -197,7 +197,7 @@ async function checkAutopilotStatus(userId, chatId) {
  * Enable autopilot (only if brand info is complete)
  */
 async function enableAutopilot(userId, chatId) {
-  const memory = await AutopilotMemory.findOne({ userId, chatId });
+  const memory = await AutopilotMemory.findOne({ userId });
 
   const brandComplete = memory?.brand &&
     memory.brand.targetAudience &&
@@ -219,19 +219,21 @@ async function enableAutopilot(userId, chatId) {
   }
 
   // Enable autopilot
-  let config = await AutopilotConfig.findOne({ userId, chatId });
+  let config = await AutopilotConfig.findOne({ userId });
   if (!config) {
-    config = new AutopilotConfig({ userId, chatId });
+    config = new AutopilotConfig({ userId });
   }
 
   config.enabled = true;
-  config.paused = false;
+  // The schema field is `pausedUntil` - setting `paused` wrote nothing.
+  config.pausedUntil = null;
+  config.scheduleNextRun();
   await config.save();
 
   return {
     success: true,
     enabled: true,
-    message: `🚀 Autopilot is now ENABLED! I'll automatically create and schedule content based on your brand: ${memory.brand.topicsAllowed.join(', ')}. I'll post up to ${config.limits.maxPostsPerDay} times per day during optimal hours.`,
+    message: `🚀 Autopilot is now ENABLED! I'll automatically create and schedule content based on your brand: ${memory.brand.topicsAllowed.join(', ')}. I'll post up to ${config.limits.maxFeedPostsPerDay} times per day during optimal hours.`,
     cognitive: {
       thinkingSteps: narrator.narrateGeneric('Enabling autonomous content creation mode'),
       decisions: [
@@ -246,7 +248,7 @@ async function enableAutopilot(userId, chatId) {
  * Disable autopilot
  */
 async function disableAutopilot(userId, chatId) {
-  const config = await AutopilotConfig.findOne({ userId, chatId });
+  const config = await AutopilotConfig.findOne({ userId });
   if (config) {
     config.enabled = false;
     await config.save();
@@ -275,9 +277,9 @@ async function saveBrandInfo(userId, chatId, brandInfo) {
     };
   }
 
-  let memory = await AutopilotMemory.findOne({ userId, chatId });
+  let memory = await AutopilotMemory.findOne({ userId });
   if (!memory) {
-    memory = new AutopilotMemory({ userId, chatId });
+    memory = new AutopilotMemory({ userId });
   }
 
   // Update brand info
@@ -337,7 +339,7 @@ async function runAutopilotNow(userId, chatId) {
   const AutopilotService = require('../../functions/AutopilotService');
   const autopilotService = new AutopilotService();
 
-  const memory = await AutopilotMemory.findOne({ userId, chatId });
+  const memory = await AutopilotMemory.findOne({ userId });
   const brandComplete = memory?.brand &&
     memory.brand.targetAudience &&
     memory.brand.topicsAllowed?.length > 0;
@@ -350,13 +352,23 @@ async function runAutopilotNow(userId, chatId) {
     };
   }
 
+  const config = await AutopilotConfig.findOne({ userId });
+  if (!config) {
+    return {
+      success: false,
+      message: "Autopilot isn't configured for this chat yet. Enable it first.",
+    };
+  }
+
   try {
-    const result = await autopilotService.runForChat(userId, chatId);
+    // runForChat takes the config document, not (userId, chatId) - calling it
+    // with the old signature meant this action could never work.
+    const result = await autopilotService.runForChat(config, { force: true });
 
     return {
       success: true,
       result,
-      message: `🎯 Autopilot executed! Created ${result.postsCreated || 0} posts. ${result.plan?.reasoning || ''}`,
+      message: `🎯 Autopilot executed! Created ${result.execution?.feedPosts?.length || 0} posts. ${result.plan?.reasoning || ''}`,
       cognitive: {
         thinkingSteps: narrator.narrateGeneric('Executing autopilot: analyzing performance, deciding content, generating'),
         decisions: result.plan?.feedPosts?.map(p => ({

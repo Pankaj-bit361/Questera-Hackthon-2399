@@ -23,3 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 .env
+# Motion studio private development data and proof renders
+.motion-data/
+.motion-proof/
+.studio-data/
+
+# Velos eval runs (npm run velos:eval); eval/cache is kept so runs compare the writer, not the crawl
+eval/results/

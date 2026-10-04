@@ -3,7 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import * as FiIcons from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import SafeIcon from '../common/SafeIcon';
-import { imageAPI, geminiAPI, creditsAPI } from '../lib/api';
+import { imageAPI, geminiAPI, creditsAPI, videoAPI } from '../lib/api';
 import { getUserId, getUser } from '../lib/velosStorage';
 
 // Components
@@ -11,7 +11,6 @@ import Sidebar from './Sidebar';
 import MessageList from './chat/MessageList';
 import ChatInput from './chat/ChatInput';
 import ProjectSettings from './chat/ProjectSettings';
-import AutopilotSettings from './chat/AutopilotSettings';
 import { DEFAULT_PROJECT_SETTINGS } from './chat/constants';
 
 const { FiMenu, FiSettings, FiShare2, FiCheck, FiChevronLeft, FiZap } = FiIcons;
@@ -29,7 +28,6 @@ const ChatPage = () => {
   const [loadingChat, setLoadingChat] = useState(true);
   const [currentChatId, setCurrentChatId] = useState(chatId);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
-  const [showAutopilotSettings, setShowAutopilotSettings] = useState(false);
   const [chatTitle, setChatTitle] = useState('New Creation');
   const [shareCopied, setShareCopied] = useState(false);
 
@@ -142,6 +140,57 @@ const ChatPage = () => {
   // Ref to prevent duplicate requests
   const requestInFlightRef = useRef(false);
 
+  // Poll GET /video/job/:jobId until it completes/fails, patching the matching message in place.
+  const pollVideoJob = (jobId, streamingId) => {
+    const POLL_MS = 5000;
+    const MAX_ATTEMPTS = 120; // ~10 minutes
+    let attempts = 0;
+
+    const tick = async () => {
+      attempts += 1;
+      try {
+        const job = await videoAPI.getJobStatus(jobId);
+        if (job.status === 'completed' && job.resultUrl) {
+          setMessages(prev => prev.map(m =>
+            m.streamingId === streamingId
+              ? { ...m, videoUrl: job.resultUrl, videoStatus: 'completed', content: 'Here is your video!' }
+              : m
+          ));
+          fetchCredits();
+          return;
+        }
+        if (job.status === 'failed') {
+          setMessages(prev => prev.map(m =>
+            m.streamingId === streamingId
+              ? { ...m, videoStatus: 'failed', content: job.error || 'Video generation failed.', isError: true }
+              : m
+          ));
+          return;
+        }
+        // still processing
+        setMessages(prev => prev.map(m =>
+          m.streamingId === streamingId
+            ? { ...m, videoStatus: 'processing', videoProgress: job.progress ?? m.videoProgress }
+            : m
+        ));
+        if (attempts < MAX_ATTEMPTS) {
+          setTimeout(tick, POLL_MS);
+        } else {
+          setMessages(prev => prev.map(m =>
+            m.streamingId === streamingId
+              ? { ...m, videoStatus: 'failed', content: 'Video generation timed out. Please try again.', isError: true }
+              : m
+          ));
+        }
+      } catch (err) {
+        console.error('Video job poll error:', err);
+        if (attempts < MAX_ATTEMPTS) setTimeout(tick, POLL_MS);
+      }
+    };
+
+    setTimeout(tick, POLL_MS);
+  };
+
   const generateDirect = async (userPrompt, existingChatId, initialImages = null) => {
     if (requestInFlightRef.current) return;
     requestInFlightRef.current = true;
@@ -234,12 +283,17 @@ const ChatPage = () => {
       clearStages();
 
       // Replace placeholder with final message
+      const isPendingVideo = !!data.jobId && !data.videoUrl;
       setMessages(prev => prev.map(m =>
         m.streamingId === placeholderId
           ? {
               role: 'assistant',
-              content: data.text || (data.imageUrl ? 'Here is your image!' : 'How can I help you?'),
+              streamingId: isPendingVideo ? placeholderId : undefined,
+              content: data.text || (data.imageUrl ? 'Here is your image!' : (isPendingVideo ? 'Generating your video...' : 'How can I help you?')),
               imageUrl: data.imageUrl || null,
+              videoUrl: data.videoUrl || null,
+              videoJobId: data.jobId || null,
+              videoStatus: isPendingVideo ? 'processing' : (data.videoUrl ? 'completed' : null),
               variations: data.intent === 'create_variations' ? data.variations : null,
               isScheduled: data.intent === 'schedule_post',
               // Account picker for multi-account scheduling
@@ -255,6 +309,11 @@ const ChatPage = () => {
       setMessageOverrides({ aspectRatio: null, imageSize: null, style: null, useGoogleSearch: null, useImageSearch: null });
       setReferenceImages([]);
       fetchCredits();
+
+      // Poll async video job until it completes, then patch the message with the resulting URL
+      if (isPendingVideo) {
+        pollVideoJob(data.jobId, placeholderId);
+      }
     } catch (error) {
       clearStages();
       console.error('Agent error:', error);
@@ -380,7 +439,7 @@ const ChatPage = () => {
               <span className="hidden sm:inline">{shareCopied ? 'Copied' : 'Share'}</span>
             </button>
             <button
-              onClick={() => setShowAutopilotSettings(true)}
+              onClick={() => navigate('/autopilot')}
               className="flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs font-bold text-white hover:bg-white hover:text-black transition-all group shadow-lg shadow-black/20"
             >
               <SafeIcon icon={FiZap} className="w-3.5 h-3.5 group-hover:text-black transition-colors" />
@@ -448,12 +507,6 @@ const ChatPage = () => {
           saving={savingSettings}
         />
 
-        {/* Autopilot Settings */}
-        <AutopilotSettings
-          isOpen={showAutopilotSettings}
-          onClose={() => setShowAutopilotSettings(false)}
-          chatId={currentChatId}
-        />
 
       </div>
     </div>

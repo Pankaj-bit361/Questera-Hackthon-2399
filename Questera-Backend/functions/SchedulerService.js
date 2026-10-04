@@ -35,27 +35,47 @@ class SchedulerService {
       tagProducts = '',
       firstComment = '',
       videoUrl,
+      platform: requestedPlatform,
+      source = 'manual',
+      threadParts,
+      // 'pending_approval' puts it in the approval queue instead of publishing it at scheduledAt.
+      status = 'scheduled',
+      autopilotId,
     } = postData;
+    if (!['scheduled', 'pending_approval'].includes(status)) throw new Error(`Cannot create a post as ${status}`);
 
-    // Validate social account - check SocialAccount first, then Instagram collection
-    let account = await SocialAccount.findOne({ accountId: socialAccountId, userId });
-    let platform = account?.platform || 'instagram';
-    let accountIdToStore = socialAccountId;
+    // Resolve the account this post publishes through.
+    // A concrete socialAccountId wins; otherwise fall back to the user's
+    // default account on the requested platform.
+    let account = socialAccountId
+      ? await SocialAccount.findOne({ accountId: socialAccountId, userId })
+      : null;
+
+    let platform = account?.platform || requestedPlatform || 'instagram';
+    let accountIdToStore = account?.accountId || socialAccountId;
 
     if (!account) {
-      // Try to find in Instagram collection (by instagramBusinessAccountId)
-      const igDoc = await Instagram.findOne({ userId });
-      if (igDoc && igDoc.accounts) {
-        const igAccount = igDoc.accounts.find(a => a.instagramBusinessAccountId === socialAccountId);
-        if (igAccount) {
-          console.log('📅 [SCHEDULER] Found account in Instagram collection:', igAccount.instagramUsername);
-          platform = 'instagram';
-          accountIdToStore = igAccount.instagramBusinessAccountId;
-        } else {
+      if (platform === 'instagram') {
+        // Instagram accounts live in their own legacy collection.
+        const igDoc = await Instagram.findOne({ userId });
+        const igAccounts = igDoc?.accounts || [];
+        const igAccount = socialAccountId
+          ? igAccounts.find(a => a.instagramBusinessAccountId === socialAccountId)
+          : igAccounts.find(a => a.isConnected) || igAccounts[0];
+
+        if (!igAccount) {
           throw new Error('Social account not found');
         }
+
+        console.log('📅 [SCHEDULER] Found account in Instagram collection:', igAccount.instagramUsername);
+        accountIdToStore = igAccount.instagramBusinessAccountId;
       } else {
-        throw new Error('Social account not found');
+        // Any other platform (LinkedIn today) uses the generic model.
+        const fallback = await SocialAccount.findOne({ userId, platform, isActive: true }).sort({ createdAt: 1 });
+        if (!fallback) {
+          throw new Error(`No ${platform} account connected. Connect one in Settings first.`);
+        }
+        accountIdToStore = fallback.accountId;
       }
     }
 
@@ -73,7 +93,10 @@ class SchedulerService {
       postType,
       campaignId,
       contentJobId,
-      status: 'scheduled',
+      status,
+      source,
+      autopilotId: autopilotId || null,
+      threadParts: threadParts || [],
       // Buffer-like features
       music: music || '',
       tagProducts: tagProducts || '',
@@ -200,140 +223,9 @@ class SchedulerService {
    * Process scheduled posts that are due (called by cron job)
    */
   async processScheduledPosts() {
-    if (this.isProcessing) {
-      console.log('⏳ [SCHEDULER] Already processing, skipping...');
-      return { processed: 0, skipped: true };
-    }
-
-    this.isProcessing = true;
-    console.log('🔄 [SCHEDULER] Processing scheduled posts...');
-
-    try {
-      // Find all posts due for publishing
-      const duePosts = await ScheduledPost.findDuePosts();
-      console.log(`📬 [SCHEDULER] Found ${duePosts.length} posts due for publishing`);
-
-      let processed = 0;
-      let failed = 0;
-
-      for (const post of duePosts) {
-        try {
-          await this.publishPost(post);
-          processed++;
-        } catch (error) {
-          console.error(`❌ [SCHEDULER] Failed to publish post ${post.postId}:`, error.message);
-          failed++;
-        }
-      }
-
-      console.log(`✅ [SCHEDULER] Processed: ${processed}, Failed: ${failed}`);
-      return { processed, failed, total: duePosts.length };
-    } finally {
-      this.isProcessing = false;
-    }
-  }
-
-  /**
-   * Publish a single scheduled post
-   */
-  async publishPost(post) {
-    console.log(`📤 [SCHEDULER] Publishing post ${post.postId} to ${post.platform}`);
-    console.log(`📋 [SCHEDULER] Post details:`, {
-      postType: post.postType,
-      videoUrl: post.videoUrl?.slice(0, 50),
-      imageUrl: post.imageUrl?.slice(0, 50),
-      hasVideoUrl: !!post.videoUrl,
-    });
-
-    // Mark as processing
-    post.status = 'processing';
-    await post.save();
-
-    try {
-      let result;
-      const fullCaption = post.fullCaption; // Uses virtual field
-
-      if (post.platform === 'instagram') {
-        if (post.postType === 'carousel' && post.imageUrls?.length > 1) {
-          console.log('📸 [SCHEDULER] Posting as CAROUSEL');
-          result = await this.instagramService.postCarousel(
-            post.accountId,
-            post.imageUrls,
-            fullCaption
-          );
-        } else if (post.postType === 'reel' || post.postType === 'video') {
-          // Post as Reel (video content)
-          console.log('🎬 [SCHEDULER] Posting as REEL');
-          console.log('🎬 [SCHEDULER] Video URL:', post.videoUrl || post.imageUrl);
-          result = await this.instagramService.postReel(
-            post.accountId,
-            post.videoUrl || post.imageUrl, // Use videoUrl if available, fallback to imageUrl
-            fullCaption,
-            { shareToFeed: true }
-          );
-        } else if (post.postType === 'story') {
-          console.log('📖 [SCHEDULER] Posting as STORY');
-          // Post as Story
-          const isVideo = post.videoUrl || post.imageUrl?.includes('.mp4');
-          result = await this.instagramService.postStory(
-            post.accountId,
-            post.videoUrl || post.imageUrl,
-            isVideo
-          );
-        } else {
-          // Default: Post as image
-          console.log('🖼️ [SCHEDULER] Posting as IMAGE (postType:', post.postType, ')');
-          result = await this.instagramService.postImage(
-            post.accountId,
-            post.imageUrl,
-            fullCaption
-          );
-        }
-      } else {
-        throw new Error(`Platform ${post.platform} not yet supported`);
-      }
-
-      // Update post with success
-      post.status = 'published';
-      post.publishedAt = new Date();
-      post.publishedMediaId = result.mediaId;
-      post.platformPostUrl = result.permalink;
-      await post.save();
-
-      // Update campaign progress if part of campaign
-      if (post.campaignId) {
-        await Campaign.findOneAndUpdate(
-          { campaignId: post.campaignId },
-          { $inc: { 'progress.posted': 1 } }
-        );
-      }
-
-      console.log(`✅ [SCHEDULER] Post ${post.postId} published successfully`);
-      return result;
-    } catch (error) {
-      // Handle failure
-      post.status = 'failed';
-      post.publishError = error.message;
-      post.retryCount += 1;
-
-      // If retries remaining, reset to scheduled
-      if (post.retryCount < 3) {
-        post.status = 'scheduled';
-        post.scheduledAt = new Date(Date.now() + 5 * 60 * 1000); // Retry in 5 min
-      }
-
-      await post.save();
-
-      // Update campaign progress if part of campaign
-      if (post.campaignId && post.status === 'failed') {
-        await Campaign.findOneAndUpdate(
-          { campaignId: post.campaignId },
-          { $inc: { 'progress.failed': 1 } }
-        );
-      }
-
-      throw error;
-    }
+    // One publish loop for everything: the claim-based one in Scheduler.js.
+    const SchedulerController = require('./Scheduler');
+    return new SchedulerController().processDuePosts();
   }
 
   /**

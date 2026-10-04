@@ -24,7 +24,7 @@ class OpenRouterProviderV2 {
             'Authorization': `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://velosapps.com',
-            'X-Title': 'Questera AI'
+            'X-Title': 'Greta'
          },
          body: JSON.stringify({ model: this.model, messages, temperature, max_tokens: maxTokens })
       });
@@ -82,7 +82,7 @@ class OpenRouterProviderV2 {
             'Authorization': `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://velosapps.com',
-            'X-Title': 'Questera AI'
+            'X-Title': 'Greta'
          },
          body: JSON.stringify({
             model: this.model,

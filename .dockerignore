@@ -1,0 +1,8 @@
+node_modules
+Questera-Backend/node_modules
+.git
+.env
+**/.env
+.motion-data
+.motion-proof
+dist

@@ -112,16 +112,42 @@ export const geminiAPI = {
     return response.json();
   },
   agent: async (payload) => {
-    const response = await fetch(`${API_BASE_URL}/gemini/agent`, {
+    const response = await fetch(`${API_BASE_URL}/chat/agent`, {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, stream: false }),
     });
     const data = await response.json();
     if (response.status === 402) {
       throw Object.assign(new Error(data.message || 'Insufficient credits'), { code: 'INSUFFICIENT_CREDITS' });
     }
-    return data;
+    if (!response.ok) {
+      throw new Error(data.error || 'Request failed');
+    }
+
+    // Normalize unified AgentService payload ({ intent, text, tools: [{name,result}] })
+    // into the flat shape the chat UI expects (imageUrl, videoUrl, images, variations, accounts...).
+    const toolResults = (data.tools || []).map((t) => t.result || {});
+    const imageTool = toolResults.find((r) => r.imageUrl);
+    const videoTool = toolResults.find((r) => r.jobId || r.videoUrl);
+    const variationsTool = toolResults.find((r) => r.images);
+    const scheduleTool = toolResults.find((r) => r.post !== undefined);
+    const accountsTool = toolResults.find((r) => r.accounts);
+
+    return {
+      ...data,
+      imageUrl: imageTool?.imageUrl || null,
+      images: variationsTool?.images || null,
+      variations: variationsTool?.images
+        ? variationsTool.images.map((url) => ({ imageUrl: url }))
+        : null,
+      videoUrl: videoTool?.videoUrl || null,
+      jobId: videoTool?.jobId || null,
+      videoChatId: videoTool?.videoChatId || null,
+      accounts: accountsTool?.accounts || data.accounts || null,
+      isScheduled: data.intent === 'schedule_post' && !!scheduleTool,
+      geminiTurn: data.geminiTurn || null,
+    };
   },
 };
 
@@ -140,6 +166,14 @@ export const videoAPI = {
   },
 
   // Generate with Bytedance Seedance 2.0 (KIE.ai)
+  // Gemini Omni 1.1 Flash
+  generateOmni: async (payload) => {
+    const response = await fetch(`${API_BASE_URL}/video/generate-omni`, {
+      method: 'POST', headers: headers(), body: JSON.stringify(payload),
+    });
+    return response.json();
+  },
+
   generateSeedance: async (payload) => {
     const response = await fetch(`${API_BASE_URL}/video/generate-seedance`, {
       method: 'POST',
@@ -162,6 +196,15 @@ export const videoAPI = {
   // Get User Video Conversations
   getUserConversations: async (userId) => {
     const response = await fetch(`${API_BASE_URL}/video/user/${userId}/conversations`, {
+      method: 'GET',
+      headers: headers(),
+    });
+    return response.json();
+  },
+
+  // Poll async video job status: { jobId, status, progress, resultUrl, error }
+  getJobStatus: async (jobId) => {
+    const response = await fetch(`${API_BASE_URL}/video/job/${jobId}`, {
       method: 'GET',
       headers: headers(),
     });
@@ -744,112 +787,449 @@ export const analyticsAPI = {
 /**
  * Autopilot API - Autonomous social media management
  */
+// Query string that scopes a call to one autopilot (a user can have many).
+const apq = (autopilotId, extra = {}) => {
+  const params = new URLSearchParams();
+  if (autopilotId) params.set('autopilotId', autopilotId);
+  for (const [k, v] of Object.entries(extra)) if (v !== undefined && v !== null && v !== '') params.set(k, v);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+};
+
 export const autopilotAPI = {
-  // Get autopilot config
-  getConfig: async (userId, chatId) => {
-    const response = await fetch(`${API_BASE_URL}/autopilot/config/${userId}/${chatId}`, {
+  // --- Autopilots: one per company, many per user --------------------------
+
+  list: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/autopilots/${userId}`, { headers: headers() });
+    return response.json();
+  },
+
+  create: async (userId, { name, websiteUrl, timezone } = {}) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/autopilots/${userId}`, {
+      method: 'POST', headers: headers(), body: JSON.stringify({ name, websiteUrl, timezone }),
+    });
+    return response.json();
+  },
+
+  // name, websiteUrl, timezone, accounts: { instagram, linkedin, twitter }
+  update: async (autopilotId, updates) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/autopilots/${autopilotId}`, {
+      method: 'PATCH', headers: headers(), body: JSON.stringify(updates),
+    });
+    return response.json();
+  },
+
+  remove: async (autopilotId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/autopilots/${autopilotId}`, { method: 'DELETE', headers: headers() });
+    return response.json();
+  },
+
+  // --- Per-autopilot ---------------------------------------------------------
+
+  // Every platform's config for this autopilot plus its brand profile
+  getConfigs: async (userId, autopilotId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/configs/${userId}${apq(autopilotId)}`, { headers: headers() });
+    return response.json();
+  },
+
+  getConfig: async (userId, autopilotId, platform) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/config/${userId}${apq(autopilotId, { platform })}`, { headers: headers() });
+    return response.json();
+  },
+
+  updateConfig: async (userId, autopilotId, platform, config) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/config/${userId}`, {
+      method: 'POST', headers: headers(), body: JSON.stringify({ ...config, autopilotId, platform }),
+    });
+    return response.json();
+  },
+
+  // Read the company website and build this autopilot's brand profile
+  crawlWebsite: async (userId, autopilotId, url) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/crawl/${userId}`, {
+      method: 'POST', headers: headers(), body: JSON.stringify({ autopilotId, url }),
+    });
+    return response.json();
+  },
+
+  getMemory: async (userId, autopilotId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/memory/${userId}${apq(autopilotId)}`, { headers: headers() });
+    return response.json();
+  },
+
+  updateMemory: async (userId, autopilotId, brandInfo) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/memory/${userId}`, {
+      method: 'PUT', headers: headers(), body: JSON.stringify({ autopilotId, brand: brandInfo }),
+    });
+    return response.json();
+  },
+
+  toggle: async (userId, autopilotId, platform) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/toggle/${userId}`, {
+      method: 'POST', headers: headers(), body: JSON.stringify({ autopilotId, platform }),
+    });
+    return response.json();
+  },
+
+  getStatus: async (userId, autopilotId, platform) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/status/${userId}${apq(autopilotId, { platform })}`, { headers: headers() });
+    return response.json();
+  },
+
+  run: async (userId, autopilotId, platform) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/run/${userId}`, {
+      method: 'POST', headers: headers(), body: JSON.stringify({ autopilotId, platform }),
+    });
+    return response.json();
+  },
+
+  pause: async (userId, autopilotId, platform, hours = 24) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/pause/${userId}`, {
+      method: 'POST', headers: headers(), body: JSON.stringify({ autopilotId, platform, hours }),
+    });
+    return response.json();
+  },
+
+  resume: async (userId, autopilotId, platform) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/resume/${userId}`, {
+      method: 'POST', headers: headers(), body: JSON.stringify({ autopilotId, platform }),
+    });
+    return response.json();
+  },
+
+  getImages: async (userId, autopilotId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/images/${userId}${apq(autopilotId)}`, { headers: headers() });
+    return response.json();
+  },
+
+  uploadImages: async (userId, autopilotId, images, type = 'product') => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/images/${userId}`, {
+      method: 'POST', headers: headers(), body: JSON.stringify({ autopilotId, images, type }),
+    });
+    return response.json();
+  },
+
+  deleteImage: async (userId, autopilotId, type, url) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/images/${userId}`, {
+      method: 'DELETE', headers: headers(), body: JSON.stringify({ autopilotId, type, url }),
+    });
+    return response.json();
+  },
+
+  // --- Tasks ---------------------------------------------------------------
+  // A task is one recurring content job: its own angle, format and cadence.
+
+  generateTasks: async (userId, autopilotId, platform, { timezone, replace = true } = {}) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/tasks/${userId}/generate`, {
+      method: 'POST', headers: headers(), body: JSON.stringify({ autopilotId, platform, timezone, replace }),
+    });
+    return response.json();
+  },
+
+  // Publish a real test post through this autopilot's account right now
+  testPost: async (userId, autopilotId, platform) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/test/${userId}`, {
+      method: 'POST', headers: headers(), body: JSON.stringify({ autopilotId, platform }),
+    });
+    return response.json();
+  },
+
+  // Run the weekly agent self-review now and apply its safe changes
+  selfReview: async (userId, autopilotId, platform) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/tasks/${userId}/self-review`, {
+      method: 'POST', headers: headers(), body: JSON.stringify({ autopilotId, platform }),
+    });
+    return response.json();
+  },
+
+  // The platform agent's review: summary, insights and applyable suggestions
+  getInsights: async (userId, autopilotId, platform) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/tasks/${userId}/insights${apq(autopilotId, { platform })}`, { headers: headers() });
+    return response.json();
+  },
+
+  getTasks: async (userId, autopilotId, platform) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/tasks/${userId}${apq(autopilotId, { platform })}`, { headers: headers() });
+    return response.json();
+  },
+
+  updateTask: async (taskId, updates) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/tasks/${taskId}`, {
+      method: 'PATCH', headers: headers(), body: JSON.stringify(updates),
+    });
+    return response.json();
+  },
+
+  deleteTask: async (taskId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/tasks/${taskId}`, { method: 'DELETE', headers: headers() });
+    return response.json();
+  },
+
+  // Fire a task once right now, ignoring its schedule
+  runTask: async (taskId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/tasks/${taskId}/run`, { method: 'POST', headers: headers() });
+    return response.json();
+  },
+
+  getTaskRuns: async (taskId, limit = 20) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/tasks/${taskId}/runs?limit=${limit}`, { headers: headers() });
+    return response.json();
+  },
+
+  // --- Approval queue -------------------------------------------------------
+
+  // status: 'pending_approval' (default) or 'scheduled' (approved, waiting for its slot)
+  getQueue: async (userId, { autopilotId, platform, status } = {}) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/queue/${userId}${apq(autopilotId, { platform, status })}`, { headers: headers() });
+    return response.json();
+  },
+
+  // Publish this post right now, whatever its current state
+  publishNow: async (postId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/queue/${postId}/publish-now`, { method: 'POST', headers: headers() });
+    return response.json();
+  },
+
+  updateQueuedPost: async (postId, updates) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/queue/${postId}`, {
+      method: 'PUT', headers: headers(), body: JSON.stringify(updates),
+    });
+    return response.json();
+  },
+
+  approvePost: async (postId, scheduledAt) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/queue/${postId}/approve`, {
+      method: 'POST', headers: headers(), body: JSON.stringify(scheduledAt ? { scheduledAt } : {}),
+    });
+    return response.json();
+  },
+
+  // reason: one of the queue's REJECT_REASONS keys; note: optional words for the writer
+  rejectPost: async (postId, reason, note) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/queue/${postId}/reject`, {
+      method: 'POST', headers: headers(), body: JSON.stringify({ reason, note }),
+    });
+    return response.json();
+  },
+
+  // --- Your first week (preview before connecting accounts) ---------------------
+
+  startPreview: async (userId, url) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/preview/${userId}`, { method: 'POST', headers: headers(), body: JSON.stringify({ url }) });
+    return response.json();
+  },
+
+  latestPreview: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/preview/${userId}`, { headers: headers() });
+    return response.json();
+  },
+
+  getPreview: async (userId, previewId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/preview/${userId}/${previewId}`, { headers: headers() });
+    return response.json();
+  },
+
+  usePreview: async (userId, previewId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/preview/${userId}/${previewId}/use`, { method: 'POST', headers: headers() });
+    return response.json();
+  },
+
+  // --- Weekly report, comment replies -----------------------------------------
+
+  getReport: async (userId, autopilotId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/report/${userId}${apq(autopilotId)}`, { headers: headers() });
+    return response.json();
+  },
+
+  getReplies: async (userId, autopilotId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/replies/${userId}${apq(autopilotId)}`, { headers: headers() });
+    return response.json();
+  },
+
+  sendReply: async (userId, replyId, text) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/replies/${userId}/${replyId}/send`, { method: 'POST', headers: headers(), body: JSON.stringify({ text }) });
+    return response.json();
+  },
+
+  dismissReply: async (userId, replyId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/replies/${userId}/${replyId}/dismiss`, { method: 'POST', headers: headers() });
+    return response.json();
+  },
+
+  // --- Trust ladder, pauses ---------------------------------------------------
+
+  getTrust: async (userId, autopilotId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/trust/${userId}${apq(autopilotId)}`, { headers: headers() });
+    return response.json();
+  },
+
+  resetTrust: async (userId, autopilotId, platform) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/trust/${userId}/reset`, {
+      method: 'POST', headers: headers(), body: JSON.stringify({ autopilotId, platform }),
+    });
+    return response.json();
+  },
+
+  getPauses: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/pauses/${userId}`, { headers: headers() });
+    return response.json();
+  },
+
+  resumePlatform: async (userId, platform) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/pauses/${userId}/${platform}/resume`, { method: 'POST', headers: headers() });
+    return response.json();
+  },
+
+  // Let the agent fix a held post itself (rewrites copy or re-renders the image, re-reviews)
+  fixPost: async (postId, instructions) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/queue/${postId}/fix`, {
+      method: 'POST', headers: headers(), body: JSON.stringify(instructions ? { instructions } : {}),
+    });
+    return response.json();
+  },
+
+  regeneratePost: async (postId, prompt) => {
+    const response = await fetch(`${API_BASE_URL}/autopilot/queue/${postId}/regenerate`, {
+      method: 'POST', headers: headers(), body: JSON.stringify(prompt ? { prompt } : {}),
+    });
+    return response.json();
+  },
+};
+
+/**
+ * LinkedIn API - connection and publishing.
+ *
+ * Unlike the Instagram routes, every /linkedin endpoint is authenticated and
+ * takes the userId from the JWT, so these calls must go through `headers()`.
+ */
+export const linkedinAPI = {
+  // Start the OAuth flow - returns { oauthUrl, state }
+  getOAuthUrl: async () => {
+    const response = await fetch(`${API_BASE_URL}/linkedin/oauth-url`, {
       headers: headers(),
     });
     return response.json();
   },
 
-  // Update autopilot config
-  updateConfig: async (userId, chatId, config) => {
-    const response = await fetch(`${API_BASE_URL}/autopilot/config/${userId}/${chatId}`, {
+  // Finish the OAuth flow from the callback page
+  completeCallback: async (code, state) => {
+    const response = await fetch(`${API_BASE_URL}/linkedin/callback`, {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify(config),
+      body: JSON.stringify({ code, state }),
     });
     return response.json();
   },
 
-  // Get autopilot memory (brand info)
-  getMemory: async (userId, chatId) => {
-    const response = await fetch(`${API_BASE_URL}/autopilot/memory/${userId}/${chatId}`, {
+  // Connected LinkedIn account(s)
+  getInfo: async () => {
+    const response = await fetch(`${API_BASE_URL}/linkedin/info`, {
       headers: headers(),
     });
     return response.json();
   },
 
-  // Update autopilot memory (brand info)
-  updateMemory: async (userId, chatId, brandInfo) => {
-    const response = await fetch(`${API_BASE_URL}/autopilot/memory/${userId}/${chatId}`, {
-      method: 'PUT',
+  // Company pages the member administers (needs Community Management API)
+  getOrganizations: async () => {
+    const response = await fetch(`${API_BASE_URL}/linkedin/organizations`, {
       headers: headers(),
-      body: JSON.stringify({ brand: brandInfo }),
     });
     return response.json();
   },
 
-  // Toggle autopilot on/off
-  toggle: async (userId, chatId) => {
-    const response = await fetch(`${API_BASE_URL}/autopilot/toggle/${userId}/${chatId}`, {
+  // Post as the member profile (organizationId omitted) or as a company page
+  setAuthor: async (accountId, organizationId) => {
+    const response = await fetch(`${API_BASE_URL}/linkedin/author`, {
       method: 'POST',
       headers: headers(),
+      body: JSON.stringify({ accountId, organizationId }),
     });
     return response.json();
   },
 
-  // Get full status
-  getStatus: async (userId, chatId) => {
-    const response = await fetch(`${API_BASE_URL}/autopilot/status/${userId}/${chatId}`, {
-      headers: headers(),
-    });
-    return response.json();
-  },
-
-  // Run autopilot manually
-  run: async (userId, chatId) => {
-    const response = await fetch(`${API_BASE_URL}/autopilot/run/${userId}/${chatId}`, {
+  disconnect: async (accountId) => {
+    const response = await fetch(`${API_BASE_URL}/linkedin/disconnect`, {
       method: 'POST',
       headers: headers(),
+      body: JSON.stringify(accountId ? { accountId } : {}),
     });
     return response.json();
   },
 
-  // Pause autopilot
-  pause: async (userId, chatId, hours = 24) => {
-    const response = await fetch(`${API_BASE_URL}/autopilot/pause/${userId}/${chatId}`, {
+  refreshToken: async (accountId) => {
+    const response = await fetch(`${API_BASE_URL}/linkedin/refresh-token`, {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify({ hours }),
+      body: JSON.stringify(accountId ? { accountId } : {}),
     });
     return response.json();
   },
 
-  // Resume autopilot
-  resume: async (userId, chatId) => {
-    const response = await fetch(`${API_BASE_URL}/autopilot/resume/${userId}/${chatId}`, {
+  // Direct publish - used by the "post a test" button
+  publish: async (payload) => {
+    const response = await fetch(`${API_BASE_URL}/linkedin/publish`, {
       method: 'POST',
       headers: headers(),
+      body: JSON.stringify(payload),
     });
     return response.json();
   },
+};
 
-  // Get reference images
-  getImages: async (userId, chatId) => {
-    const response = await fetch(`${API_BASE_URL}/autopilot/images/${userId}/${chatId}`, {
+/**
+ * X (Twitter) API - connection and publishing.
+ * Authenticated like the LinkedIn routes; userId comes from the JWT.
+ */
+export const twitterAPI = {
+  // Start the OAuth 2.0 + PKCE flow - returns { oauthUrl, state }
+  getOAuthUrl: async () => {
+    const response = await fetch(`${API_BASE_URL}/twitter/oauth-url`, {
       headers: headers(),
     });
     return response.json();
   },
 
-  // Upload reference images (products, style, personal)
-  uploadImages: async (userId, chatId, images, type = 'product') => {
-    const response = await fetch(`${API_BASE_URL}/autopilot/images/${userId}/${chatId}`, {
+  // Finish the flow from the callback page
+  completeCallback: async (code, state) => {
+    const response = await fetch(`${API_BASE_URL}/twitter/callback`, {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify({ images, type }),
+      body: JSON.stringify({ code, state }),
     });
     return response.json();
   },
 
-  // Delete a reference image
-  deleteImage: async (userId, chatId, type, url) => {
-    const response = await fetch(`${API_BASE_URL}/autopilot/images/${userId}/${chatId}`, {
-      method: 'DELETE',
+  getInfo: async () => {
+    const response = await fetch(`${API_BASE_URL}/twitter/info`, {
       headers: headers(),
-      body: JSON.stringify({ type, url }),
+    });
+    return response.json();
+  },
+
+  disconnect: async (accountId) => {
+    const response = await fetch(`${API_BASE_URL}/twitter/disconnect`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(accountId ? { accountId } : {}),
+    });
+    return response.json();
+  },
+
+  refreshToken: async (accountId) => {
+    const response = await fetch(`${API_BASE_URL}/twitter/refresh-token`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(accountId ? { accountId } : {}),
+    });
+    return response.json();
+  },
+
+  // Direct publish - used by the "post a test" button
+  publish: async (payload) => {
+    const response = await fetch(`${API_BASE_URL}/twitter/publish`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(payload),
     });
     return response.json();
   },

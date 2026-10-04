@@ -236,6 +236,14 @@ const Sidebar = ({ isOpen, onMouseEnter, onMouseLeave }) => {
 
               {/* Menu Items */}
               <div className="space-y-0.5 pt-1">
+                <button onClick={() => navigate('/motion')} className="w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-[#18181b] rounded-lg transition-colors"><SafeIcon icon={FiVideo} className="w-4 h-4 text-lime-400" /><span className="text-[13px] font-medium">Motion Studio</span><span className="text-[9px] text-lime-400">BETA</span></button>
+                <button
+                  onClick={() => navigate('/autopilot')}
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-[#18181b] rounded-lg transition-colors ${location.pathname === '/autopilot' ? 'bg-[#18181b] text-white' : ''}`}
+                >
+                  <SafeIcon icon={FiZap} className="w-4 h-4 text-yellow-400" />
+                  <span className="text-[13px] font-medium">Autopilot</span>
+                </button>
                 <button
                   onClick={() => navigate('/scheduler')}
                   className={`w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-[#18181b] rounded-lg transition-colors ${location.pathname === '/scheduler' ? 'bg-[#18181b] text-white' : ''}`}

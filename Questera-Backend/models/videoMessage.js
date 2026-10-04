@@ -39,6 +39,7 @@ const videoMessageSchema = new mongoose.Schema({
         default: 'completed'
     },
     operationId: String,
+    progress: { type: Number, default: 0 },
     error: String,
     // Google File reference (required for video extend - only Veo-generated videos can be extended)
     // Stored as Mixed type since it can be an object from generatedVideo.video

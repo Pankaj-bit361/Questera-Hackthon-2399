@@ -1,6 +1,14 @@
 const express = require('express');
 const imageRouter = express.Router();
+const { selfParam, ownedParam } = require('../middlewares/auth');
+const ImageModel = require('../models/image');
+const ImageMessage = require('../models/imageMessage');
 const ImageController = require('../functions/Image');
+
+// The caller's own records only (middlewares/auth.js).
+imageRouter.param('userId', selfParam);
+imageRouter.param('imageChatId', ownedParam(ImageModel, 'imageChatId', (id, userId) => ImageMessage.exists({ imageChatId: id, userId })));
+imageRouter.param('messageId', ownedParam(ImageMessage, 'messageId'));
 const imageController = new ImageController();
 
 // Generate image (also supports remix when images array is provided)

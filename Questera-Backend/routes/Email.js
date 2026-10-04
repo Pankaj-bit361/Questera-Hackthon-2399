@@ -1,6 +1,7 @@
 const express = require('express');
 const emailRouter = express.Router();
 const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+const { authMiddleware, isAdmin, hasServiceKey } = require('../middlewares/auth');
 
 const ses = new SESClient({
   region: process.env.AWS_REGION,
@@ -18,8 +19,16 @@ const ses = new SESClient({
  * - to: string | array (required) - recipient email(s)
  * - subject: string (required) - email subject
  * - body: string (required) - HTML body content
+ *
+ * Callers: another service with header X-Service-Key = EMAIL_SERVICE_KEY, or a logged-in admin (ADMIN_EMAILS).
+ * Anyone else could use it to send any email from our address.
  */
-emailRouter.post('/send', async (req, res) => {
+const allowSend = (req, res, next) => {
+  if (hasServiceKey(req, 'EMAIL_SERVICE_KEY')) return next();
+  authMiddleware(req, res, () => (isAdmin(req) ? next() : res.status(403).json({ success: false, error: 'Not allowed' })));
+};
+
+emailRouter.post('/send', allowSend, async (req, res) => {
   try {
     const { to, subject, body } = req.body;
 

@@ -1,5 +1,6 @@
 const axios = require('axios');
 const SocialAccount = require('../models/socialAccount');
+const { resume } = require('./AccountHealth');
 
 /**
  * Instagram Service
@@ -162,6 +163,7 @@ class InstagramService {
       },
       { upsert: true, new: true }
     );
+    if (account) await resume(account.userId, account.platform); // a fresh login ends a 'reconnect' pause
 
     console.log('✅ [INSTAGRAM] Account connected:', igAccount.username);
     return account;

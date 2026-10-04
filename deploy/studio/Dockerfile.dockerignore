@@ -1,0 +1,12 @@
+# Only what the worker needs goes into the build context.
+*
+!package.json
+!package-lock.json
+!Questera-Backend/package.json
+!Questera-Backend/package-lock.json
+!Questera-Backend/motion/provider.cjs
+!Questera-Backend/studio/**
+!studio/**
+studio/audio/.venv
+studio/**/__pycache__
+!deploy/studio/fonts.conf

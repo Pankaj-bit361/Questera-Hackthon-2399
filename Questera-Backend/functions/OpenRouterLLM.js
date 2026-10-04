@@ -6,7 +6,7 @@ class OpenRouterLLM {
   constructor() {
     this.apiKey = process.env.OPENROUTER_API_KEY;
     this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
-    this.model = 'google/gemini-3-flash-preview'; // Fast thinking model
+    this.model = process.env.AUTOPILOT_LLM_MODEL || 'google/gemini-3.7-flash'; // Fast thinking model
   }
 
   /**
@@ -58,7 +58,7 @@ class OpenRouterLLM {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': 'https://velosapps.com',
-          'X-Title': 'Questera AI'
+          'X-Title': 'Greta'
         },
         body: JSON.stringify(requestBody)
       });

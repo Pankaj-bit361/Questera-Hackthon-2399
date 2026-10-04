@@ -157,6 +157,33 @@ class EmailService {
   }
 
   /**
+   * Posting on a platform was paused because the platform blocked or flagged the account, or its login stopped
+   * working (functions/AccountHealth.js).
+   */
+  async sendAccountPausedEmail(userId, { platform, kind, reason, until }) {
+    const email = await this.getUserEmail(userId);
+    if (!email) return { success: false, error: 'User email not found' };
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    const name = { instagram: 'Instagram', linkedin: 'LinkedIn', twitter: 'X' }[platform] || platform;
+    const app = process.env.FRONTEND_URL || 'https://www.velosapps.com';
+    const what = kind === 'reconnect'
+      ? `Velos can no longer sign in to your ${name} account, so we stopped posting there. Reconnect it in Settings and posting picks up where it left off.`
+      : `${name} limited your account, so we paused posting there until ${until.toUTCString()} to keep the account safe. Posts waiting in the queue will go out after that.`;
+    const content = `
+      <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 26px; color: #52525b; font-weight: 500;">${esc(what)}</p>
+      <div style="background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 20px; padding: 20px 24px; margin-bottom: 24px;">
+        <p style="margin: 0 0 8px 0; font-size: 12px; color: #71717a; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">What ${esc(name)} said</p>
+        <p style="margin: 0; font-size: 14px; color: #3f3f46; line-height: 1.5;">${esc(reason || 'No details given')}</p>
+      </div>
+      <p style="margin: 0; font-size: 14px; color: #a1a1aa; line-height: 20px;">
+        <a href="${esc(app)}/${kind === 'reconnect' ? 'settings' : 'autopilot'}" style="color: #18181b; font-weight: 600;">${kind === 'reconnect' ? 'Reconnect' : 'Open autopilot'}</a>
+      </p>
+    `;
+    const subject = kind === 'reconnect' ? `Reconnect your ${name} account` : `Posting to ${name} is paused`;
+    return this.sendEmail(email, subject, this.wrapInTemplate(`${subject} - Velos`, content));
+  }
+
+  /**
    * Send OTP email
    * @param {string} email - Recipient email
    * @param {string} otp - OTP code

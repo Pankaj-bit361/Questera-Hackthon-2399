@@ -1,5 +1,6 @@
 const SchedulerService = require('../../functions/SchedulerService');
 const Instagram = require('../../models/instagram');
+const SocialAccount = require('../../models/socialAccount');
 const { CognitiveNarrator } = require('../CognitiveNarrator');
 
 
@@ -47,11 +48,11 @@ function parseRelativeTime(timeStr) {
 
 const schedulePostTool = {
    name: 'schedule_post',
-   description: `Schedule or immediately post an image to Instagram feed OR story.
+   description: `Schedule or immediately post content to Instagram, LinkedIn or X (Twitter).
 
 WHEN TO USE:
-- User wants to POST or SCHEDULE content to Instagram
-- User says "post this", "schedule", "publish", "share to Instagram"
+- User wants to POST or SCHEDULE content to Instagram, LinkedIn or X
+- User says "post this", "schedule", "publish", "share to Instagram", "share on LinkedIn", "tweet this", "post to X"
 - User says "post now", "post immediately", "share this"
 - User wants to post to their Instagram story
 - After generating an image, user wants to share it
@@ -59,13 +60,30 @@ WHEN TO USE:
 WHEN NOT TO USE:
 - User just wants to generate an image → use generate_image instead
 - User wants to edit an image first → use edit_image instead
-- User is asking about their accounts → use get_instagram_accounts instead
+- User is asking about their accounts → use get_social_accounts instead
 - No image has been generated yet → generate one first
 
-POST TYPES:
+POST TYPES (Instagram):
 - "image" (default): Regular Instagram feed post - permanent, shows in grid
 - "carousel": Multiple images in one post - swipeable, great for variations
 - "story": Instagram Story - ephemeral (24h), full-screen vertical format
+
+POST TYPES (LinkedIn):
+- "text": Written post with no media. Strong reach on LinkedIn - a valid choice on its own.
+- "image" (default when an image exists): One landscape visual, 1.91:1 works best.
+- "multi_image": 2-20 images in one post. LinkedIn's equivalent of a carousel.
+- "video": A single video post.
+- LinkedIn has NO stories and NO reels - never use postType "story" there.
+
+POST TYPES (X / Twitter):
+- "text" (default): A single post, hard capped at 280 characters.
+- "thread": Multiple connected posts. Pass threadParts as an array of strings.
+- "image": One visual with text.
+- "multi_image": 2-4 images. X allows no more than 4.
+- "video": A single video post.
+- X has NO stories and NO reels.
+- Copy longer than 280 characters is split into a thread automatically rather
+  than being truncated.
 
 TIMING OPTIONS:
 - "now" or "immediately": Posts within 1 minute
@@ -94,14 +112,17 @@ CAROUSEL POSTS (MULTIPLE IMAGES):
 
 ACCOUNT SELECTION:
 - If user has multiple Instagram accounts, specify accountUsername
-- Use get_instagram_accounts first to see available accounts
+- Use get_social_accounts first to see available accounts
 - If not specified, uses default/first connected account
 
 IMPORTANT:
-- Image must exist before scheduling (either generated or uploaded)
+- On Instagram an image must exist before scheduling (either generated or uploaded)
+- On LinkedIn and X a text-only post is valid and needs no image
 - Stories don't support captions or hashtags
 - Use 9:16 aspect ratio for best story appearance
-- Feed posts work best with 1:1 or 4:5 aspect ratios`,
+- Instagram feed posts work best with 1:1 or 4:5; LinkedIn prefers 1.91:1
+- LinkedIn captions cap at 3000 characters and 5 hashtags
+- X posts cap at 280 characters; hashtags hurt reach there, so use none`,
 
    parameters: {
       imageUrl: {
@@ -134,10 +155,22 @@ IMPORTANT:
          description: 'Post type: "image" for single feed post (default), "carousel" for multiple images, "story" for Instagram Story',
          example: 'carousel'
       },
+      platform: {
+         type: 'string',
+         required: false,
+         description: 'Where to post: "instagram" (default), "linkedin", or "twitter" (X).',
+         example: 'twitter'
+      },
+      threadParts: {
+         type: 'array',
+         required: false,
+         description: 'X only. Each string becomes one post in a thread, chained as replies. Each must be under 280 characters.',
+         example: ['the thing nobody tells you about shipping fast', 'you spend the saved time on support instead']
+      },
       accountUsername: {
          type: 'string',
          required: false,
-         description: 'Instagram username to post to. Use get_instagram_accounts to see options. Omit for default account.',
+         description: 'Account to post to. Use get_social_accounts to see options. Omit for the default account on that platform.',
          example: 'mybrandofficial'
       },
       hashtags: {
@@ -151,6 +184,11 @@ IMPORTANT:
    execute: async (params, context) => {
       const { caption, scheduledTime, accountUsername, hashtags, postType, imageUrls } = params;
       const { userId, lastImageUrl, variationImages } = context;
+
+      const platform = (params.platform || 'instagram').toLowerCase();
+      const isLinkedIn = platform === 'linkedin';
+      const isTwitter = platform === 'twitter';
+      const threadParts = (params.threadParts || []).filter(Boolean);
 
       // Handle carousel vs single image
       let finalImageUrls = [];
@@ -172,14 +210,54 @@ IMPORTANT:
       // Determine post type
       const typeStr = postType?.toLowerCase() || '';
       let finalPostType = 'image';
-      if (typeStr === 'story') {
+
+      if (isTwitter) {
+         if (typeStr === 'story' || typeStr === 'reel') {
+            return {
+               success: false,
+               error: 'X has no stories or reels',
+               message: 'X does not support stories or reels. I can post this to the timeline instead.'
+            };
+         }
+         if (typeStr === 'thread' || threadParts.length > 1) {
+            finalPostType = 'thread';
+         } else if (typeStr === 'video') {
+            finalPostType = 'video';
+         } else if (typeStr === 'multi_image' || typeStr === 'carousel' || finalImageUrls.length > 1) {
+            finalPostType = 'multi_image';
+         } else if (typeStr === 'text' || (!finalImageUrl && finalImageUrls.length === 0)) {
+            finalPostType = 'text';
+         }
+      } else if (isLinkedIn) {
+         if (typeStr === 'story') {
+            return {
+               success: false,
+               error: 'LinkedIn has no stories',
+               message: 'LinkedIn does not support stories. I can post this to the feed instead.'
+            };
+         }
+         if (typeStr === 'text' || (!finalImageUrl && finalImageUrls.length === 0)) {
+            finalPostType = 'text';
+         } else if (typeStr === 'video') {
+            finalPostType = 'video';
+         } else if (typeStr === 'multi_image' || typeStr === 'carousel' || finalImageUrls.length > 1) {
+            finalPostType = 'multi_image';
+         }
+      } else if (typeStr === 'story') {
          finalPostType = 'story';
       } else if (typeStr === 'carousel' || finalImageUrls.length > 1) {
          finalPostType = 'carousel';
       }
 
       const isStory = finalPostType === 'story';
-      const isCarousel = finalPostType === 'carousel';
+      const isCarousel = finalPostType === 'carousel' || finalPostType === 'multi_image';
+      const isThread = finalPostType === 'thread';
+      const isTextOnly = finalPostType === 'text' || isThread;
+
+      // X allows at most 4 images on a post.
+      if (isTwitter && finalImageUrls.length > 4) {
+         finalImageUrls = finalImageUrls.slice(0, 4);
+      }
 
       console.log('📅 [SCHEDULE] Params:', JSON.stringify(params));
       console.log('📅 [SCHEDULE] Context lastImageUrl:', lastImageUrl);
@@ -191,12 +269,16 @@ IMPORTANT:
          return { success: false, error: 'userId is required', message: 'Please log in first.' };
       }
 
-      if (!finalImageUrl && finalImageUrls.length === 0) {
+      if (!isTextOnly && !finalImageUrl && finalImageUrls.length === 0) {
          return { success: false, error: 'imageUrl is required', message: 'No image found to schedule. Please generate or select an image first.' };
       }
 
+      if (isTextOnly && !caption && threadParts.length === 0) {
+         return { success: false, error: 'caption is required', message: 'A text-only post needs a caption.' };
+      }
+
       if (isCarousel && finalImageUrls.length < 2) {
-         return { success: false, error: 'Carousel requires at least 2 images', message: 'Please provide at least 2 images for a carousel post.' };
+         return { success: false, error: 'Multi-image posts require at least 2 images', message: 'Please provide at least 2 images for a multi-image post.' };
       }
 
       if (!scheduledTime) {
@@ -211,7 +293,30 @@ IMPORTANT:
       try {
          let accountId = null;
 
-         if (accountUsername) {
+         if (isLinkedIn || isTwitter) {
+            // LinkedIn and X accounts live in the generic SocialAccount model.
+            const label = isTwitter ? 'X' : 'LinkedIn';
+            const query = { userId, platform, isActive: true };
+            const accounts = await SocialAccount.find(query).sort({ createdAt: 1 });
+
+            if (accounts.length === 0) {
+               return {
+                  success: false,
+                  error: `No ${label} account connected`,
+                  message: `You have not connected ${label} yet. Connect it in Settings, then I can post for you.`
+               };
+            }
+
+            const match = accountUsername
+               ? accounts.find(a => a.platformUsername?.toLowerCase().includes(accountUsername.toLowerCase()))
+               : accounts[0];
+
+            if (!match) {
+               return { success: false, error: `${label} account "${accountUsername}" not found`, message: `Could not find a connected ${label} account matching "${accountUsername}".` };
+            }
+            accountId = match.accountId;
+            console.log(`📅 [SCHEDULE] ${label} account:`, match.platformUsername, accountId);
+         } else if (accountUsername) {
             const doc = await Instagram.findOne({ userId });
             console.log('📅 [SCHEDULE] Found Instagram doc:', !!doc);
             console.log('📅 [SCHEDULE] Accounts:', doc?.accounts?.length);
@@ -232,13 +337,16 @@ IMPORTANT:
 
          console.log('📅 [SCHEDULE] Calling schedulerService.schedulePost with accountId:', accountId, 'postType:', finalPostType);
          const post = await schedulerService.schedulePost(userId, {
+            platform,
             socialAccountId: accountId,
-            imageUrl: finalImageUrl,
+            imageUrl: isTextOnly ? undefined : finalImageUrl,
             imageUrls: isCarousel ? finalImageUrls : [],
             caption: isStory ? '' : (caption || 'Posted with Velos AI ✨'), // Stories don't have captions
             hashtags: isStory ? '' : (hashtags || ''), // Stories don't have hashtags
             scheduledAt: parsedTime,
-            postType: finalPostType
+            postType: finalPostType,
+            threadParts: isThread ? threadParts : [],
+            source: 'agent'
          });
          console.log('📅 [SCHEDULE] Post created:', post?._id, 'Type:', finalPostType, isCarousel ? `(${finalImageUrls.length} images)` : '');
 
@@ -253,7 +361,11 @@ IMPORTANT:
          const isImmediate = scheduledTime === 'now' || scheduledTime === 'immediately';
 
          // Add post type decision
-         const formatLabel = isStory ? 'Instagram Story' : isCarousel ? `Carousel (${finalImageUrls.length} images)` : 'Feed Post';
+         const formatLabel = isStory ? 'Instagram Story'
+            : isThread ? `X Thread (${threadParts.length} posts)`
+            : isTextOnly ? (isTwitter ? 'X Post' : 'LinkedIn Text Post')
+            : isCarousel ? `${isLinkedIn ? 'Multi-image' : 'Carousel'} (${finalImageUrls.length} images)`
+            : 'Feed Post';
          const formatReason = isStory ? 'Story for quick, ephemeral engagement'
             : isCarousel ? 'Carousel for higher engagement with multiple visuals'
             : 'Feed post for lasting visibility';

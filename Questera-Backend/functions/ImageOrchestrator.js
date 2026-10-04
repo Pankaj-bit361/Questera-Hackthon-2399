@@ -55,16 +55,19 @@ class ImageOrchestrator {
     // Build parts array with prompt and reference images
     const parts = [{ text: prompt }];
 
-    // Add reference images if provided
+    // Add reference images if provided (base64 or remote URL)
     for (const ref of referenceImages) {
-      if (ref.data) {
-        parts.push({
-          inlineData: {
-            mimeType: ref.mimeType || 'image/jpeg',
-            data: ref.data,
-          },
-        });
+      let data = ref?.data || (typeof ref === 'string' ? ref : ref?.url);
+      let mimeType = ref?.mimeType || 'image/jpeg';
+      if (!data) continue;
+      if (typeof data === 'string' && data.startsWith('http')) {
+        const resp = await fetch(data);
+        data = Buffer.from(await resp.arrayBuffer()).toString('base64');
       }
+      if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(mimeType)) {
+        mimeType = 'image/jpeg';
+      }
+      parts.push({ inlineData: { mimeType, data } });
     }
 
     const contents = [{ role: 'user', parts }];

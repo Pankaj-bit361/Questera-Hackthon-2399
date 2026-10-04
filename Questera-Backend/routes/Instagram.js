@@ -1,8 +1,12 @@
 const express = require('express');
 const instagramRouter = express.Router();
+const { selfParam, ownedParam } = require('../middlewares/auth');
 const InstagramController = require('../functions/Instagram');
 const instagramController = new InstagramController();
 const Instagram = require('../models/instagram');
+
+// The caller's own records only (middlewares/auth.js).
+instagramRouter.param('userId', selfParam);
 
 // Get OAuth URL
 instagramRouter.get('/oauth-url', (req, res) => {

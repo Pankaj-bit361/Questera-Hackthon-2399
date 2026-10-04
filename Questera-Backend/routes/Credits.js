@@ -2,6 +2,17 @@ const express = require('express');
 const creditsRouter = express.Router();
 const CreditsController = require('../functions/Credits');
 const creditsController = new CreditsController();
+const auth = require('../middlewares/auth');
+creditsRouter.use((req,res,next)=>{
+  if ((req.method==='POST' && req.path==='/webhook/razorpay') || (req.method==='GET' && req.path==='/plans/all')) return next();
+  auth(req,res,()=>{
+    if(!req.user?.userId)return res.status(401).json({error:'User identity required'});
+    if(req.body?.userId && req.body.userId!==req.user.userId)return res.status(403).json({error:'Account access denied'});
+    if(req.body)req.body.userId=req.user.userId;
+    next();
+  });
+});
+creditsRouter.param('userId',(req,res,next,id)=>id===req.user?.userId?next():res.status(403).json({error:'Account access denied'}));
 
 /**
  * GET /credits/:userId

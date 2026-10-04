@@ -1,11 +1,17 @@
 const ScheduledPost = require('../models/scheduledPost');
 const InstagramController = require('./Instagram');
+const LinkedInPublisher = require('./LinkedInPublisher');
+const TwitterPublisher = require('./TwitterPublisher');
 const EmailService = require('./EmailService');
 const ContentEngine = require('./ContentEngine');
+const AccountPause = require('../models/accountPause');
+const { pauseForError } = require('./AccountHealth');
 
 class SchedulerController {
   constructor() {
     this.instagramController = new InstagramController();
+    this.linkedinPublisher = new LinkedInPublisher();
+    this.twitterPublisher = new TwitterPublisher();
     this.emailService = new EmailService();
     this.contentEngine = new ContentEngine();
   }
@@ -356,53 +362,45 @@ class SchedulerController {
   /**
    * Process and publish due posts (called by cron job)
    */
+  /**
+   * Publish every post that is due. Each post is claimed first (ScheduledPost.claimNextDue), so two servers, or two
+   * overlapping ticks, can never publish the same post. Platforms the account is paused on are skipped
+   * (AccountHealth), and each user's platform gets at most one post per MIN_GAP_MINUTES, so a backlog released
+   * after a pause goes out gradually instead of all at once.
+   */
   async processDuePosts() {
     try {
-      const duePosts = await ScheduledPost.findDuePosts();
-      console.log(`📅 [SCHEDULER] Found ${duePosts.length} posts due for publishing`);
-
+      await this.failStaleClaims();
+      const now = new Date();
+      const paused = await AccountPause.find({ until: { $gt: now } }).select('userId platform').lean();
+      const exclude = paused.map(({ userId, platform }) => ({ userId, platform }));
       const results = [];
-      for (const post of duePosts) {
+
+      for (let i = 0; i < SchedulerController.MAX_PER_TICK; i++) {
+        const post = await ScheduledPost.claimNextDue(exclude);
+        if (!post) break;
+        exclude.push({ userId: post.userId, platform: post.platform });
+
+        const recent = await ScheduledPost.exists({
+          userId: post.userId,
+          platform: post.platform,
+          status: 'published',
+          publishedAt: { $gt: new Date(Date.now() - SchedulerController.MIN_GAP_MINUTES * 60e3) },
+        });
+        if (recent) {
+          await ScheduledPost.updateOne({ _id: post._id, status: 'publishing' }, { $set: { status: 'scheduled' }, $unset: { claimedAt: 1 } });
+          continue;
+        }
+
         try {
           const result = await this.publishPost(post);
           results.push({ postId: post.postId, ...result });
-
-          // Send success email notification
           this.emailService.sendPostPublishedEmail(post.userId, post).catch(err => {
             console.error('❌ [SCHEDULER] Failed to send published email:', err);
           });
         } catch (error) {
-          console.error(`❌ [SCHEDULER] Failed to publish post ${post.postId}:`, error);
-          post.retryCount += 1;
-          post.publishError = error.message;
-
-          // Check for non-retryable errors (rate limit, action block, etc.)
-          const errorMsg = error.message?.toLowerCase() || '';
-          const isNonRetryable =
-            errorMsg.includes('request limit reached') ||
-            errorMsg.includes('action is blocked') ||
-            errorMsg.includes('rate limit') ||
-            errorMsg.includes('spam') ||
-            errorMsg.includes('temporarily blocked');
-
-          if (isNonRetryable) {
-            console.log(`🚫 [SCHEDULER] Non-retryable error detected, marking post as failed immediately`);
-            post.status = 'failed';
-            post.publishError = `${error.message} (No retry - action blocked)`;
-          } else if (post.retryCount >= 3) {
-            post.status = 'failed';
-          }
-
-          console.log(`📊 [SCHEDULER] Post ${post.postId} retry count: ${post.retryCount}/3, status: ${post.status}`);
-
-          if (post.status === 'failed') {
-            // Send failure email notification
-            this.emailService.sendPostFailedEmail(post.userId, post, error.message).catch(err => {
-              console.error('❌ [SCHEDULER] Failed to send failure email:', err);
-            });
-          }
-          await post.save();
           results.push({ postId: post.postId, success: false, error: error.message });
+          await this.handlePublishError(post, error);
         }
       }
 
@@ -414,10 +412,105 @@ class SchedulerController {
   }
 
   /**
+   * After a failed publish: pause the platform if the platform blocked or flagged the account (the post then waits
+   * for the pause to end, without using up a retry); otherwise retry up to 3 times, except for errors where a retry
+   * cannot help or could post twice.
+   */
+  async handlePublishError(post, error) {
+    console.error(`❌ [SCHEDULER] Failed to publish post ${post.postId}:`, error.message);
+    const pause = await pauseForError({ userId: post.userId, platform: post.platform, error, emailService: this.emailService })
+      .catch((err) => (console.error('❌ [SCHEDULER] Pause failed:', err.message), null));
+    post.publishError = error.message;
+    post.claimedAt = undefined;
+
+    if (pause) {
+      post.status = 'scheduled';
+      console.log(`⏸️ [SCHEDULER] Post ${post.postId} waits for ${post.platform} to resume (${pause.kind})`);
+      await post.save();
+      return;
+    }
+
+    post.retryCount += 1;
+    const errorMsg = error.message?.toLowerCase() || '';
+    const isNonRetryable =
+      // Publishers can label their own errors terminal
+      error.nonRetryable === true ||
+      // LinkedIn - the content has to change first
+      errorMsg.includes('invalid_urn') ||
+      errorMsg.includes('field_length_too_long') ||
+      // X - a partially published thread must never be retried, or the
+      // parts that already went out get posted a second time.
+      errorMsg.includes('thread partially published') ||
+      errorMsg.includes('duplicate content');
+
+    if (isNonRetryable) {
+      post.status = 'failed';
+      post.publishError = `${error.message} (No retry)`;
+    } else if (post.retryCount >= 3) {
+      post.status = 'failed';
+    } else {
+      post.status = 'scheduled';
+    }
+    console.log(`📊 [SCHEDULER] Post ${post.postId} retry count: ${post.retryCount}/3, status: ${post.status}`);
+
+    if (post.status === 'failed') {
+      this.emailService.sendPostFailedEmail(post.userId, post, post.publishError).catch(err => {
+        console.error('❌ [SCHEDULER] Failed to send failure email:', err);
+      });
+    }
+    await post.save();
+  }
+
+  /**
+   * A post still 'publishing' long after its claim belongs to a worker that died mid-publish. It may or may not be
+   * live on the platform, so it is never retried automatically: it fails with a note to check first.
+   */
+  async failStaleClaims() {
+    const cutoff = new Date(Date.now() - SchedulerController.CLAIM_STALE_MINUTES * 60e3);
+    const stale = await ScheduledPost.find({ status: 'publishing', claimedAt: { $lt: cutoff } }).limit(50);
+    for (const post of stale) {
+      const res = await ScheduledPost.updateOne(
+        { _id: post._id, status: 'publishing', claimedAt: post.claimedAt },
+        { $set: { status: 'failed', publishError: 'Publishing was interrupted. Check the platform before retrying: the post may already be live.' } },
+      );
+      if (res.modifiedCount) {
+        console.warn(`⚠️ [SCHEDULER] Post ${post.postId} was interrupted while publishing`);
+        this.emailService.sendPostFailedEmail(post.userId, post, 'Publishing was interrupted. Check the platform before retrying: the post may already be live.').catch(() => {});
+      }
+    }
+  }
+
+  /**
    * Publish a single post to its platform
    */
   async publishPost(post) {
     console.log(`📤 [SCHEDULER] Publishing post ${post.postId} to ${post.platform}...`);
+
+    // Studio videos and post images are stored as permanent links; publish from fresh direct links, without saving
+    // them back (the platforms fetch the file themselves and may not follow a redirect).
+    const { freshMediaUrl } = require('../studio/service.cjs');
+    const fresh = (url) => (url ? freshMediaUrl(url).catch(() => url) : url);
+    if (post.videoUrl) {
+      const v = await fresh(post.videoUrl);
+      if (v !== post.videoUrl) {
+        post.videoUrl = v;
+        post.unmarkModified?.('videoUrl');
+      }
+    }
+    if (post.imageUrl) {
+      const i = await fresh(post.imageUrl);
+      if (i !== post.imageUrl) {
+        post.imageUrl = i;
+        post.unmarkModified?.('imageUrl');
+      }
+    }
+    if (post.imageUrls?.length) {
+      const list = await Promise.all(post.imageUrls.map(fresh));
+      if (list.some((u, k) => u !== post.imageUrls[k])) {
+        post.imageUrls = list;
+        post.unmarkModified?.('imageUrls');
+      }
+    }
     console.log(`📋 [SCHEDULER] Post details: postType=${post.postType}, videoUrl=${post.videoUrl?.slice(0, 50)}, imageUrl=${post.imageUrl?.slice(0, 50)}`);
 
     if (post.platform === 'instagram') {
@@ -519,6 +612,135 @@ class SchedulerController {
       }
     }
 
+    if (post.platform === 'linkedin') {
+      const body = {
+        userId: post.userId,
+        caption: post.fullCaption,
+        accountId: post.accountId,
+      };
+
+      let result;
+      if (post.postType === 'story') {
+        // LinkedIn retired Stories in 2021 - there is nothing to publish to.
+        const err = new Error('LinkedIn does not support story posts');
+        err.nonRetryable = true;
+        throw err;
+      } else if (post.postType === 'video' || post.postType === 'reel') {
+        console.log('🎬 [SCHEDULER] Publishing as LinkedIn Video...');
+        const videoUrl = post.videoUrl || post.imageUrl;
+        if (!videoUrl) {
+          const err = new Error('videoUrl is required for LinkedIn video posts');
+          err.nonRetryable = true;
+          throw err;
+        }
+        result = await this.linkedinPublisher.publishVideo({
+          body: { ...body, videoUrl, title: post.caption?.slice(0, 100) },
+        });
+      } else if ((post.postType === 'multi_image' || post.postType === 'carousel') && post.imageUrls?.length > 1) {
+        console.log('🖼️ [SCHEDULER] Publishing as LinkedIn MultiImage...');
+        result = await this.linkedinPublisher.publishMultiImage({
+          body: { ...body, imageUrls: post.imageUrls },
+        });
+      } else if (post.imageUrl) {
+        console.log('📸 [SCHEDULER] Publishing as LinkedIn Image...');
+        result = await this.linkedinPublisher.publishImage({
+          body: { ...body, imageUrl: post.imageUrl },
+        });
+      } else {
+        console.log('📝 [SCHEDULER] Publishing as LinkedIn Text post...');
+        result = await this.linkedinPublisher.publishText({ body });
+      }
+
+      if (result.json.success) {
+        post.status = 'published';
+        post.publishedAt = new Date();
+        post.publishedMediaId = result.json.postUrn;
+        post.platformPostUrl = result.json.permalink;
+        await post.save();
+
+        if (post.firstComment) {
+          // Comments need the Social Actions API, which is not wired up yet.
+          console.log('⚠️ [SCHEDULER] firstComment is not supported on LinkedIn yet - skipped');
+        }
+
+        if (post.isRecurring && post.frequency !== 'once') {
+          await this.createNextRecurrence(post);
+        }
+
+        console.log(`✅ [SCHEDULER] Post ${post.postId} published to LinkedIn!`);
+        return { success: true, mediaId: result.json.postUrn };
+      }
+
+      const error = new Error(result.json.error || 'Failed to publish to LinkedIn');
+      error.nonRetryable = Boolean(result.json.nonRetryable);
+      error.code = result.json.code;
+      throw error;
+    }
+
+    if (post.platform === 'twitter') {
+      const body = {
+        userId: post.userId,
+        caption: post.fullCaption,
+        accountId: post.accountId,
+      };
+
+      let result;
+      if (post.postType === 'story') {
+        const err = new Error('X does not support story posts');
+        err.nonRetryable = true;
+        throw err;
+      } else if (post.postType === 'thread' || post.threadParts?.length > 1) {
+        console.log('🧵 [SCHEDULER] Publishing as X thread...');
+        result = await this.twitterPublisher.publishThread({
+          body: { ...body, threadParts: post.threadParts, imageUrl: post.imageUrl, imageUrls: post.imageUrls },
+        });
+      } else if (post.postType === 'video' || post.postType === 'reel') {
+        console.log('🎬 [SCHEDULER] Publishing as X video...');
+        const videoUrl = post.videoUrl || post.imageUrl;
+        if (!videoUrl) {
+          const err = new Error('videoUrl is required for X video posts');
+          err.nonRetryable = true;
+          throw err;
+        }
+        result = await this.twitterPublisher.publishVideo({ body: { ...body, videoUrl } });
+      } else if ((post.postType === 'multi_image' || post.postType === 'carousel') && post.imageUrls?.length > 1) {
+        console.log('🖼️ [SCHEDULER] Publishing as X multi-image post...');
+        result = await this.twitterPublisher.publishMultiImage({
+          body: { ...body, imageUrls: post.imageUrls },
+        });
+      } else if (post.imageUrl) {
+        console.log('📸 [SCHEDULER] Publishing as X image post...');
+        result = await this.twitterPublisher.publishImage({ body: { ...body, imageUrl: post.imageUrl } });
+      } else {
+        console.log('📝 [SCHEDULER] Publishing as X text post...');
+        result = await this.twitterPublisher.publishText({ body });
+      }
+
+      if (result.json.success) {
+        post.status = 'published';
+        post.publishedAt = new Date();
+        post.publishedMediaId = result.json.tweetId;
+        post.platformPostUrl = result.json.permalink;
+        await post.save();
+
+        if (post.firstComment) {
+          console.log('⚠️ [SCHEDULER] firstComment is not supported on X yet - skipped');
+        }
+
+        if (post.isRecurring && post.frequency !== 'once') {
+          await this.createNextRecurrence(post);
+        }
+
+        console.log(`✅ [SCHEDULER] Post ${post.postId} published to X!`);
+        return { success: true, mediaId: result.json.tweetId };
+      }
+
+      const error = new Error(result.json.error || 'Failed to publish to X');
+      error.nonRetryable = Boolean(result.json.nonRetryable);
+      error.code = result.json.code;
+      throw error;
+    }
+
     throw new Error(`Platform ${post.platform} not supported yet`);
   }
 
@@ -597,6 +819,13 @@ class SchedulerController {
     }
   }
 }
+
+/** Posts published per tick, at most. */
+SchedulerController.MAX_PER_TICK = 25;
+/** Minutes between two posts to the same platform for one user. */
+SchedulerController.MIN_GAP_MINUTES = 10;
+/** A claim older than this means the worker died mid-publish. */
+SchedulerController.CLAIM_STALE_MINUTES = 15;
 
 module.exports = SchedulerController;
 

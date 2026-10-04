@@ -84,7 +84,7 @@ If invalid:
 class PromptValidator {
    constructor(options = {}) {
       this.llm = new OpenRouterProvider({
-         model: options.model || 'google/gemini-3-flash-preview'
+         model: options.model || process.env.AUTOPILOT_LLM_MODEL || 'google/gemini-3.7-flash'
       });
       this.minPromptLength = options.minPromptLength || 3;
       this.maxPromptLength = options.maxPromptLength || 2000;

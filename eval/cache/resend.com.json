@@ -1,0 +1,404 @@
+{
+  "host": "resend.com",
+  "brand": {
+    "companyName": "Resend",
+    "oneLiner": "Resend is an email platform for developers to build, send, and scale transactional and marketing emails.",
+    "topicsAllowed": [
+      "Email APIs and developer tools",
+      "React Email component library and templating",
+      "Email deliverability and blocklist tracking",
+      "Modular webhooks and email event tracking",
+      "Transactional and marketing email delivery",
+      "Contact management and broadcast analytics"
+    ],
+    "targetAudience": "Software engineers, developers, and engineering teams building email capabilities into web and backend applications.",
+    "visualStyle": "Clean, modern developer aesthetic with dark-mode code editors, syntax-highlighted snippets, and minimalist product UI.",
+    "tone": "professional",
+    "uniqueSellingPoints": [
+      "Build email templates using React and Tailwind via the open-source react-email library instead of legacy HTML table layouts",
+      "First-class multi-language SDK support across Node.js, Python, Ruby, Go, Rust, Java, Elixir, .NET, PHP, CLI, REST, and SMTP",
+      "Built-in Test Mode to safely simulate events and experiment with APIs without sending emails to real users",
+      "Proactive DNSBL blocklist monitoring (such as Spamhaus) with automated removal requests"
+    ],
+    "proofPoints": [
+      "Resend includes a Test mode to simulate events and experiment with the API without sending real emails.",
+      "Resend delivers modular webhooks when an email is delivered, opened, bounces, or a link is clicked.",
+      "Resend templates can be built using React with react-email, an open-source component library.",
+      "Resend generates removal requests if your domain is added to DNSBLs like Spamhaus.",
+      "Resend supports sending emails from North American, South American, European, and Asian regions.",
+      "Resend offers managed dedicated IPs that automatically warm up and autoscale based on sending volume.",
+      "Raycast switched from SendGrid to Resend and completed waitlist email setup for iOS and Windows apps within 30 minutes.",
+      "Companies using Resend include Vercel, Infisical, Mintlify, MrBeast, Gumroad, Replit, Tailwind, and Braintrust.",
+      "Resend Inbound parses email attachments and delivers them with metadata, content type, and base64-encoded data.",
+      "Resend Inbound lets you receive emails using a Resend-provided email address or on your own domain.",
+      "Resend Webhooks feature automatic retries with exponential backoff for failed deliveries.",
+      "Resend allows users to inspect webhook request payloads, response bodies, and attempt counts, as well as manually replay messages.",
+      "Resend Audiences supports SDKs in PHP, Python, Ruby, Go, Java, and cURL to add and manage contacts.",
+      "Contacts can be added to Resend Audiences via CSV upload, manual entry, or API.",
+      "Hike Medical uses Resend Audiences to manage contacts and track reporting."
+    ],
+    "contentAngles": [
+      "Building and styling emails with React and Tailwind using react-email",
+      "Implementing and debugging email webhooks for delivery, opens, clicks, and bounces",
+      "Using Test Mode to safely test transactional email workflows during development",
+      "Monitoring sender reputation and DNSBL blocklist prevention",
+      "Sending emails across diverse backend environments and SDKs",
+      "Managing subscriber lists and tracking broadcast performance analytics"
+    ],
+    "competitorsMentioned": [],
+    "confidence": "high"
+  },
+  "facts": [
+    {
+      "text": "Resend includes a Test mode to simulate events and experiment with the API without sending real emails.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/"
+    },
+    {
+      "text": "Resend delivers modular webhooks when an email is delivered, opened, bounces, or a link is clicked.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/"
+    },
+    {
+      "text": "Resend templates can be built using React with react-email, an open-source component library.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/"
+    },
+    {
+      "text": "Resend generates removal requests if your domain is added to DNSBLs like Spamhaus.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/"
+    },
+    {
+      "text": "Resend supports sending emails from North American, South American, European, and Asian regions.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/"
+    },
+    {
+      "text": "Resend offers managed dedicated IPs that automatically warm up and autoscale based on sending volume.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/"
+    },
+    {
+      "text": "Raycast switched from SendGrid to Resend and completed waitlist email setup for iOS and Windows apps within 30 minutes.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/"
+    },
+    {
+      "text": "Companies using Resend include Vercel, Infisical, Mintlify, MrBeast, Gumroad, Replit, Tailwind, and Braintrust.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/"
+    },
+    {
+      "text": "Resend Inbound parses email attachments and delivers them with metadata, content type, and base64-encoded data.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/features/inbound"
+    },
+    {
+      "text": "Resend Inbound lets you receive emails using a Resend-provided email address or on your own domain.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/features/inbound"
+    },
+    {
+      "text": "Resend Webhooks feature automatic retries with exponential backoff for failed deliveries.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/features/webhooks"
+    },
+    {
+      "text": "Resend allows users to inspect webhook request payloads, response bodies, and attempt counts, as well as manually replay messages.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/features/webhooks"
+    },
+    {
+      "text": "Resend Audiences supports SDKs in PHP, Python, Ruby, Go, Java, and cURL to add and manage contacts.",
+      "kind": "integration",
+      "sourceUrl": "https://resend.com/features/audiences"
+    },
+    {
+      "text": "Contacts can be added to Resend Audiences via CSV upload, manual entry, or API.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/features/audiences"
+    },
+    {
+      "text": "Hike Medical uses Resend Audiences to manage contacts and track reporting.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/features/audiences"
+    },
+    {
+      "text": "Resend Templates allows users to send transactional emails by including only the template ID and variables in the call.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/features/templates"
+    },
+    {
+      "text": "Resend Templates includes presence indicators, auto-save, and a full revision history system for team collaboration.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/features/templates"
+    },
+    {
+      "text": "Liveblocks uses React Email and Tailwind to create branded components and templates with Resend.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/features/templates"
+    },
+    {
+      "text": "Resend Broadcasts allows users to send email blasts to contacts using a WYSIWYG editor.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/features/broadcasts"
+    },
+    {
+      "text": "Resend Broadcasts supports Markdown for headings, lists, italic, bold, links, and quotes.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/features/broadcasts"
+    },
+    {
+      "text": "Resend Broadcasts tracks individual engagement by showing who opened emails and what links each person clicked.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/features/broadcasts"
+    },
+    {
+      "text": "Resend optimizes deliverability by breaking down thousands of emails into smaller batches and spacing them out.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/features/broadcasts"
+    },
+    {
+      "text": "The Resend Free plan includes 3,000 emails per month, 100 emails a day, 3 domains, 10,000 automation runs, and 30-day data retention.",
+      "kind": "pricing",
+      "sourceUrl": "https://resend.com/pricing"
+    },
+    {
+      "text": "The Resend Pro plan includes 50,000 emails per month, 10 domains, no daily email limit, 5 webhook endpoints, 100 AI credits per month, and extra emails at $0.90 per 1,000.",
+      "kind": "pricing",
+      "sourceUrl": "https://resend.com/pricing"
+    },
+    {
+      "text": "The Resend Scale plan includes 100,000 emails per month, 1,000 domains, a dedicated Slack channel, 10 webhook endpoints, and 500 AI credits per month.",
+      "kind": "pricing",
+      "sourceUrl": "https://resend.com/pricing"
+    },
+    {
+      "text": "Resend add-on pricing includes Domains for $20 per month, Dedicated IPs for $30 per month, and Single Sign-On for $150 per month.",
+      "kind": "pricing",
+      "sourceUrl": "https://resend.com/pricing"
+    },
+    {
+      "text": "Infisical switched to Resend Dedicated IPs to improve deliverability.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/pricing"
+    },
+    {
+      "text": "Raycast switched to Resend from SendGrid, starting with waitlist emails for their iOS and Windows apps.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/pricing"
+    },
+    {
+      "text": "Resend was founded by Zeno Rocha, Bu Kinoshita, and Jonni Lundy.",
+      "kind": "other",
+      "sourceUrl": "https://resend.com/about"
+    },
+    {
+      "text": "Resend started with an open source project in 2022 and launched its email sending platform in 2023 as part of Y Combinator's winter batch.",
+      "kind": "other",
+      "sourceUrl": "https://resend.com/about"
+    },
+    {
+      "text": "Resend is built by a fully remote team for developers.",
+      "kind": "audience",
+      "sourceUrl": "https://resend.com/about"
+    },
+    {
+      "text": "Roame has been using Resend since July 2023.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/customers/roame"
+    },
+    {
+      "text": "Roame migrated their drag-and-drop templates to React Email and swapped API keys in their Next.js API endpoints to start sending with Resend.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/customers/roame"
+    },
+    {
+      "text": "Resend provided Roame with one-on-one, real-time help over Slack.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/customers/roame"
+    },
+    {
+      "text": "Roame CTO Zi Liu stated that Resend is SendGrid with batteries at 1/10 of the price.",
+      "kind": "pricing",
+      "sourceUrl": "https://resend.com/customers/roame"
+    },
+    {
+      "text": "Roame Travel was founded in San Francisco in 2019.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/customers/roame"
+    },
+    {
+      "text": "Sorce provisions a custom sorce.email address for every user using the Resend API.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/customers/sorce"
+    },
+    {
+      "text": "A Resend email expert helped Sorce ship a fix for bounce issues in under 24 hours.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/customers/sorce"
+    },
+    {
+      "text": "Sorce was founded in August 2024 and has been using Resend since November 2025.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/customers/sorce"
+    },
+    {
+      "text": "Theya used the Resend Broadcasts feature to send announcements during their launch week.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/customers/theya"
+    },
+    {
+      "text": "Theya was founded in San Francisco in 2023 and has been using Resend since November 2023.",
+      "kind": "customer",
+      "sourceUrl": "https://resend.com/customers/theya"
+    },
+    {
+      "text": "Resend provides Broadcasts and Audiences features for sending emails to users.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/customers/theya"
+    },
+    {
+      "text": "Resend integrates with coding agents including Cursor, Claude, Claude Code, Codex, Devin, Gemini, GitHub Copilot, and Zed.",
+      "kind": "integration",
+      "sourceUrl": "https://resend.com/docs/integrations"
+    },
+    {
+      "text": "Resend integrates with AI tools including Lovable, Anything, Wildcard, mcp.run, Rocket, Base44, Leap.new, Parsley, Pica, and camelAI.",
+      "kind": "integration",
+      "sourceUrl": "https://resend.com/docs/integrations"
+    },
+    {
+      "text": "Resend integrates with notification systems including Courier, Novu, Knock, Engagespot, Dittofeed, and Suprsend.",
+      "kind": "integration",
+      "sourceUrl": "https://resend.com/docs/integrations"
+    },
+    {
+      "text": "Resend integrates with developer tools including Raycast, Convex, Inngest, Upstash, Encore, Trigger.dev, Infisical, Medusa, Tinybird, PostHog, Coolify, Auth0, and Kinde.",
+      "kind": "integration",
+      "sourceUrl": "https://resend.com/docs/integrations"
+    },
+    {
+      "text": "The Usage API allows retrieving current usage and plan limits across account quotas by calling GET /usage with any API key.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/changelog/account-usage-api"
+    },
+    {
+      "text": "The Usage API response covers quotas for emails, contacts, segments, broadcasts, domains, AI credits, automation runs, and API rate limits.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/changelog/account-usage-api"
+    },
+    {
+      "text": "In the Usage API, a limit value of null indicates there is no cap for that resource on your plan.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/changelog/account-usage-api"
+    },
+    {
+      "text": "The Resend MCP server includes a get-usage tool for agents to check account limits.",
+      "kind": "integration",
+      "sourceUrl": "https://resend.com/changelog/account-usage-api"
+    },
+    {
+      "text": "Resend integrated with Stripe Projects to enable provisioning Resend directly from the Stripe CLI.",
+      "kind": "integration",
+      "sourceUrl": "https://resend.com/changelog/stripe-projects-integration"
+    },
+    {
+      "text": "Stripe Projects creates a Resend account, generates an API key, and writes it to your .env file as RESEND_API_KEY.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/changelog/stripe-projects-integration"
+    },
+    {
+      "text": "The Stripe Projects integration allows signing into the Resend dashboard and managing billing through Stripe.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/changelog/stripe-projects-integration"
+    },
+    {
+      "text": "Stripe Projects includes Agent Skills that enable AI agents to provision Resend through the CLI.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/changelog/stripe-projects-integration"
+    },
+    {
+      "text": "Validity's Heatwave blocklist has listed more than 1.2 million domains warmed through synthetic engagement.",
+      "kind": "number",
+      "sourceUrl": "https://resend.com/blog/avoid-warmup-services"
+    },
+    {
+      "text": "Validity shares Heatwave blocklist signals with providers and security vendors including Comcast, Proofpoint, Spamhaus, and SURBL.",
+      "kind": "integration",
+      "sourceUrl": "https://resend.com/blog/avoid-warmup-services"
+    },
+    {
+      "text": "Domains can be checked for Heatwave synthetic warming listings at lookup.validity.tools.",
+      "kind": "other",
+      "sourceUrl": "https://resend.com/blog/avoid-warmup-services"
+    },
+    {
+      "text": "A domain's position on Validity's Heatwave blocklist for synthetic warming is permanent once it crosses the threshold.",
+      "kind": "other",
+      "sourceUrl": "https://resend.com/blog/avoid-warmup-services"
+    },
+    {
+      "text": "Allie Sperry joined Resend as a Customer Success Engineer.",
+      "kind": "other",
+      "sourceUrl": "https://resend.com/blog/welcoming-allie-sperry"
+    },
+    {
+      "text": "Allie Sperry previously worked in support at Litmus and as a deliverability consultant at Customer.io.",
+      "kind": "other",
+      "sourceUrl": "https://resend.com/blog/welcoming-allie-sperry"
+    },
+    {
+      "text": "Gaby Garcia spent 5 years at Automattic hiring engineers and designers.",
+      "kind": "other",
+      "sourceUrl": "https://resend.com/blog/welcoming-gaby-garcia"
+    },
+    {
+      "text": "The Email Metrics API returns deliverability and engagement data from send volume to unsubscribe rate, grouped or filtered by period, domain, broadcast, or email.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/blog/headless-dashboard-initiative"
+    },
+    {
+      "text": "A request to the Email Metrics API with no parameters returns every metric over the past 7 days.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/blog/headless-dashboard-initiative"
+    },
+    {
+      "text": "The Cancel Broadcast API lets developers stop a Broadcast programmatically while it is scheduled or during sending.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/blog/headless-dashboard-initiative"
+    },
+    {
+      "text": "The Share Email API returns a read-only share link for any sent or received email with a customizable expiration duration of up to 48 hours.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/blog/headless-dashboard-initiative"
+    },
+    {
+      "text": "The Duplicate Automation API creates a copy of an existing Automation as a disabled draft with a (Copy) suffix.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/blog/headless-dashboard-initiative"
+    },
+    {
+      "text": "The Update Segment API allows renaming a segment programmatically via API, CLI, or official SDKs.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/blog/headless-dashboard-initiative"
+    },
+    {
+      "text": "The List Clicked Links API returns every link clicked in a Broadcast with its total and unique clicks ranked by total clicks.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/blog/headless-dashboard-initiative"
+    },
+    {
+      "text": "The Email Verification API proposal allows verifying email addresses directly within the browser instead of sending an OTP or magic link.",
+      "kind": "feature",
+      "sourceUrl": "https://resend.com/blog/email-verification-api"
+    },
+    {
+      "text": "The proposed browser Email Verification API is supported by Chrome via an origin trial and mailbox verification is supported by Gmail.",
+      "kind": "integration",
+      "sourceUrl": "https://resend.com/blog/email-verification-api"
+    }
+  ],
+  "readAt": "2026-10-04T15:35:16.701Z"
+}

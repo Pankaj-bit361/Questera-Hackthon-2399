@@ -1,8 +1,12 @@
 const express = require('express');
 const analyticsRouter = express.Router();
+const { selfParam, ownedParam } = require('../middlewares/auth');
 const AnalyticsService = require('../functions/AnalyticsService');
 const Instagram = require('../models/instagram');
 const SocialAccount = require('../models/socialAccount');
+
+// The caller's own records only (middlewares/auth.js).
+analyticsRouter.param('userId', selfParam);
 
 const analyticsService = new AnalyticsService();
 

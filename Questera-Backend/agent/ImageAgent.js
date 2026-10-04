@@ -406,7 +406,7 @@ When in doubt, ask a single clarifying question and wait.`;
 class ImageAgent {
    constructor(options = {}) {
       const provider = options.provider || 'openrouter';
-      const model = options.model || 'google/gemini-3-flash-preview';
+      const model = options.model || process.env.AUTOPILOT_LLM_MODEL || 'google/gemini-3.7-flash';
 
       let llm;
       if (provider === 'anthropic') {

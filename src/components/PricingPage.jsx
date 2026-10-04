@@ -316,22 +316,9 @@ const PricingPage = () => {
           transition={{ delay: 0.6 }}
           className="mt-20 pt-10 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6"
         >
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-[#18181b] flex items-center justify-center border border-white/5">
-              <SafeIcon icon={FiShield} className="w-4 h-4 text-zinc-400" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-white">Enterprise Security</h4>
-              <p className="text-xs text-zinc-500">SOC2 compliant data handling for teams.</p>
-            </div>
-          </div>
-
-          <div className="flex gap-8 opacity-30 grayscale mix-blend-screen">
-            {/* Simple text logos for aesthetic */}
-            <span className="font-bold text-lg tracking-widest">ACME</span>
-            <span className="font-bold text-lg tracking-widest">LAYER</span>
-            <span className="font-bold text-lg tracking-widest">CHEX</span>
-          </div>
+          <p className="text-xs text-zinc-500">
+            Payments are handled by Razorpay.
+          </p>
         </motion.div>
 
       </div>

@@ -1,14 +1,20 @@
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenAI, GenerateVideosOperation } = require('@google/genai');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs').promises;
 const path = require('path');
 const Video = require('../models/video');
 const VideoMessage = require('../models/videoMessage');
-const CreditsController = require('./Credits');
+const MediaJob = require('../models/mediaJob');
+const { CREDIT_COSTS, ensureCredits, saveVideoTurn } = require('./sharedHelpers');
+const {
+    markJob,
+    failJob,
+    downloadGoogleVideo,
+    finishSuccessfulVideo,
+} = require('./videoJobRunner');
 
-const creditsController = new CreditsController();
-const VIDEO_CREDIT_COST = 10; // Each video costs 10 credits
+const VIDEO_CREDIT_COST = CREDIT_COSTS.generate_video;
 
 class VideoController {
     constructor() {
@@ -28,47 +34,18 @@ class VideoController {
         this.uploadsDir = path.join(__dirname, '..', 'uploads');
     }
 
-    // Check if user has sufficient credits for video generation (10 credits)
     async checkVideoCredits(userId) {
-        const credits = await creditsController.getOrCreateCredits(userId);
-        if (!credits) {
-            console.warn(`⚠️ [Video] Credits not found for ${userId}, proceeding without check`);
-            return null;
-        }
-        if (credits.balance < VIDEO_CREDIT_COST) {
-            throw new Error(`Insufficient credits. Video generation requires ${VIDEO_CREDIT_COST} credits. You have ${credits.balance}.`);
-        }
-        return credits;
+        await ensureCredits(userId, VIDEO_CREDIT_COST);
     }
 
-    // Deduct 10 credits for video generation
     async deductVideoCredit(userId, prompt = '') {
-        const result = await creditsController.deductCredits(
-            userId,
-            VIDEO_CREDIT_COST,
-            null,
-            `Video generation: ${prompt.substring(0, 50)}...`
-        );
-        if (result.success) {
-            console.log(`✅ Deducted ${VIDEO_CREDIT_COST} credits from ${userId}. Remaining: ${result.balance}`);
-        } else {
-            console.warn(`⚠️ [Video] Could not deduct credits for ${userId}: ${result.error}`);
-        }
-        return result;
+        const { deductCreditsSafe } = require('./sharedHelpers');
+        return deductCreditsSafe(userId, VIDEO_CREDIT_COST, null, `Video generation: ${String(prompt || '').slice(0, 50)}`);
     }
 
     async uploadToS3(buffer, mimeType = 'video/mp4') {
-        const extension = mimeType?.split('/')[1] || 'mp4';
-        const fileName = `videos/${uuidv4()}.${extension}`;
-
-        await this.s3.send(new PutObjectCommand({
-            Bucket: this.bucketName,
-            Key: fileName,
-            Body: buffer,
-            ContentType: mimeType,
-        }));
-
-        return `https://${this.bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+        const { uploadBufferToS3 } = require('./sharedHelpers');
+        return uploadBufferToS3(buffer, mimeType, 'videos');
     }
 
     async waitForCompletion(operation, assistantMsg) {
@@ -111,27 +88,9 @@ class VideoController {
         return operation;
     }
 
-    // Save message and link to Video chat
     async saveMessage(chatId, userId, role, content, extras = {}) {
-        const msg = await VideoMessage.create({
-            messageId: `vmsg-${uuidv4()}`,
-            videoChatId: chatId,
-            role,
-            content,
-            userId,
-            ...extras
-        });
-
-        await Video.findOneAndUpdate(
-            { videoChatId: chatId },
-            {
-                $push: { messages: msg._id },
-                $setOnInsert: { userId, videoChatId: chatId, name: content.slice(0, 50) }
-            },
-            { upsert: true, new: true }
-        );
-
-        return msg;
+        const { message } = await saveVideoTurn(chatId, userId, role, content, extras);
+        return message;
     }
 
     /**
@@ -329,81 +288,46 @@ class VideoController {
                 referenceImagesCount: operationConfig.config?.referenceImages?.length || 0
             });
 
-            console.log('📝 [Video] Prompt:',prompt, operationConfig.prompt);
+            console.log('📝 [Video] Prompt:', prompt, operationConfig.prompt);
 
-            // Start generation
+            const job = await MediaJob.create({
+                userId,
+                kind: 'video',
+                provider: 'veo',
+                status: 'queued',
+                prompt,
+                videoChatId,
+                messageId: assistantMsg.messageId,
+                creditsCost: VIDEO_CREDIT_COST,
+                metadata: { model: this.model, mode, resolution: effectiveResolution },
+            });
+
             let operation = await this.ai.models.generateVideos(operationConfig);
             assistantMsg.operationId = operation.name;
             await assistantMsg.save();
+            await markJob(job, { status: 'processing', operationId: operation.name, progress: 5 });
 
-            console.log(`⏳ [Video] Operation started: ${operation.name}`);
+            console.log(`⏳ [Video] Operation started: ${operation.name} job=${job.jobId}`);
 
-            // Wait for completion (with progress tracking)
-            operation = await this.waitForCompletion(operation, assistantMsg);
+            this.finishVeoJob({ job, assistantMsg, operation, prompt, userId, resolution: effectiveResolution })
+                .catch((err) => console.error('❌ [Video] Background finish failed:', err.message));
 
-            // Validate response
-            console.log('🔍 [Video] Response keys:', Object.keys(operation.response || {}));
-
-            const generatedVideo = operation.response?.generatedVideos?.[0];
-            if (!generatedVideo?.video) {
-                console.error('❌ [Video] No video in response:', operation.response);
-                throw new Error('Video generation completed but no video was returned. Please try again.');
-            }
-
-            console.log('✅ [Video] Generation complete. Downloading...');
-
-            // Download video to temp file then upload to S3
-            const tempFilename = `temp_${uuidv4()}.mp4`;
-            const tempPath = path.join(this.uploadsDir, tempFilename);
-
-            // Ensure uploads directory exists
-            try {
-                await fs.mkdir(this.uploadsDir, { recursive: true });
-            } catch (err) {
-                // Directory might already exist
-            }
-
-            // Download from Google
-            await this.ai.files.download({
-                file: generatedVideo.video,
-                downloadPath: tempPath
-            });
-
-            console.log(`💾 [Video] Downloaded to: ${tempPath}`);
-
-            // Read and upload to S3
-            const videoBuffer = await fs.readFile(tempPath);
-            const videoUrl = await this.uploadToS3(videoBuffer, 'video/mp4');
-
-            // Clean up temp file
-            try {
-                await fs.unlink(tempPath);
-            } catch (err) {
-                console.warn(`⚠️ [Video] Could not delete temp file: ${tempPath}`);
-            }
-
-            // Update message - store googleFile for future extend operations
-            // Per Gemini docs: use operation.response.generated_videos[0].video for extend
-            assistantMsg.content = prompt;
-            assistantMsg.videoUrl = videoUrl;
-            assistantMsg.googleFile = generatedVideo.video; // Store Google file reference for extend
-            assistantMsg.videoResolution = effectiveResolution; // Store resolution to validate future extensions
-            assistantMsg.status = 'completed';
-            assistantMsg.progress = 100;
-            await assistantMsg.save();
-            console.log(`📁 [Video] Stored googleFile:`, JSON.stringify(generatedVideo.video, null, 2));
-
-            // Deduct 10 credits for video generation
-            await this.deductVideoCredit(userId, prompt);
-
-            console.log(`✅ [Video] Completed and uploaded: ${videoUrl}`);
-            return { status: 200, json: { success: true, videoChatId, message: assistantMsg } };
+            return {
+                status: 202,
+                json: {
+                    success: true,
+                    accepted: true,
+                    jobId: job.jobId,
+                    videoChatId,
+                    status: 'processing',
+                    message: assistantMsg,
+                },
+            };
 
         } catch (error) {
             console.error('❌ [Video] Error:', error.message);
             console.error('❌ [Video] Stack:', error.stack);
 
-            // Update assistant message if it exists
             if (assistantMsg) {
                 try {
                     assistantMsg.status = 'failed';
@@ -415,8 +339,7 @@ class VideoController {
                 }
             }
 
-            // Determine appropriate status code
-            let statusCode = 500;
+            let statusCode = error.statusCode || 500;
             if (error.message.includes('credits') || error.message.includes('Insufficient')) {
                 statusCode = 403;
             } else if (error.message.includes('not found')) {
@@ -425,6 +348,69 @@ class VideoController {
 
             return { status: statusCode, json: { error: error.message, videoChatId } };
         }
+    }
+
+    async finishVeoJob({ job, assistantMsg, operation, prompt, userId, resolution }) {
+        const startedAt = Date.now();
+        try {
+            operation = await this.waitForCompletion(operation, assistantMsg);
+            if (job) {
+                job.progress = Math.min(90, assistantMsg?.progress || 90);
+                await job.save();
+            }
+
+            const generatedVideo = operation.response?.generatedVideos?.[0];
+            if (!generatedVideo?.video) {
+                throw new Error('Video generation completed but no video was returned. Please try again.');
+            }
+
+            const videoUrl = await downloadGoogleVideo(this.ai, generatedVideo);
+            await finishSuccessfulVideo({
+                job, assistantMsg, videoUrl, prompt, userId,
+                googleFile: generatedVideo.video, resolution, startedAt,
+            });
+            console.log(`✅ [Video] Completed and uploaded: ${videoUrl}`);
+        } catch (error) {
+            console.error('❌ [Video] Background job failed:', error.message);
+            await failJob(job, assistantMsg, error, startedAt);
+        }
+    }
+
+    async resumeOperation(job) {
+        if (!job?.operationId) return;
+        const assistantMsg = job.messageId
+            ? await VideoMessage.findOne({ messageId: job.messageId })
+            : null;
+        const seed = new GenerateVideosOperation();
+        seed.name = job.operationId;
+        const operation = await this.ai.operations.getVideosOperation({
+            operation: seed,
+        });
+        await this.finishVeoJob({
+            job,
+            assistantMsg,
+            operation,
+            prompt: job.prompt,
+            userId: job.userId,
+            resolution: job.metadata?.resolution,
+        });
+    }
+
+    async getJobStatus(jobId) {
+        const job = await MediaJob.findOne({ jobId });
+        if (!job) return { status: 404, json: { error: 'Job not found' } };
+        return {
+            status: 200,
+            json: {
+                jobId: job.jobId,
+                status: job.status,
+                progress: job.progress,
+                resultUrl: job.resultUrl,
+                error: job.error,
+                videoChatId: job.videoChatId,
+                messageId: job.messageId,
+            },
+        };
     }
 
     async getConversation(req) {
@@ -548,38 +534,13 @@ class KieVideoController {
     async _downloadAndUploadToS3(videoUrl) {
         const res = await fetch(videoUrl);
         if (!res.ok) throw new Error(`Failed to download KIE video: ${res.status}`);
-        const buffer = Buffer.from(await res.arrayBuffer());
-
-        const fileName = `videos/kie_${uuidv4()}.mp4`;
-        await this.s3.send(new PutObjectCommand({
-            Bucket: this.bucketName,
-            Key: fileName,
-            Body: buffer,
-            ContentType: 'video/mp4',
-        }));
-        return `https://${this.bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+        const { uploadBufferToS3 } = require('./sharedHelpers');
+        return uploadBufferToS3(Buffer.from(await res.arrayBuffer()), 'video/mp4', 'videos');
     }
 
     async saveMessage(chatId, userId, role, content, extras = {}) {
-        const msg = await VideoMessage.create({
-            messageId: `vmsg-${uuidv4()}`,
-            videoChatId: chatId,
-            role,
-            content,
-            userId,
-            ...extras,
-        });
-
-        await Video.findOneAndUpdate(
-            { videoChatId: chatId },
-            {
-                $push: { messages: msg._id },
-                $setOnInsert: { userId, videoChatId: chatId, name: content.slice(0, 50) },
-            },
-            { upsert: true, new: true }
-        );
-
-        return msg;
+        const { message } = await saveVideoTurn(chatId, userId, role, content, extras);
+        return message;
     }
 
     // ── main generate ─────────────────────────
@@ -679,34 +640,20 @@ class KieVideoController {
             assistantMsg.operationId = taskId;
             await assistantMsg.save();
 
-            // Poll until done
-            const task = await this._pollTask(taskId, assistantMsg);
+            const job = await MediaJob.create({
+                userId, kind: 'video', provider: 'kie', status: 'processing',
+                prompt, videoChatId, messageId: assistantMsg.messageId,
+                operationId: taskId, creditsCost: VIDEO_CREDIT_COST,
+                metadata: { model: kieBody.model, mode },
+            });
 
-            // Extract video URL from resultJson
-            let kieVideoUrl;
-            try {
-                const resultJson = typeof task?.resultJson === 'string'
-                    ? JSON.parse(task.resultJson)
-                    : task?.resultJson;
-                kieVideoUrl = resultJson?.resultUrls?.[0];
-            } catch (e) { /* ignore parse error */ }
-            if (!kieVideoUrl) {
-                console.error('[KIE] Unexpected task result:', JSON.stringify(task, null, 2));
-                throw new Error('KIE returned no video URL');
-            }
+            this.finishKieJob({ job, assistantMsg, taskId, prompt, userId })
+                .catch((err) => console.error('❌ [KIE] Background finish failed:', err.message));
 
-            console.log('[KIE] Downloading and uploading to S3...');
-            const s3Url = await this._downloadAndUploadToS3(kieVideoUrl);
-
-            // Update assistant message
-            assistantMsg.content = prompt;
-            assistantMsg.videoUrl = s3Url;
-            assistantMsg.status = 'completed';
-            assistantMsg.progress = 100;
-            await assistantMsg.save();
-
-            console.log(`✅ [KIE] Done: ${s3Url}`);
-            return { status: 200, json: { success: true, videoChatId, message: assistantMsg } };
+            return {
+                status: 202,
+                json: { success: true, accepted: true, jobId: job.jobId, videoChatId, status: 'processing', message: assistantMsg },
+            };
 
         } catch (error) {
             console.error('❌ [KIE] Error:', error.message);
@@ -720,6 +667,35 @@ class KieVideoController {
 
             return { status: 500, json: { error: error.message, videoChatId } };
         }
+    }
+
+    async finishKieJob({ job, assistantMsg, taskId, prompt, userId }) {
+        const startedAt = Date.now();
+        try {
+            const task = await this._pollTask(taskId, assistantMsg);
+            let kieVideoUrl;
+            try {
+                const resultJson = typeof task?.resultJson === 'string' ? JSON.parse(task.resultJson) : task?.resultJson;
+                kieVideoUrl = resultJson?.resultUrls?.[0];
+            } catch (e) { /* ignore parse error */ }
+            if (!kieVideoUrl) throw new Error('KIE returned no video URL');
+            const s3Url = await this._downloadAndUploadToS3(kieVideoUrl);
+            await finishSuccessfulVideo({ job, assistantMsg, videoUrl: s3Url, prompt, userId, startedAt });
+            console.log(`✅ [KIE] Done: ${s3Url}`);
+        } catch (error) {
+            console.error('❌ [KIE] Background job failed:', error.message);
+            await failJob(job, assistantMsg, error, startedAt);
+        }
+    }
+
+    async resumeOperation(job) {
+        if (!job?.operationId) return;
+        const assistantMsg = job.messageId
+            ? await VideoMessage.findOne({ messageId: job.messageId })
+            : null;
+        await this.finishKieJob({
+            job, assistantMsg, taskId: job.operationId, prompt: job.prompt, userId: job.userId,
+        });
     }
 }
 
@@ -792,38 +768,13 @@ class SeedanceVideoController {
     async _downloadAndUploadToS3(videoUrl) {
         const res = await fetch(videoUrl);
         if (!res.ok) throw new Error(`Failed to download Seedance video: ${res.status}`);
-        const buffer = Buffer.from(await res.arrayBuffer());
-
-        const fileName = `videos/seedance_${uuidv4()}.mp4`;
-        await this.s3.send(new PutObjectCommand({
-            Bucket: this.bucketName,
-            Key: fileName,
-            Body: buffer,
-            ContentType: 'video/mp4',
-        }));
-        return `https://${this.bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileName}`;
+        const { uploadBufferToS3 } = require('./sharedHelpers');
+        return uploadBufferToS3(Buffer.from(await res.arrayBuffer()), 'video/mp4', 'videos');
     }
 
     async saveMessage(chatId, userId, role, content, extras = {}) {
-        const msg = await VideoMessage.create({
-            messageId: `vmsg-${uuidv4()}`,
-            videoChatId: chatId,
-            role,
-            content,
-            userId,
-            ...extras,
-        });
-
-        await Video.findOneAndUpdate(
-            { videoChatId: chatId },
-            {
-                $push: { messages: msg._id },
-                $setOnInsert: { userId, videoChatId: chatId, name: content.slice(0, 50) },
-            },
-            { upsert: true, new: true }
-        );
-
-        return msg;
+        const { message } = await saveVideoTurn(chatId, userId, role, content, extras);
+        return message;
     }
 
     /**
@@ -929,35 +880,21 @@ class SeedanceVideoController {
             assistantMsg.operationId = taskId;
             await assistantMsg.save();
 
-            // Poll until done
-            const task = await this._pollTask(taskId, assistantMsg);
+            const job = await MediaJob.create({
+                userId, kind: 'video',
+                provider: this.model.includes('fast') ? 'seedance-fast' : 'seedance',
+                status: 'processing', prompt, videoChatId,
+                messageId: assistantMsg.messageId, operationId: taskId,
+                creditsCost: VIDEO_CREDIT_COST, metadata: { model: this.model, mode },
+            });
 
-            // Extract video URL from resultJson
-            let seedanceVideoUrl;
-            try {
-                const resultJson = typeof task?.resultJson === 'string'
-                    ? JSON.parse(task.resultJson)
-                    : task?.resultJson;
-                seedanceVideoUrl = resultJson?.resultUrls?.[0];
-            } catch (e) { /* ignore parse error */ }
+            this.finishSeedanceJob({ job, assistantMsg, taskId, prompt, userId })
+                .catch((err) => console.error('❌ [Seedance] Background finish failed:', err.message));
 
-            if (!seedanceVideoUrl) {
-                console.error('[Seedance] Unexpected task result:', JSON.stringify(task, null, 2));
-                throw new Error('Seedance returned no video URL');
-            }
-
-            console.log('[Seedance] Downloading and uploading to S3...');
-            const s3Url = await this._downloadAndUploadToS3(seedanceVideoUrl);
-
-            // Update assistant message
-            assistantMsg.content = prompt;
-            assistantMsg.videoUrl = s3Url;
-            assistantMsg.status = 'completed';
-            assistantMsg.progress = 100;
-            await assistantMsg.save();
-
-            console.log(`✅ [Seedance] Done: ${s3Url}`);
-            return { status: 200, json: { success: true, videoChatId, message: assistantMsg } };
+            return {
+                status: 202,
+                json: { success: true, accepted: true, jobId: job.jobId, videoChatId, status: 'processing', message: assistantMsg },
+            };
 
         } catch (error) {
             console.error('❌ [Seedance] Error:', error.message);
@@ -972,7 +909,244 @@ class SeedanceVideoController {
             return { status: 500, json: { error: error.message, videoChatId } };
         }
     }
+
+    async finishSeedanceJob({ job, assistantMsg, taskId, prompt, userId }) {
+        const startedAt = Date.now();
+        try {
+            const task = await this._pollTask(taskId, assistantMsg);
+            let seedanceVideoUrl;
+            try {
+                const resultJson = typeof task?.resultJson === 'string' ? JSON.parse(task.resultJson) : task?.resultJson;
+                seedanceVideoUrl = resultJson?.resultUrls?.[0];
+            } catch (e) { /* ignore parse error */ }
+            if (!seedanceVideoUrl) throw new Error('Seedance returned no video URL');
+            const s3Url = await this._downloadAndUploadToS3(seedanceVideoUrl);
+            await finishSuccessfulVideo({ job, assistantMsg, videoUrl: s3Url, prompt, userId, startedAt });
+            console.log(`✅ [Seedance] Done: ${s3Url}`);
+        } catch (error) {
+            console.error('❌ [Seedance] Background job failed:', error.message);
+            await failJob(job, assistantMsg, error, startedAt);
+        }
+    }
+
+    async resumeOperation(job) {
+        if (!job?.operationId) return;
+        const assistantMsg = job.messageId
+            ? await VideoMessage.findOne({ messageId: job.messageId })
+            : null;
+        await this.finishSeedanceJob({
+            job, assistantMsg, taskId: job.operationId, prompt: job.prompt, userId: job.userId,
+        });
+    }
 }
 
-module.exports = { VideoController, KieVideoController, SeedanceVideoController, SeedanceFastVideoController: class extends SeedanceVideoController { constructor() { super(true); } } };
+// ─────────────────────────────────────────────
+// Google  –  Gemini Omni 1.1 Flash (Interactions API)
+// ─────────────────────────────────────────────
+// Omni is not a long-running-operation model like Veo: one POST to
+// /v1beta/interactions returns the finished clip (inline base64 for small
+// files, a Files-API URI for larger ones). The SDK installed here predates the
+// Interactions client, so this talks to the REST endpoint directly. Everything
+// around it - MediaJob ledger, VideoMessage, credits, S3 - is shared with the
+// other providers so callers cannot tell which model produced the clip.
+class OmniVideoController extends SeedanceVideoController {
+    constructor() {
+        super(false);
+        this.model = process.env.OMNI_VIDEO_MODEL || 'gemini-omni-1.1-flash';
+        this.apiKey = process.env.GOOGLE_AI_API_KEY;
+        this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
+        this.ai = new GoogleGenAI({ apiKey: this.apiKey });
+        this.pollInterval = 5000;
+        this.maxPollAttempts = 180; // 15 min
+    }
+
+    async _omni(method, path, body) {
+        const res = await fetch(`${this.baseUrl}${path}`, {
+            method,
+            headers: {
+                'x-goog-api-key': this.apiKey,
+                'Content-Type': 'application/json',
+            },
+            body: body ? JSON.stringify(body) : undefined,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error?.message || `Gemini Omni API error ${res.status}`);
+        return data;
+    }
+
+    async _imageToInline(url) {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Could not fetch reference image: ${res.status}`);
+        const mime = res.headers.get('content-type')?.split(';')[0] || 'image/jpeg';
+        return { type: 'image', mime_type: mime, data: Buffer.from(await res.arrayBuffer()).toString('base64') };
+    }
+
+    // The response nests output under steps[].content[]; older previews used
+    // output_video. Check both so a schema shuffle does not hide the clip.
+    _findVideo(interaction) {
+        if (interaction?.output_video) return interaction.output_video;
+        for (const step of interaction?.steps || []) {
+            if (step?.type !== 'model_output') continue;
+            const v = (step.content || []).find((c) => c?.type === 'video');
+            if (v) return v;
+        }
+        for (const c of interaction?.outputs || interaction?.output || []) {
+            if (c?.type === 'video') return c;
+        }
+        return null;
+    }
+
+    /**
+     * POST /api/video/generate-omni
+     * body: { userId, prompt, videoChatId?, firstFrameUrl?, referenceImageUrls?, aspectRatio?, resolution? }
+     */
+    async generate(req) {
+        let assistantMsg = null;
+        let videoChatId = null;
+        try {
+            const {
+                userId, prompt, videoChatId: providedChatId,
+                firstFrameUrl, referenceImageUrls = [],
+                aspectRatio = '16:9', resolution = '720p',
+                billing, // 'autopilot': the charge counts toward the autopilot's daily cap (AutopilotBilling)
+            } = req.body;
+
+            videoChatId = providedChatId || `vc-omni-${uuidv4()}`;
+            if (!userId) return { status: 400, json: { error: 'userId is required' } };
+            if (!prompt) return { status: 400, json: { error: 'prompt is required' } };
+
+            const imageUrls = [firstFrameUrl, ...referenceImageUrls].filter(Boolean).slice(0, 4);
+            const mode = imageUrls.length ? 'image_to_video' : 'text_to_video';
+            console.log(`[Omni] Mode: ${mode} model: ${this.model}`);
+
+            await this.saveMessage(videoChatId, userId, 'user', prompt, {
+                startFrameUrl: firstFrameUrl || null,
+                referenceImages: referenceImageUrls.slice(0, 4),
+            });
+            assistantMsg = await this.saveMessage(videoChatId, userId, 'assistant', 'Generating video...', { status: 'processing' });
+
+            const job = await MediaJob.create({
+                userId, kind: 'video', provider: 'gemini',
+                status: 'processing', prompt, videoChatId,
+                messageId: assistantMsg.messageId,
+                creditsCost: VIDEO_CREDIT_COST,
+                metadata: { model: this.model, mode, aspectRatio, resolution, imageUrls, billing: billing === 'autopilot' ? 'autopilot' : null },
+            });
+
+            this.finishOmniJob({ job, assistantMsg, prompt, userId, imageUrls, aspectRatio, resolution })
+                .catch((err) => console.error('❌ [Omni] Background finish failed:', err.message));
+
+            return {
+                status: 202,
+                json: { success: true, accepted: true, jobId: job.jobId, videoChatId, status: 'processing', message: assistantMsg },
+            };
+        } catch (error) {
+            console.error('❌ [Omni] Error:', error.message);
+            if (assistantMsg) {
+                assistantMsg.status = 'failed';
+                assistantMsg.error = error.message;
+                assistantMsg.content = `Video generation failed: ${error.message}`;
+                await assistantMsg.save().catch(() => {});
+            }
+            return { status: 500, json: { error: error.message, videoChatId } };
+        }
+    }
+
+    async _createOrResume({ job, prompt, imageUrls, aspectRatio, resolution }) {
+        if (job?.operationId) {
+            return this._omni('GET', `/interactions/${job.operationId}`);
+        }
+        const input = [];
+        for (const url of imageUrls || []) input.push(await this._imageToInline(url));
+        input.push({ type: 'text', text: prompt });
+
+        const body = {
+            model: this.model,
+            input: input.length === 1 ? prompt : input,
+            response_format: {
+                type: 'video',
+                aspect_ratio: aspectRatio === '9:16' ? '9:16' : '16:9',
+                resolution,
+                delivery: 'uri',
+            },
+        };
+        if (process.env.VIDEO_TEST_MODE === 'true') {
+            console.log('🧪 [Omni] TEST MODE ON — payload:', JSON.stringify({ ...body, input: '[omitted]' }));
+            throw new Error('TEST MODE — no API call made');
+        }
+        const interaction = await this._omni('POST', '/interactions', body);
+        if (interaction?.id && job) {
+            job.operationId = interaction.id;
+            await job.save().catch(() => {});
+        }
+        return interaction;
+    }
+
+    async _awaitInteraction(interaction, assistantMsg) {
+        let attempts = 0;
+        while (['in_progress', 'queued', 'pending', 'requires_action'].includes(interaction?.status)) {
+            if (++attempts > this.maxPollAttempts) throw new Error('Gemini Omni generation timeout');
+            await new Promise((r) => setTimeout(r, this.pollInterval));
+            if (assistantMsg) {
+                assistantMsg.progress = Math.min(90, attempts * 2);
+                await assistantMsg.save().catch(() => {});
+            }
+            interaction = await this._omni('GET', `/interactions/${interaction.id}`);
+        }
+        if (interaction?.status && interaction.status !== 'completed') {
+            throw new Error(interaction?.error?.message || `Gemini Omni interaction ${interaction.status}`);
+        }
+        return interaction;
+    }
+
+    async _videoToS3(video) {
+        const { uploadBufferToS3 } = require('./sharedHelpers');
+        if (video.data) {
+            return uploadBufferToS3(Buffer.from(video.data, 'base64'), video.mime_type || 'video/mp4', 'videos');
+        }
+        if (!video.uri) throw new Error('Gemini Omni returned neither inline data nor a file uri');
+
+        // Large clips land in the Files API and must finish processing first.
+        const match = video.uri.match(/files\/([a-zA-Z0-9_-]+)/);
+        if (match) {
+            const name = `files/${match[1]}`;
+            for (let i = 0; i < 60; i++) {
+                const info = await this._omni('GET', `/${name}`);
+                const state = info?.state?.name || info?.state;
+                if (state === 'ACTIVE') break;
+                if (state === 'FAILED') throw new Error('Gemini Omni file processing failed');
+                await new Promise((r) => setTimeout(r, 5000));
+            }
+        }
+        return downloadGoogleVideo(this.ai, { video: { uri: video.uri } });
+    }
+
+    async finishOmniJob({ job, assistantMsg, prompt, userId, imageUrls, aspectRatio, resolution }) {
+        const startedAt = Date.now();
+        try {
+            let interaction = await this._createOrResume({ job, prompt, imageUrls, aspectRatio, resolution });
+            interaction = await this._awaitInteraction(interaction, assistantMsg);
+            const video = this._findVideo(interaction);
+            if (!video) throw new Error('Gemini Omni returned no video');
+            const s3Url = await this._videoToS3(video);
+            await finishSuccessfulVideo({ job, assistantMsg, videoUrl: s3Url, prompt, userId, resolution, startedAt });
+            console.log(`✅ [Omni] Done: ${s3Url}`);
+        } catch (error) {
+            console.error('❌ [Omni] Background job failed:', error.message);
+            await failJob(job, assistantMsg, error, startedAt);
+        }
+    }
+
+    async resumeOperation(job) {
+        if (!job?.operationId) return;
+        const assistantMsg = job.messageId ? await VideoMessage.findOne({ messageId: job.messageId }) : null;
+        const m = job.metadata || {};
+        await this.finishOmniJob({
+            job, assistantMsg, prompt: job.prompt, userId: job.userId,
+            imageUrls: m.imageUrls || [], aspectRatio: m.aspectRatio || '16:9', resolution: m.resolution || '720p',
+        });
+    }
+}
+
+module.exports = { VideoController, KieVideoController, SeedanceVideoController, OmniVideoController, SeedanceFastVideoController: class extends SeedanceVideoController { constructor() { super(true); } } };
 

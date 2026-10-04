@@ -5,6 +5,8 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import Sidebar from './Sidebar';
 import InstagramIntegration from './InstagramIntegration';
+import LinkedInIntegration from './LinkedInIntegration';
+import TwitterIntegration from './TwitterIntegration';
 import { getUserId } from '../lib/velosStorage';
 
 const { FiChevronLeft, FiLink, FiUser, FiBell, FiShield } = FiIcons;
@@ -90,20 +92,15 @@ const SettingsPage = () => {
                 {/* Instagram */}
                 <InstagramIntegration userId={userId} />
 
+                {/* LinkedIn */}
+                <LinkedInIntegration />
+
+                {/* X (Twitter) */}
+                <TwitterIntegration />
+
                 {/* Coming Soon */}
                 <div className="space-y-3">
                   <h3 className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Coming Soon</h3>
-
-                  <div className="flex items-center gap-4 p-4 bg-[#1c1c1e] rounded-xl border border-zinc-800/50 opacity-50">
-                    <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center">
-                      <span className="text-zinc-400 font-bold">𝕏</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-white font-medium text-sm">Twitter / X</p>
-                      <p className="text-zinc-600 text-xs">Post updates and threads</p>
-                    </div>
-                    <span className="px-2 py-1 bg-zinc-800 rounded text-zinc-500 text-[10px] font-bold uppercase">Soon</span>
-                  </div>
 
                   <div className="flex items-center gap-4 p-4 bg-[#1c1c1e] rounded-xl border border-zinc-800/50 opacity-50">
                     <div className="w-10 h-10 bg-zinc-800 rounded-lg flex items-center justify-center">
