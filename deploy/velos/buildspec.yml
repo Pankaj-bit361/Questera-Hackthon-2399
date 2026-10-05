@@ -1,0 +1,28 @@
+version: 0.2
+
+# Builds the Velos API for Elastic Beanstalk (Velos-env, Node.js 22). Used by the velos-backend pipeline
+# (deploy/velos/pipeline-setup.sh). Unlike the root buildspec.yml it also ships .ebextensions and .platform, so the
+# nginx upload limit (200 MB) and the 600 s load-balancer timeout reach the server.
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 22
+    commands:
+      - cd "$CODEBUILD_SRC_DIR/Questera-Backend" && npm ci --omit=dev --no-audit --no-fund
+  build:
+    commands:
+      - cd "$CODEBUILD_SRC_DIR" && node deploy/velos/check.cjs
+
+artifacts:
+  files:
+    - 'Procfile'
+    - '.ebextensions/**/*'
+    - '.platform/**/*'
+    - 'Questera-Backend/**/*'
+    # Studio (Questera-Backend/studio) shares its timing and brand kit with the video code, and serves the music and
+    # sound effects to the browser preview.
+    - 'studio/remotion/timing.cjs'
+    - 'studio/remotion/brandkit.cjs'
+    - 'studio/remotion/public/studio-audio/**/*'
+  discard-paths: no
