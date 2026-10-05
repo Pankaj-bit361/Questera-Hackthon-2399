@@ -15,9 +15,11 @@ process.chdir(root);
 // Loaded only when MOTION_PUBLIC_API_URL is set: classic Motion renders with Remotion's bundler, which this bundle
 // doesn't install (it runs from deploy/motion instead).
 const OPTIONAL = new Set(['./motion/router.cjs']);
+// Loaded by boot.js before index.js (boot.js itself starts the server, so it isn't loaded here).
+const EXTRA = ['./secrets.js'];
 
 const source = fs.readFileSync(path.join(root, 'index.js'), 'utf8');
-const modules = [...new Set([...source.matchAll(/require\(['"](\.\/[^'"]+)['"]\)/g)].map((m) => m[1]))].filter((m) => !OPTIONAL.has(m));
+const modules = [...new Set([...source.matchAll(/require\(['"](\.\/[^'"]+)['"]\)/g)].map((m) => m[1]))].filter((m) => !OPTIONAL.has(m)).concat(EXTRA);
 let failed = 0;
 for (const name of modules) {
   try {
