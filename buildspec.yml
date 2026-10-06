@@ -13,5 +13,10 @@ artifacts:
   files:
     - 'Procfile'
     - 'Questera-Backend/**/*'
+    # Studio (Questera-Backend/studio) shares its timing and brand kit with the video code, and serves the music and
+    # sound effects to the browser preview.
+    - 'studio/remotion/timing.cjs'
+    - 'studio/remotion/brandkit.cjs'
+    - 'studio/remotion/public/studio-audio/**/*'
   discard-paths: no
 

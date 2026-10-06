@@ -1,10 +1,32 @@
 const express = require('express');
 const videoRouter = express.Router();
-const { VideoController, KieVideoController, SeedanceVideoController, SeedanceFastVideoController } = require('../functions/Video');
+const { selfParam, ownedParam } = require('../middlewares/auth');
+const MediaJob = require('../models/mediaJob');
+const VideoModel = require('../models/video');
+const VideoMessage = require('../models/videoMessage');
+const { VideoController, KieVideoController, SeedanceVideoController, SeedanceFastVideoController, OmniVideoController } = require('../functions/Video');
+
+// The caller's own records only (middlewares/auth.js).
+videoRouter.param('userId', selfParam);
+videoRouter.param('jobId', ownedParam(MediaJob, 'jobId'));
+videoRouter.param('videoChatId', ownedParam(VideoModel, 'videoChatId'));
+videoRouter.param('messageId', ownedParam(VideoMessage, 'messageId'));
 const videoController = new VideoController();
 const kieVideoController = new KieVideoController();
 const seedanceVideoController = new SeedanceVideoController();
 const seedanceFastVideoController = new SeedanceFastVideoController();
+const omniVideoController = new OmniVideoController();
+
+// Poll async video job
+videoRouter.get('/job/:jobId', async (req, res) => {
+    try {
+        const { status, json } = await videoController.getJobStatus(req.params.jobId);
+        return res.status(status).json(json);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: error.message });
+    }
+});
 
 // Generate video
 videoRouter.post('/generate', async (req, res) => {
@@ -95,6 +117,17 @@ videoRouter.post('/generate-wan', async (req, res) => {
 });
 
 // ── Bytedance Seedance 2.0 ──
+// Gemini Omni 1.1 Flash - the default model for new video work
+videoRouter.post('/generate-omni', async (req, res) => {
+    try {
+        const { status, json } = await omniVideoController.generate(req);
+        return res.status(status).json(json);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
 videoRouter.post('/generate-seedance', async (req, res) => {
     try {
         const { status, json } = await seedanceVideoController.generate(req);

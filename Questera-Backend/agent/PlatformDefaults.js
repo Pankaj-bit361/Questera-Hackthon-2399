@@ -68,31 +68,37 @@ const PLATFORM_DEFAULTS = {
    },
 
    twitter: {
-      name: 'Twitter/X',
+      name: 'X (Twitter)',
       image: {
          aspectRatio: '16:9',
          altAspectRatios: ['1:1', '2:1'],
          minWidth: 1200,
          maxWidth: 1920,
          quality: 'high',
-         format: 'png'
+         format: 'png',
+         maxImagesPerPost: 4
       },
       caption: {
+         // Hard cap on standard access. Premium allows 25,000, but assuming
+         // that would produce posts the API rejects for everyone else.
          maxLength: 280,
-         hashtagLimit: 2,
-         tone: 'concise, witty, conversational',
-         emojiUsage: 'moderate',
-         ctaStyle: 'quick (retweet, reply)',
+         // Hashtags measurably suppress reach on X - keep this at 1 and
+         // prefer none. The planner is told to usually skip them entirely.
+         hashtagLimit: 1,
+         tone: 'concise, specific, conversational',
+         emojiUsage: 'sparing',
+         ctaStyle: 'quick (reply, repost)',
          structure: [
-            'Punchy opening',
-            'One key point',
-            'Optional hashtag or mention'
+            'Lead with the point - the first line is the whole post',
+            'One concrete idea',
+            'Thread only if the idea genuinely needs the room'
          ]
       },
-      bestTimes: ['9:00', '12:00', '17:00'],
+      bestTimes: ['8:00', '12:00', '17:00', '20:00'],
       contentTips: [
-         'Brevity is key',
-         'Threads for longer content',
+         'Brevity is key - 280 characters is a hard cap',
+         'Threads for arguments and breakdowns, never for padding',
+         'Hashtags hurt reach here; usually use none',
          'Engage with replies'
       ]
    }

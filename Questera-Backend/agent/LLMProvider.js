@@ -18,7 +18,8 @@ class OpenRouterProvider extends LLMProvider {
       super(config);
       this.apiKey = config.apiKey || process.env.OPENROUTER_API_KEY;
       this.baseUrl = 'https://openrouter.ai/api/v1/chat/completions';
-      this.model = config.model || 'google/gemini-3-flash-preview';
+      // One switch for every agent in the app. Latest Gemini Flash by default.
+      this.model = config.model || process.env.AUTOPILOT_LLM_MODEL || 'google/gemini-3.7-flash';
    }
 
    async chat(messages, options = {}) {
@@ -31,7 +32,7 @@ class OpenRouterProvider extends LLMProvider {
             'Authorization': `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://velosapps.com',
-            'X-Title': 'Questera AI'
+            'X-Title': 'Greta'
          },
          body: JSON.stringify({
             model: this.model,
@@ -72,7 +73,7 @@ class OpenRouterProvider extends LLMProvider {
             'Authorization': `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://velosapps.com',
-            'X-Title': 'Questera AI'
+            'X-Title': 'Greta'
          },
          body: JSON.stringify({
             model: this.model,

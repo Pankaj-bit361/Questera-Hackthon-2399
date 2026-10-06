@@ -4,8 +4,9 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default [
-  { ignores: ['dist'] },
+  { ignores: ['dist','.motion-data/**','.motion-proof/**','.studio-data/**'] },
   js.configs.recommended,
+  {files:['motion/**/*.mjs','Questera-Backend/motion/**/*.cjs','Questera-Backend/studio/**/*.cjs','studio/**/*.cjs','tests/**/*.mjs'],languageOptions:{ecmaVersion:2022,globals:{...globals.node,...globals.browser}},rules:{'no-unused-vars':'off'}},
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {

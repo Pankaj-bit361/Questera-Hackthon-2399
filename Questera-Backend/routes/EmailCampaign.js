@@ -9,6 +9,16 @@ const controller = new EmailCampaignController();
 // TRACKING ENDPOINTS (Public - no auth required)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+const HOME = 'https://www.velosapps.com';
+const safeRedirect = (url) => {
+    try {
+        const u = new URL(String(url || ''));
+        return u.protocol === 'https:' && (u.hostname === 'velosapps.com' || u.hostname.endsWith('.velosapps.com')) ? u.href : HOME;
+    } catch {
+        return HOME;
+    }
+};
+
 // 1x1 transparent GIF pixel for open tracking
 const TRACKING_PIXEL = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
 
@@ -67,9 +77,8 @@ emailCampaignRouter.get('/track/click/:trackingId', async (req, res) => {
         console.error('[TRACK] Invalid click tracking ID:', e.message);
     }
 
-    // Redirect to the actual URL
-    const redirectUrl = req.query.url || 'https://www.velosapps.com';
-    res.redirect(302, redirectUrl);
+    // Redirect only to our own site, so the link cannot be used to send people anywhere else.
+    res.redirect(302, safeRedirect(req.query.url));
 });
 
 // GET /api/email-campaign/unsubscribe - Handle unsubscribe

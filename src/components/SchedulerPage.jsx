@@ -8,6 +8,7 @@ import CreatePostModal from './CreatePostModal';
 import { schedulerAPI } from '../lib/api';
 import { API_BASE_URL } from '../config';
 import { getUserId } from '../lib/velosStorage';
+import ApprovalQueue from './autopilot/ApprovalQueue';
 
 const { FiCalendar, FiClock, FiChevronLeft, FiChevronRight, FiPlus, FiTrash2, FiEdit2, FiInstagram, FiCheck, FiX, FiImage, FiVideo, FiPlay, FiUpload } = FiIcons;
 
@@ -340,6 +341,11 @@ const SchedulerPage = () => {
               AI Create
             </button>
           </div>
+        </div>
+
+        {/* Autopilot review queue - posts the agent drafted, held until approved */}
+        <div className="mb-10">
+          <ApprovalQueue userId={userId} />
         </div>
 
         {/* Stats Cards */}

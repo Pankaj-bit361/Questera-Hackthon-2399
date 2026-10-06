@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+// DEPRECATED: use POST /api/chat/agent (functions/AgentService.js). Kept for existing clients.
 const { GoogleGenAI } = require('@google/genai');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');

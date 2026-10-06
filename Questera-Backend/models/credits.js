@@ -56,7 +56,8 @@ const transactionSchema = new mongoose.Schema({
   },
   referenceType: {
     type: String,
-    enum: ['image_generation', 'subscription', 'manual', 'bonus', 'refund'],
+    // 'autopilot': media the autopilot made (functions/AutopilotBilling.js), counted toward its daily cap.
+    enum: ['image_generation', 'subscription', 'manual', 'bonus', 'refund', 'autopilot'],
   },
   balanceAfter: {
     type: Number,
@@ -120,6 +121,7 @@ const creditsSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  processedGrants: {type:[String],default:[]},
   // Transaction history
   transactions: [transactionSchema],
 }, { timestamps: true });

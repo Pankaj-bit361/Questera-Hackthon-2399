@@ -223,6 +223,7 @@ const HomePage = () => {
 
         <div className="relative z-10 w-full max-w-3xl mx-auto text-center space-y-8">
 
+          <button onClick={()=>navigate('/motion')} className="w-full flex items-center justify-between gap-4 rounded-2xl border border-lime-300/20 bg-lime-300/5 px-5 py-4 text-left hover:bg-lime-300/10 transition-colors"><span><span className="text-lime-300 text-xs tracking-wider uppercase">Motion Studio · Beta</span><span className="block text-white text-sm mt-1">Design editable videos with AI, scenes, and animation.</span></span><SafeIcon icon={FiArrowRight} className="w-5 h-5 text-lime-300" /></button>
           {/* Mode Toggle */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}

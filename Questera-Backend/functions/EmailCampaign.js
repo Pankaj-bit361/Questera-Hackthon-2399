@@ -451,7 +451,7 @@ class EmailCampaignController {
     // Email template with open/click tracking
     _getEmailTemplate(lead, name, category) {
         const trackingId = this._generateTrackingId(lead);
-        const trackingDomain = process.env.TRACKING_DOMAIN || 'https://hackathon.velosapps.com';
+        const trackingDomain = process.env.TRACKING_DOMAIN || 'https://api.velosapps.com';
 
         // Tracking URLs
         const openTrackingUrl = `${trackingDomain}/api/email-campaign/track/open/${trackingId}`;

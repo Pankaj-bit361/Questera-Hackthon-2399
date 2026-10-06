@@ -1,4 +1,5 @@
 const ContentEngine = require('./ContentEngine');
+const Autopilot = require('../models/autopilot');
 const ImageOrchestrator = require('./ImageOrchestrator');
 const SchedulerService = require('./SchedulerService');
 const Campaign = require('../models/campaign');
@@ -251,6 +252,8 @@ class CampaignOrchestrator {
     // Step 5: Schedule all posts
     console.log('📅 [CAMPAIGN-ORCH] Scheduling', postsToSchedule.length, 'posts...');
 
+    // Campaign posts wait for the user's approval like any other post Velos writes for them.
+    const autopilotId = await Autopilot.defaultIdFor(campaign.userId);
     for (let i = 0; i < postsToSchedule.length; i++) {
       const post = postsToSchedule[i];
       const scheduledTime = postingTimes[i] || new Date(Date.now() + (i + 1) * 3600000);
@@ -265,6 +268,9 @@ class CampaignOrchestrator {
         postType: post.postType,
         campaignId: campaign.campaignId,
         contentJobId: post.contentJobId,
+        source: 'campaign',
+        status: 'pending_approval',
+        autopilotId,
       });
 
       campaign.progress.scheduled += 1;

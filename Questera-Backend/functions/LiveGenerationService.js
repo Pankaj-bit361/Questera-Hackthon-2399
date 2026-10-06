@@ -1,4 +1,7 @@
 const GenerationJob = require('../models/generationJob');
+const ScheduledPost = require('../models/scheduledPost');
+const Autopilot = require('../models/autopilot');
+const { activePause } = require('./AccountHealth');
 const ContentEngine = require('./ContentEngine');
 const ImageOrchestrator = require('./ImageOrchestrator');
 const InstagramController = require('./Instagram');
@@ -93,7 +96,14 @@ class LiveGenerationService {
     console.log(`🔄 [LIVE-GEN] Found ${dueJobs.length} jobs due for generation`);
 
     const results = [];
-    for (const job of dueJobs) {
+    for (const due of dueJobs) {
+      // Claim it by moving its next run forward first, so another server's tick skips it.
+      const job = await GenerationJob.findOneAndUpdate(
+        { _id: due._id, status: 'active', 'schedule.nextRunAt': due.schedule.nextRunAt },
+        { $set: { 'schedule.nextRunAt': new Date(Date.now() + 30 * 60 * 1000) } },
+        { new: true }
+      );
+      if (!job) continue;
       try {
         const result = await this.executeJob(job);
         results.push({ jobId: job.jobId, success: true, ...result });
@@ -122,6 +132,19 @@ class LiveGenerationService {
   async executeJob(job) {
     console.log(`🎨 [LIVE-GEN] Executing job: ${job.name}`);
 
+    // Every image waits for the user's approval. While MAX_WAITING are waiting, make no more: an hourly job would
+    // otherwise fill the queue and spend credits on images nobody has looked at.
+    const platform = job.postingConfig.platform;
+    const waiting = await ScheduledPost.countDocuments({ userId: job.userId, source: 'live', status: 'pending_approval' });
+    const paused = await activePause(job.userId, platform);
+    if (waiting >= LiveGenerationService.MAX_WAITING || paused) {
+      job.schedule.nextRunAt = job.calculateNextRun();
+      await job.save();
+      const reason = paused ? `posting to ${platform} is paused` : `${waiting} posts are waiting for approval`;
+      console.log(`⏸️ [LIVE-GEN] ${job.jobId} skipped: ${reason}`);
+      return { skipped: true, reason, nextRunAt: job.schedule.nextRunAt };
+    }
+
     // Step 1: Select variation (theme, style, model)
     const variation = this.selectVariation(job);
     console.log(`🎨 [LIVE-GEN] Selected variation:`, variation);
@@ -138,11 +161,11 @@ class LiveGenerationService {
     const caption = await this.generateCaption(job, variation);
     console.log(`✍️ [LIVE-GEN] Generated caption`);
 
-    // Step 5: Post if autoPost enabled
+    // Step 5: Into the approval queue. Nothing Velos makes goes out without a review.
     let postResult = null;
     if (job.postingConfig.autoPost) {
-      postResult = await this.postImage(job, imageResult.url, caption);
-      console.log(`📤 [LIVE-GEN] Posted to ${job.postingConfig.platform}`);
+      postResult = await this.queueForApproval(job, imageResult.url, caption);
+      console.log(`📥 [LIVE-GEN] Queued ${postResult.postId} for approval`);
     }
 
     // Step 6: Update job history and schedule next run
@@ -151,7 +174,9 @@ class LiveGenerationService {
     return {
       imageUrl: imageResult.url,
       caption: caption.fullCaption,
-      posted: !!postResult?.success,
+      posted: false,
+      queuedForApproval: !!postResult?.queued,
+      postId: postResult?.postId || null,
       nextRunAt: job.schedule.nextRunAt,
     };
   }
@@ -277,6 +302,26 @@ class LiveGenerationService {
   }
 
   /**
+   * Put the image in the user's approval queue; it publishes once they approve it.
+   */
+  async queueForApproval(job, imageUrl, caption) {
+    const SchedulerService = require('./SchedulerService');
+    const post = await new SchedulerService().schedulePost(job.userId, {
+      socialAccountId: job.postingConfig.socialAccountId,
+      platform: job.postingConfig.platform,
+      imageUrl,
+      caption: caption.caption,
+      hashtags: caption.hashtags,
+      scheduledAt: new Date(Date.now() + 60 * 60 * 1000),
+      postType: 'image',
+      source: 'live',
+      status: 'pending_approval',
+      autopilotId: await Autopilot.defaultIdFor(job.userId),
+    });
+    return { success: true, queued: true, postId: post.postId };
+  }
+
+  /**
    * Post image to platform
    */
   async postImage(job, imageUrl, caption) {
@@ -311,13 +356,13 @@ class LiveGenerationService {
       prompt: imageResult.prompt,
       theme: variation.theme,
       style: variation.style,
-      status: postResult?.success ? 'posted' : 'generated',
+      status: postResult?.success && !postResult.queued ? 'posted' : 'generated',
       error: postResult?.error,
     });
 
     // Update counters
     job.limits.postsGenerated += 1;
-    if (postResult?.success) {
+    if (postResult?.success && !postResult.queued) {
       job.limits.postsPublished += 1;
     } else if (postResult?.error) {
       job.limits.postsFailed += 1;
@@ -380,5 +425,8 @@ class LiveGenerationService {
     return GenerationJob.findOne({ jobId, userId });
   }
 }
+
+/** Live posts waiting for approval before the job stops making more. */
+LiveGenerationService.MAX_WAITING = 3;
 
 module.exports = LiveGenerationService;

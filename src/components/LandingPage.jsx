@@ -57,6 +57,7 @@ const LandingPage = () => {
                     {/* Divider */}
                     <div className="w-px h-6 bg-white/10 mx-1" />
 
+                    <Link to="/motion" className="px-4 py-2 text-sm text-lime-300 hover:bg-white/5 rounded-xl">Motion Studio <span className="text-[9px] opacity-60">BETA</span></Link>
                     {/* Nav Links */}
                     <div className="flex items-center">
                         <button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="px-4 py-2 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all">Pricing</button>
@@ -183,19 +184,9 @@ const LandingPage = () => {
                             </button>
                         </div>
 
-                        {/* Social Proof */}
+                        {/* What it posts to */}
                         <div className="flex items-center gap-3 pt-4">
-                            <div className="flex -space-x-2">
-                                {[1, 2, 3].map(i => (
-                                    <div
-                                        key={i}
-                                        className="w-8 h-8 rounded-full border-2 border-black bg-zinc-800 overflow-hidden"
-                                    >
-                                        <img src={`https://i.pravatar.cc/80?img=${i + 10}`} className="w-full h-full object-cover" alt="" />
-                                    </div>
-                                ))}
-                            </div>
-                            <span className="text-sm text-zinc-500">10,000+ creators</span>
+                            <span className="text-sm text-zinc-500">Posts to Instagram, LinkedIn and X</span>
                         </div>
 
                         {/* Mobile Circuit Visual - Only visible on mobile/tablet */}
@@ -568,7 +559,7 @@ const LandingPage = () => {
             <section id="creation" className="py-32 px-6 relative z-10">
                 <div className="max-w-7xl mx-auto mb-20">
                     <h2 className="text-4xl md:text-6xl font-bold mb-6">The Creation Suite.</h2>
-                    <p className="text-xl text-zinc-400 max-w-2xl">Unbound creative power. Generate cinema-grade assets from simple text.</p>
+                    <p className="text-xl text-zinc-400 max-w-2xl">Make images and short video clips from a text description, a reference image or a start frame.</p>
                 </div>
 
                 <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-8">
@@ -611,9 +602,9 @@ const LandingPage = () => {
                             <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center mb-6 border border-white/20">
                                 <FiPlay className="w-6 h-6 text-white" />
                             </div>
-                            <h3 className="text-3xl font-bold mb-3">Veo 3.1 Cinematic</h3>
+                            <h3 className="text-3xl font-bold mb-3">Video Generation</h3>
                             <p className="text-zinc-400 mb-6">
-                                The world's most advanced video model. Generate 60s clips with consistent characters and physics.
+                                Clips of up to 8 seconds from text or a start frame, in portrait or landscape, with Google Veo and other video models.
                             </p>
                             <div className="flex gap-3 text-xs font-mono text-zinc-500 uppercase">
                                 <span className="bg-white/5 px-2 py-1 rounded inline-block border border-white/5">Start Frames</span>
@@ -631,7 +622,7 @@ const LandingPage = () => {
                 <div className="max-w-7xl mx-auto mb-20 flex md:flex-row flex-col items-end justify-between gap-8">
                     <div>
                         <h2 className="text-4xl md:text-6xl font-bold mb-6">Growth Autopilot.</h2>
-                        <p className="text-xl text-zinc-400 max-w-xl">Don't just create. Dominate the feed with AI-driven social intelligence.</p>
+                        <p className="text-xl text-zinc-400 max-w-xl">Velos plans, writes and schedules posts for Instagram, LinkedIn and X, and asks for your approval before anything goes out.</p>
                     </div>
                     <div className="flex gap-2">
                         <div className="w-3 h-3 rounded-full bg-red-500" />
@@ -697,7 +688,7 @@ const LandingPage = () => {
                         <FiTrendingUp className="w-8 h-8 text-green-400 mb-4" />
                         <div>
                             <h3 className="text-xl font-bold">Viral Hunter</h3>
-                            <p className="text-zinc-500 text-sm mt-2">AI scans trending content in your niche to generate high-probability viral ideas.</p>
+                            <p className="text-zinc-500 text-sm mt-2">Looks at what is trending in your niche and suggests post ideas from it.</p>
                         </div>
                     </div>
 
@@ -823,14 +814,14 @@ const LandingPage = () => {
                     {/* Top Section - CTA */}
                     <div className="text-center mb-20">
                         <h2 className="text-4xl md:text-5xl font-bold mb-4">Ready to create?</h2>
-                        <p className="text-zinc-500 mb-8 max-w-md mx-auto">Join 10,000+ creators using Velos AI to generate stunning content.</p>
+                        <p className="text-zinc-500 mb-8 max-w-md mx-auto">Start free with 20 credits. No card needed.</p>
                         <Link to="/login" className="inline-flex items-center gap-2 px-8 py-4 bg-white text-black rounded-full font-bold text-lg hover:shadow-[0_0_40px_-5px_rgba(255,255,255,0.5)] transition-all duration-300 hover:scale-105">
                             Start Free <FiArrowRight className="w-5 h-5" />
                         </Link>
                     </div>
 
                     {/* Links Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-16">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-10 mb-16">
                         {/* Brand */}
                         <div className="col-span-2">
                             <div className="flex items-center gap-3 mb-6">
@@ -838,21 +829,8 @@ const LandingPage = () => {
                                 <span className="font-bold text-xl">Velos AI</span>
                             </div>
                             <p className="text-zinc-500 text-sm max-w-xs mb-6 leading-relaxed">
-                                The AI operating system for modern creators. Transform ideas into viral content at the speed of thought.
+                                Images, videos and scheduled posts for Instagram, LinkedIn and X, made with AI.
                             </p>
-                            {/* Social Icons */}
-                            <div className="flex gap-4">
-                                {[
-                                    { label: 'X', url: 'https://twitter.com' },
-                                    { label: 'In', url: 'https://linkedin.com' },
-                                    { label: 'YT', url: 'https://youtube.com' },
-                                    { label: 'GH', url: 'https://github.com' }
-                                ].map((social, i) => (
-                                    <a key={i} href={social.url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-xs font-bold text-zinc-400 hover:bg-white/10 hover:text-white transition-all hover:scale-110">
-                                        {social.label}
-                                    </a>
-                                ))}
-                            </div>
                         </div>
 
                         {/* Product */}
@@ -865,44 +843,16 @@ const LandingPage = () => {
                                 <li><button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="text-zinc-500 hover:text-white transition-colors">Pricing</button></li>
                             </ul>
                         </div>
-
-                        {/* Resources */}
-                        <div>
-                            <h4 className="font-semibold text-white mb-6 text-sm uppercase tracking-wider">Resources</h4>
-                            <ul className="space-y-4 text-sm">
-                                <li><span className="text-zinc-500 cursor-default">Documentation</span></li>
-                                <li><span className="text-zinc-500 cursor-default">API Reference</span></li>
-                                <li><span className="text-zinc-500 cursor-default">Tutorials</span></li>
-                                <li><span className="text-zinc-500 cursor-default">Blog</span></li>
-                            </ul>
-                        </div>
-
-                        {/* Company */}
-                        <div>
-                            <h4 className="font-semibold text-white mb-6 text-sm uppercase tracking-wider">Company</h4>
-                            <ul className="space-y-4 text-sm">
-                                <li><span className="text-zinc-500 cursor-default">About Us</span></li>
-                                <li><span className="text-zinc-500 cursor-default">Careers <span className="ml-1 px-2 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded-full">Hiring</span></span></li>
-                                <li><span className="text-zinc-500 cursor-default">Contact</span></li>
-                                <li><span className="text-zinc-500 cursor-default">Press Kit</span></li>
-                            </ul>
-                        </div>
                     </div>
 
                     {/* Bottom Bar */}
                     <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
                         <div className="flex items-center gap-6 text-xs text-zinc-600">
-                            <p>© 2024 Velos AI. All rights reserved.</p>
-                            <span className="hidden md:block">•</span>
-                            <span className="hidden md:flex items-center gap-2">
-                                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                                All systems operational
-                            </span>
+                            <p>© {new Date().getFullYear()} Velos AI. All rights reserved.</p>
                         </div>
                         <div className="flex gap-8 text-xs text-zinc-600">
                             <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
                             <Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link>
-                            <span className="cursor-default">Cookie Policy</span>
                         </div>
                     </div>
                 </div>

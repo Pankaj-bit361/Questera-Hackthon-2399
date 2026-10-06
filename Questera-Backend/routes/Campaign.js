@@ -1,7 +1,12 @@
 const express = require('express');
 const campaignRouter = express.Router();
+const { selfParam, ownedParam } = require('../middlewares/auth');
 const CampaignOrchestrator = require('../functions/CampaignOrchestrator');
 const Campaign = require('../models/campaign');
+
+// The caller's own records only (middlewares/auth.js).
+campaignRouter.param('userId', selfParam);
+campaignRouter.param('campaignId', ownedParam(Campaign, 'campaignId'));
 
 const campaignOrchestrator = new CampaignOrchestrator();
 

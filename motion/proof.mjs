@@ -1,0 +1,13 @@
+import {bundle} from '@remotion/bundler';
+import {selectComposition,renderMedia,renderStill} from '@remotion/renderer';
+import {exampleProject} from './schema.mjs';
+import {mkdir} from 'node:fs/promises';
+import path from 'node:path';
+const project=exampleProject(process.argv[2]||'launch');
+const out=path.resolve('.motion-proof');await mkdir(out,{recursive:true});
+const serveUrl=await bundle({entryPoint:path.resolve('motion/entry.jsx'),publicDir:path.resolve('public')});
+const inputProps={project,urls:{}};
+const composition=await selectComposition({serveUrl,id:'VelosMotion',inputProps});
+await renderStill({serveUrl,composition,inputProps,output:path.join(out,'reference.png'),frame:60});
+await renderMedia({serveUrl,composition,inputProps,codec:'h264',outputLocation:path.join(out,'reference.mp4'),concurrency:2,onProgress:({progress})=>{if(progress===1)console.log('Rendering complete.');}});
+console.log(JSON.stringify({output:out,frames:composition.durationInFrames,width:composition.width,height:composition.height}));

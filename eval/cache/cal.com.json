@@ -1,0 +1,295 @@
+{
+  "host": "cal.com",
+  "brand": {
+    "companyName": "Cal.com",
+    "oneLiner": "A fully customizable scheduling platform for individuals, businesses taking calls, and developers building scheduling tools.",
+    "topicsAllowed": [
+      "Meeting scheduling",
+      "Developer scheduling infrastructure",
+      "Calendar management",
+      "Data privacy and health information compliance",
+      "Product design and UX in SaaS",
+      "Platform migrations from legacy booking tools"
+    ],
+    "targetAudience": "Individuals, businesses taking client calls, and developers building scheduling platforms where users meet users.",
+    "visualStyle": "Minimalist, sleek, modern developer-focused aesthetic",
+    "tone": "bold",
+    "uniqueSellingPoints": [
+      "Fully customizable scheduling software built for both end users and developers",
+      "Open platform architecture offering greater flexibility than legacy tools like Calendly and SavvyCal",
+      "Secure scheduling infrastructure trusted for sensitive use cases like personal health information"
+    ],
+    "proofPoints": [
+      "Cal Video is Cal.com's in-house video conferencing platform.",
+      "Cal.com allows users to accept payments and monetize bookings through a Stripe integration.",
+      "Cal.com provides support for 65+ languages.",
+      "Cal.com lets users set daily, weekly, or monthly meeting limits and configure notice periods and buffers before or after events.",
+      "Cal.com provides React atoms to add scheduling components to applications.",
+      "Ant Wilson, Co-Founder & CTO of Supabase, migrated from Calendly to Cal.com.",
+      "The Out of Office feature allows users to automatically block their calendar or redirect booking requests to another team member or resource.",
+      "Priority access override allows urgent meetings to bypass out-of-office settings.",
+      "The Out of Office tool allows setting an automatic end date and time to restore normal availability.",
+      "Cal.com connects with Slack, Salesforce, and over 100 additional apps.",
+      "Cal.com embeds can be displayed inline, as a button, or as a pop-up.",
+      "Cal.com generates previewable embed code blocks in HTML or React.",
+      "Users can create multiple embeds on a single website page to display different availabilities.",
+      "Cal.com has a mission to connect a billion people by 2031 through calendar scheduling.",
+      "The Individuals plan is free forever and includes 1 user, unlimited event types, unlimited calendars, and email and SMS notifications."
+    ],
+    "contentAngles": [
+      "Why developers and tech founders are migrating from Calendly to Cal.com",
+      "Best practices for embedding scheduling into custom apps and platforms",
+      "Protecting privacy and sensitive data within automated booking workflows",
+      "Improving scheduling UX and reducing booking friction for clients",
+      "Product design principles behind modern calendar and booking software"
+    ],
+    "competitorsMentioned": [
+      "Calendly",
+      "SavvyCal"
+    ],
+    "confidence": "high"
+  },
+  "facts": [
+    {
+      "text": "Cal Video is Cal.com's in-house video conferencing platform.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/"
+    },
+    {
+      "text": "Cal.com allows users to accept payments and monetize bookings through a Stripe integration.",
+      "kind": "integration",
+      "sourceUrl": "https://cal.com/"
+    },
+    {
+      "text": "Cal.com provides support for 65+ languages.",
+      "kind": "number",
+      "sourceUrl": "https://cal.com/"
+    },
+    {
+      "text": "Cal.com lets users set daily, weekly, or monthly meeting limits and configure notice periods and buffers before or after events.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/"
+    },
+    {
+      "text": "Cal.com provides React atoms to add scheduling components to applications.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/"
+    },
+    {
+      "text": "Ant Wilson, Co-Founder & CTO of Supabase, migrated from Calendly to Cal.com.",
+      "kind": "customer",
+      "sourceUrl": "https://cal.com/"
+    },
+    {
+      "text": "The Out of Office feature allows users to automatically block their calendar or redirect booking requests to another team member or resource.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/features/ooo"
+    },
+    {
+      "text": "Priority access override allows urgent meetings to bypass out-of-office settings.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/features/ooo"
+    },
+    {
+      "text": "The Out of Office tool allows setting an automatic end date and time to restore normal availability.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/features/ooo"
+    },
+    {
+      "text": "Cal.com connects with Slack, Salesforce, and over 100 additional apps.",
+      "kind": "integration",
+      "sourceUrl": "https://cal.com/features/ooo"
+    },
+    {
+      "text": "Cal.com embeds can be displayed inline, as a button, or as a pop-up.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/features/embed"
+    },
+    {
+      "text": "Cal.com generates previewable embed code blocks in HTML or React.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/features/embed"
+    },
+    {
+      "text": "Users can create multiple embeds on a single website page to display different availabilities.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/features/embed"
+    },
+    {
+      "text": "Cal.com has a mission to connect a billion people by 2031 through calendar scheduling.",
+      "kind": "number",
+      "sourceUrl": "https://cal.com/features/embed"
+    },
+    {
+      "text": "The Individuals plan is free forever and includes 1 user, unlimited event types, unlimited calendars, and email and SMS notifications.",
+      "kind": "pricing",
+      "sourceUrl": "https://cal.com/pricing"
+    },
+    {
+      "text": "Cal.com supports two-way Salesforce and HubSpot sync on the Free plan.",
+      "kind": "integration",
+      "sourceUrl": "https://cal.com/pricing"
+    },
+    {
+      "text": "The Organizations plan includes SAML SSO, SCIM, and compliance with SOC 2, HIPAA, and ISO 27001.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/pricing"
+    },
+    {
+      "text": "Cal.com has its own variable typeface called Cal Sans UI & Text for user interface design.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/about"
+    },
+    {
+      "text": "Cal.com includes Payments functionality to accept payments for bookings.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/about"
+    },
+    {
+      "text": "Cal.com operates as an Open Startup with a fully distributed team and no physical headquarters.",
+      "kind": "other",
+      "sourceUrl": "https://cal.com/about"
+    },
+    {
+      "text": "Cal.com is trusted by more than 1,000,000+ users.",
+      "kind": "number",
+      "sourceUrl": "https://cal.com/customers"
+    },
+    {
+      "text": "Deel saved over 6,000 hours per week using Cal.com's custom scheduling solution.",
+      "kind": "customer",
+      "sourceUrl": "https://cal.com/customers"
+    },
+    {
+      "text": "Pangea.app achieved a 70% revenue boost with Cal.com's scheduling solution.",
+      "kind": "customer",
+      "sourceUrl": "https://cal.com/customers"
+    },
+    {
+      "text": "Kiaora saved 24 hours a month with Cal.com.",
+      "kind": "customer",
+      "sourceUrl": "https://cal.com/customers"
+    },
+    {
+      "text": "dtcmvp uses Cal.com to power a marketplace of 30+ teams.",
+      "kind": "customer",
+      "sourceUrl": "https://cal.com/customers"
+    },
+    {
+      "text": "Retell AI saved thousands of hours of development time with Cal.com.",
+      "kind": "customer",
+      "sourceUrl": "https://cal.com/customers"
+    },
+    {
+      "text": "Cal.com raised a $7.4 million seed round led by Joseph Jacks from OSS Capital.",
+      "kind": "number",
+      "sourceUrl": "https://cal.com/blog/seed"
+    },
+    {
+      "text": "On Deck integrated Cal.com into their core scheduling infrastructure.",
+      "kind": "customer",
+      "sourceUrl": "https://cal.com/blog/seed"
+    },
+    {
+      "text": "Cal.com v4.2 automatically autosaves changes made when editing availability schedules.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/blog/v-4-2"
+    },
+    {
+      "text": "Cal.com supports using {Organizer first name} or {Scheduler first name} variables in custom event type titles.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/blog/v-4-2"
+    },
+    {
+      "text": "Cal.com supports organization and team-wide webhooks that trigger for all event types across teams.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/blog/v-4-2"
+    },
+    {
+      "text": "Cal.com allows assigning team members to round-robin events directly from the member table.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/blog/v-4-2"
+    },
+    {
+      "text": "Organization Admins can query bookings for organization members using GET, POST, PATCH, or DELETE API requests.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/blog/v-4-2"
+    },
+    {
+      "text": "Creating an Organization on Cal.com no longer requires a minimum of two teams.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/blog/v-4-2"
+    },
+    {
+      "text": "Cal.com caches events on connected Google Calendars to speed up loading times and deliver a 300-500ms boost for individual booking pages.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/blog/v-4-8"
+    },
+    {
+      "text": "The Salesforce integration supports writing booking question responses to attendee records and mapping responses to the 'Company' field in Salesforce leads.",
+      "kind": "integration",
+      "sourceUrl": "https://cal.com/blog/v-4-8"
+    },
+    {
+      "text": "Chatbase.co, an AI chatbot website embed, integrates with Cal.com.",
+      "kind": "integration",
+      "sourceUrl": "https://cal.com/blog/v-4-8"
+    },
+    {
+      "text": "Cal.com uses AI to translate event type descriptions into English, Spanish, German, Portuguese, French, Italian, Arabic, Chinese, and Russian.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/blog/v-4-8"
+    },
+    {
+      "text": "Cal.com supports SCIM syncing for Okta user events to sync custom predefined attributes.",
+      "kind": "integration",
+      "sourceUrl": "https://cal.com/blog/v-4-8"
+    },
+    {
+      "text": "Users can create teams with any valid email and each team receives a unique slug.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/blog/v-4-8"
+    },
+    {
+      "text": "An auto-fill feature populates returning attendees' names, surnames, and phone numbers in the booking form.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/blog/v-4-8"
+    },
+    {
+      "text": "Webhook support for Managed Events allows parent and child webhooks to trigger together.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/blog/v-4-8"
+    },
+    {
+      "text": "Round-robin booking allocations calculate workload distribution based only on bookings created within the current month.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/blog/v-4-7"
+    },
+    {
+      "text": "Cal Atoms offers the first 25 bookings each month for free, with a $0.99 fee per booking for additional bookings.",
+      "kind": "pricing",
+      "sourceUrl": "https://cal.com/blog/v-4-7"
+    },
+    {
+      "text": "Telli and Dialpad are available to integrate from the Cal.com app store.",
+      "kind": "integration",
+      "sourceUrl": "https://cal.com/blog/v-4-7"
+    },
+    {
+      "text": "Cal.com API Key rate limits are set to 120 requests per minute by default.",
+      "kind": "number",
+      "sourceUrl": "https://cal.com/docs/api-reference/v2"
+    },
+    {
+      "text": "Cal.com Atoms support React 18, React 19, Next.js 14, and Next.js 15.",
+      "kind": "feature",
+      "sourceUrl": "https://cal.com/docs/atoms/introduction"
+    },
+    {
+      "text": "Cal.com Atoms accept payments via Stripe for bookings.",
+      "kind": "integration",
+      "sourceUrl": "https://cal.com/docs/atoms/introduction"
+    }
+  ],
+  "readAt": "2026-10-04T15:33:23.195Z"
+}

@@ -118,7 +118,7 @@ const ACTION_INTENTS = ['generate_image', 'generate_and_post', 'edit_image', 'sc
 class RouterAgent {
    constructor(options = {}) {
       this.llm = new OpenRouterProvider({
-         model: options.model || 'google/gemini-3-flash-preview'
+         model: options.model || process.env.AUTOPILOT_LLM_MODEL || 'google/gemini-3.7-flash'
       });
    }
 

@@ -285,20 +285,32 @@ Output JSON:
 
     console.log('📦 [ORCHESTRATOR] Created content job:', contentJob.jobId);
 
-    // Return immediately with job info (generation happens async or via separate endpoint)
+    // Execute generation in the same request so clients no longer need POST /chat/generate
+    const ImageOrchestrator = require('./ImageOrchestrator');
+    const imageOrchestrator = new ImageOrchestrator();
+    let executed = null;
+    try {
+      executed = await imageOrchestrator.executeJob(contentJob.jobId, referenceImages);
+    } catch (err) {
+      console.error('❌ [ORCHESTRATOR] Inline generation failed:', err.message);
+    }
+
+    const job = executed?.job || contentJob;
     return {
       success: true,
       intent: intent.intent,
       message: intent.message,
       contentJob: {
-        jobId: contentJob.jobId,
-        type: contentJob.type,
-        status: contentJob.status,
+        jobId: job.jobId,
+        type: job.type,
+        status: job.status,
         prompts: prompts,
         designBrief,
         count: prompts.length,
+        outputAssets: job.outputAssets || [],
       },
-      // Viral content for the post
+      results: executed?.results || [],
+      imageUrl: executed?.results?.[0]?.url || null,
       viralContent: {
         title: viralContent.title,
         hook: viralContent.hook,
@@ -311,7 +323,6 @@ Output JSON:
         viralScore: viralContent.viralScore,
         viralTips: viralContent.viralTips,
       },
-      // For backward compatibility, include first prompt for immediate generation
       prompt: prompts[0],
       imageChatId: existingChatId || contentJob.imageChatId,
     };
@@ -530,7 +541,8 @@ Keep responses concise and friendly.`;
 
     return {
       type: 'campaign_created',
-      message: intent.message || `Great! I'm creating a campaign with ${count} images that will be posted every ${intervalMinutes} minutes to your Instagram (@${socialAccount.username}). I'll start generating the images now!`,
+      // Fixed wording, not the model's: campaign posts wait in the approval queue.
+      message: `I'm creating a campaign of ${count} images for your Instagram (@${socialAccount.username}), one every ${intervalMinutes} minutes. As each is ready it goes to your approval queue on the Autopilot page; nothing posts until you approve it.`,
       campaign: campaignResult.campaign,
       nextStep: 'Generating images... This may take a few minutes.',
     };
@@ -654,7 +666,8 @@ Keep responses concise and friendly.`;
 
     return {
       type: 'live_generation_started',
-      message: intent.message || `I've set up continuous content generation for you! Every ${intervalText}, I'll create a fresh new image and post it automatically to your Instagram (@${instagram.instagramUsername}). The first post will go out at ${job.schedule.nextRunAt.toLocaleString()}. You can pause or stop this anytime!`,
+      // Fixed wording, not the model's: it has to say what really happens (every image waits for approval).
+      message: `I've set up continuous content generation for you. Every ${intervalText} I'll make a new image for your Instagram (@${instagram.instagramUsername}) and put it in your approval queue on the Autopilot page; nothing posts until you approve it. The first one will be ready around ${job.schedule.nextRunAt.toLocaleString()}. You can pause or stop this anytime.`,
       job: {
         jobId: job.jobId,
         name: job.name,

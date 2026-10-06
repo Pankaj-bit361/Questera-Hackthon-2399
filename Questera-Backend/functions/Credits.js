@@ -2,6 +2,7 @@ const Credits = require('../models/credits');
 const { PLAN_CONFIG } = require('../models/credits');
 const crypto = require('crypto');
 const Razorpay = require('razorpay');
+const {mutateCredits} = require('./creditMutation');
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -18,7 +19,7 @@ class CreditsController {
 
     if (!credits) {
       // Create new credits record with free plan
-      credits = await Credits.create({
+      try { credits = await Credits.create({
         userId,
         balance: PLAN_CONFIG.free.credits,
         plan: 'free',
@@ -31,6 +32,7 @@ class CreditsController {
           balanceAfter: PLAN_CONFIG.free.credits,
         }],
       });
+      } catch (error) { if (error.code !== 11000) throw error; credits = await Credits.findOne({userId}); }
       console.log(`💳 [CREDITS] Created new credits for user ${userId} with ${PLAN_CONFIG.free.credits} credits`);
     }
 
@@ -81,129 +83,66 @@ class CreditsController {
   /**
    * Deduct credits for image generation
    */
-  async deductCredits(userId, amount = 1, reference = null, description = 'Image generation') {
-    const credits = await this.getOrCreateCredits(userId);
-
-    if (credits.balance < amount) {
-      return { success: false, error: 'Insufficient credits', balance: credits.balance };
-    }
-
-    credits.balance -= amount;
-    credits.totalCreditsUsed += amount;
-
-    credits.transactions.push({
-      type: 'credit_deduct',
-      amount: -amount,
-      description,
-      reference,
-      referenceType: 'image_generation',
-      balanceAfter: credits.balance,
+  async deductCredits(userId, amount = 1, reference = null, description = 'Image generation', referenceType = 'image_generation') {
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Credit amount must be positive.');
+    await this.getOrCreateCredits(userId);
+    let insufficient = false;
+    const credits = await mutateCredits(Credits,userId,current => {
+      insufficient = current.balance < amount;
+      if (insufficient) return null;
+      current.balance -= amount; current.totalCreditsUsed += amount;
+      current.transactions.push({transactionId:crypto.randomUUID(),type:'credit_deduct',amount:-amount,description,reference,referenceType,balanceAfter:current.balance,createdAt:new Date()});
+      return current;
     });
-
-    await credits.save();
-
-    console.log(`💳 [CREDITS] Deducted ${amount} credit(s) from user ${userId}. Balance: ${credits.balance}`);
-
-    return { success: true, balance: credits.balance, creditsUsed: amount };
+    return insufficient ? {success:false,error:'Insufficient credits',balance:credits.balance} : {success:true,balance:credits.balance,creditsUsed:amount};
   }
 
   /**
    * Add credits (for subscriptions, bonuses, etc.)
    */
   async addCredits(userId, amount, type = 'bonus', description = 'Credits added', reference = null) {
-    const credits = await this.getOrCreateCredits(userId);
-
-    credits.balance += amount;
-
-    credits.transactions.push({
-      type,
-      amount,
-      description,
-      reference,
-      referenceType: type === 'subscription' ? 'subscription' : 'bonus',
-      balanceAfter: credits.balance,
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Credit amount must be positive.');
+    await this.getOrCreateCredits(userId);
+    const credits = await mutateCredits(Credits,userId,current => {
+      if(reference && current.transactions.some(t=>t.reference===reference && t.type===type))return null;
+      current.balance += amount;
+      current.transactions.push({transactionId:crypto.randomUUID(),type,amount,description,reference,referenceType:type==='subscription'?'subscription':'bonus',balanceAfter:current.balance,createdAt:new Date()});return current;
     });
-
-    await credits.save();
-
-    console.log(`💳 [CREDITS] Added ${amount} credits to user ${userId}. Balance: ${credits.balance}`);
-
-    return { success: true, balance: credits.balance };
+    return {success:true,balance:credits.balance};
   }
 
   /**
    * Update subscription and add credits (Razorpay)
    */
   async handleSubscription(userId, planKey, razorpayCustomerId, razorpaySubscriptionId, periodStart, periodEnd) {
-    const credits = await this.getOrCreateCredits(userId);
-    const planConfig = PLAN_CONFIG[planKey];
-
-    if (!planConfig) {
-      throw new Error(`Invalid plan: ${planKey}`);
-    }
-
-    // Update subscription info
-    credits.plan = planKey;
-    credits.planName = planConfig.name;
-    credits.razorpayCustomerId = razorpayCustomerId;
-    credits.razorpaySubscriptionId = razorpaySubscriptionId;
-    credits.subscriptionStatus = 'active';
-    credits.currentPeriodStart = periodStart;
-    credits.currentPeriodEnd = periodEnd;
-    credits.lastCreditReset = new Date();
-
-    // Add plan credits
-    credits.balance += planConfig.credits;
-
-    credits.transactions.push({
-      type: 'subscription',
-      amount: planConfig.credits,
-      description: `${planConfig.name} subscription - ${planConfig.credits} credits`,
-      reference: razorpaySubscriptionId,
-      referenceType: 'subscription',
-      balanceAfter: credits.balance,
+    const planConfig=PLAN_CONFIG[planKey];
+    if(!planConfig)throw new Error('Invalid plan.');
+    if(!Number.isFinite(periodStart.getTime()) || !Number.isFinite(periodEnd.getTime()) || periodEnd<=periodStart)throw new Error('Subscription period is invalid.');
+    await this.getOrCreateCredits(userId);
+    // Checkout, activation, and charged events for one billing period grant once.
+    const grantId=`${razorpaySubscriptionId}:${periodStart.toISOString()}`;
+    const credits=await mutateCredits(Credits,userId,current=>{
+      if((current.processedGrants||[]).includes(grantId))return null;
+      current.processedGrants=[...(current.processedGrants||[]),grantId];
+      Object.assign(current,{plan:planKey,planName:planConfig.name,razorpayCustomerId,razorpaySubscriptionId,subscriptionStatus:'active',currentPeriodStart:periodStart,currentPeriodEnd:periodEnd,lastCreditReset:new Date()});
+      current.balance+=planConfig.credits;
+      current.transactions.push({transactionId:crypto.randomUUID(),type:'subscription',amount:planConfig.credits,description:`${planConfig.name} subscription`,reference:grantId,referenceType:'subscription',balanceAfter:current.balance,createdAt:new Date()});return current;
     });
-
-    await credits.save();
-
-    console.log(`💳 [CREDITS] Subscription activated: ${planConfig.name} for user ${userId}. Added ${planConfig.credits} credits. Balance: ${credits.balance}`);
-
-    return { success: true, balance: credits.balance, plan: planKey };
+    return {success:true,balance:credits.balance,plan:credits.plan};
   }
 
   /**
    * Handle subscription cancellation
    */
   async handleCancellation(userId) {
-    const credits = await this.getOrCreateCredits(userId);
-
-    const previousBalance = credits.balance;
-
-    // Remove all credits when subscription is cancelled
-    credits.balance = 0;
-    credits.subscriptionStatus = 'canceled';
-    credits.plan = 'free';
-    credits.planName = 'Free';
-    credits.razorpaySubscriptionId = null;
-    credits.currentPeriodStart = null;
-    credits.currentPeriodEnd = null;
-
-    // Log the cancellation transaction
-    if (previousBalance > 0) {
-      credits.transactions.push({
-        type: 'credit_deduct',
-        amount: -previousBalance,
-        description: 'Subscription cancelled - all credits removed',
-        referenceType: 'subscription',
-        balanceAfter: 0,
-      });
-    }
-
-    await credits.save();
-
-    console.log(`💳 [CREDITS] Subscription canceled for user ${userId}. Removed ${previousBalance} credits. Balance: 0`);
-
-    return { success: true, balance: 0, creditsRemoved: previousBalance };
+    await this.getOrCreateCredits(userId); let removed=0;
+    await mutateCredits(Credits,userId,current=>{
+      removed=current.balance;
+      if(current.subscriptionStatus==='canceled'&&removed===0)return null;
+      Object.assign(current,{balance:0,subscriptionStatus:'canceled',plan:'free',planName:'Free',razorpaySubscriptionId:null,currentPeriodStart:null,currentPeriodEnd:null});
+      if(removed>0)current.transactions.push({transactionId:crypto.randomUUID(),type:'credit_deduct',amount:-removed,description:'Subscription cancelled - all credits removed',referenceType:'subscription',balanceAfter:0,createdAt:new Date()});return current;
+    });
+    return {success:true,balance:0,creditsRemoved:removed};
   }
 
   /**
@@ -343,7 +282,7 @@ class CreditsController {
 
       // Get plan config
       const planConfig = PLAN_CONFIG[planKey];
-      if (!planConfig) {
+      if (!planConfig || subscription.plan_id !== planConfig.razorpayPlanId || subscription.notes?.userId !== userId || subscription.status !== 'active') {
         return { status: 400, json: { error: 'Invalid plan' } };
       }
 
@@ -386,11 +325,9 @@ class CreditsController {
    * Verify Razorpay webhook signature
    */
   verifyWebhookSignature(body, signature, secret) {
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(JSON.stringify(body))
-      .digest('hex');
-    return expectedSignature === signature;
+    if(!Buffer.isBuffer(body)||!secret||typeof signature!=='string'||!/^[0-9a-f]{64}$/i.test(signature))return false;
+    const expected=crypto.createHmac('sha256',secret).update(body).digest();
+    return crypto.timingSafeEqual(expected,Buffer.from(signature,'hex'));
   }
 
   /**
@@ -401,14 +338,8 @@ class CreditsController {
       const signature = req.headers['x-razorpay-signature'];
       const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-      // Verify signature
-      if (webhookSecret && signature) {
-        const isValid = this.verifyWebhookSignature(req.body, signature, webhookSecret);
-        if (!isValid) {
-          console.error('❌ [WEBHOOK] Invalid Razorpay signature');
-          return { status: 400, json: { error: 'Invalid signature' } };
-        }
-      }
+      if(!webhookSecret)return {status:503,json:{error:'Billing webhook is not configured'}};
+      if(!this.verifyWebhookSignature(req.rawBody,signature,webhookSecret))return {status:400,json:{error:'Invalid webhook signature'}};
 
       const event = req.body;
       console.log('📥 [WEBHOOK] Razorpay event:', event.event);
@@ -437,6 +368,7 @@ class CreditsController {
           const periodStart = new Date(subscription.current_start * 1000);
           const periodEnd = new Date(subscription.current_end * 1000);
 
+          if(subscription.status!=='active')break;
           await this.handleSubscription(
             userId,
             plan.key,
@@ -496,7 +428,7 @@ class CreditsController {
         console.log(`✅ [CANCEL] Cancelled Razorpay subscription ${credits.razorpaySubscriptionId}`);
       } catch (razorpayError) {
         console.error('❌ [CANCEL] Razorpay cancellation error:', razorpayError);
-        // Continue with local cancellation even if Razorpay fails
+        return {status:502,json:{error:'The billing provider could not cancel this subscription. Try again.'}};
       }
 
       // Remove all credits and update status

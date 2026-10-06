@@ -429,6 +429,40 @@ const MessageList = ({ messages, loading, streamingStatus, onDeleteMessage, sele
                 </div>
               )}
 
+              {/* Generated Video (Assistant) */}
+              {msg.role === 'assistant' && (msg.videoUrl || msg.videoStatus === 'processing') && (
+                <div className="flex flex-col mt-2">
+                  <div className="relative rounded-3xl overflow-hidden shadow-2xl bg-[#09090b] border border-white/10 max-w-[280px] sm:max-w-[320px]">
+                    {msg.videoUrl ? (
+                      <video src={msg.videoUrl} controls className="w-full h-auto block" />
+                    ) : (
+                      <div className="w-full aspect-video flex flex-col items-center justify-center gap-3 p-6">
+                        <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        <p className="text-xs text-zinc-400 font-medium">
+                          {msg.videoStatus === 'failed' ? 'Video generation failed' : 'Generating video…'}
+                        </p>
+                        {typeof msg.videoProgress === 'number' && msg.videoStatus !== 'failed' && (
+                          <div className="w-40 h-1 rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-full bg-white transition-all duration-500" style={{ width: `${Math.min(100, msg.videoProgress)}%` }} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {msg.videoUrl && (
+                    <div className="mt-3 flex items-center gap-2 max-w-[280px] sm:max-w-[320px]">
+                      <button
+                        onClick={() => handleDownload(msg.videoUrl)}
+                        className="p-2 rounded-xl bg-zinc-900 text-zinc-400 border border-white/5 hover:text-white hover:border-white/20 transition-all"
+                        title="Download Video"
+                      >
+                        <SafeIcon icon={FiDownload} className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Generated Image (Assistant) */}
               {msg.role === 'assistant' && msg.imageUrl && (
                 <div className="flex flex-col mt-2">

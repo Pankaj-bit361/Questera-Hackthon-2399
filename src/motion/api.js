@@ -1,0 +1,7 @@
+import {API_BASE_URL} from '../config';
+import {getAuthToken} from '../lib/velosStorage';
+const BASE=import.meta.env.DEV?'/api/motion':`${API_BASE_URL}/motion`;
+let localToken;
+async function token(){if(!import.meta.env.DEV)return getAuthToken();if(!localToken){const response=await fetch(`${BASE}/local-session`,{method:'POST',headers:{'X-Motion-Local':'1','Content-Type':'application/json'}});if(!response.ok)throw new Error('Start the motion development API with npm run motion:dev.');localToken=(await response.json()).token;}return localToken;}
+export async function request(path,method='GET',body){const response=await fetch(`${BASE}${path}`,{method,headers:{Authorization:`Bearer ${await token()}`,'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});let result;try{result=await response.json();}catch{throw new Error('Motion API is unavailable. Check the server connection.');}if(!response.ok){const e=new Error(result.error||'Request failed.');e.status=response.status;throw e;}return result;}
+export async function upload(file){const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('Could not read file.'));reader.onload=()=>resolve(reader.result.split(',')[1]);reader.readAsDataURL(file);});return request('/assets','POST',{name:file.name,mimeType:file.type==='audio/mp3'?'audio/mpeg':file.type,data});}

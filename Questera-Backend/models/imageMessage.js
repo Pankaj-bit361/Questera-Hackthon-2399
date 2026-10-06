@@ -15,6 +15,8 @@ const imageMessageSchema = new mongoose.Schema({
         required: true
     },
     imageUrl: String,
+    videoUrl: String,
+    videoJobId: String,
     referenceImages: [{
         type: String
     }],

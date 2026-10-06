@@ -1,6 +1,12 @@
 const express = require('express');
 const liveGenRouter = express.Router();
+const { selfParam, ownedParam } = require('../middlewares/auth');
+const GenerationJob = require('../models/generationJob');
 const LiveGenerationService = require('../functions/LiveGenerationService');
+
+// The caller's own records only (middlewares/auth.js).
+liveGenRouter.param('userId', selfParam);
+liveGenRouter.param('jobId', ownedParam(GenerationJob, 'jobId'));
 
 const liveGenService = new LiveGenerationService();
 

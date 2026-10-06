@@ -1,12 +1,20 @@
 const express = require('express');
 const chatRouter = express.Router();
+const { selfParam, ownedParam } = require('../middlewares/auth');
+const ContentJob = require('../models/contentJob');
 const OrchestratorService = require('../functions/Orchestrator');
 const ImageOrchestrator = require('../functions/ImageOrchestrator');
 const MemoryService = require('../functions/Memory');
+const AgentService = require('../functions/AgentService');
+
+// The caller's own records only (middlewares/auth.js).
+chatRouter.param('userId', selfParam);
+chatRouter.param('jobId', ownedParam(ContentJob, 'jobId'));
 
 const orchestrator = new OrchestratorService();
 const imageOrchestrator = new ImageOrchestrator();
 const memoryService = new MemoryService();
+const agentService = new AgentService();
 
 /**
  * POST /chat
@@ -19,6 +27,24 @@ chatRouter.post('/', async (req, res) => {
   } catch (error) {
     console.error('[CHAT] Error:', error);
     return res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /chat/agent
+ * Unified Gemini tool-calling agent (SSE by default, JSON if stream=false)
+ */
+chatRouter.post('/agent', async (req, res) => {
+  try {
+    if (req.body?.stream === false) {
+      const { status, json } = await agentService.handleChat(req, null);
+      return res.status(status).json(json);
+    }
+    return agentService.handleChat(req, res);
+  } catch (error) {
+    console.error('[CHAT/AGENT] Error:', error);
+    if (!res.headersSent) return res.status(500).json({ error: error.message });
+    res.end();
   }
 });
 

@@ -1,0 +1,201 @@
+{
+  "host": "seovyn.com",
+  "brand": {
+    "companyName": "Seovyn",
+    "oneLiner": "An automated SEO content platform that finds keyword opportunities, writes source-backed articles, publishes directly to CMS platforms, and tracks performance in Google Search Console.",
+    "topicsAllowed": [
+      "Programmatic and automated SEO",
+      "Content marketing workflows",
+      "Keyword research and topic clusters",
+      "Internal linking and site architecture",
+      "Search engine indexing and IndexNow",
+      "Content refresh and optimization strategies",
+      "CMS integrations for blogging"
+    ],
+    "targetAudience": "Website owners, marketing teams, and developers looking to automate SEO content creation and publishing workflows.",
+    "visualStyle": "Clean, product-focused, modern SaaS UI with data visualizations and technical workflow diagrams.",
+    "tone": "professional",
+    "uniqueSellingPoints": [
+      "Researches content from real audience sources including YouTube transcripts, Reddit threads, and competitor sites.",
+      "Built-in critic quality gate that scores accuracy, depth, and originality, automatically rewriting weak drafts before review.",
+      "Automated cannibalization prevention by checking Google top 10 results before writing to ensure pages don't split search traffic.",
+      "Automatic topic clustering that writes supporting articles before generating pillar pages with structured internal linking.",
+      "Post-publish performance tracking via Google Search Console with automated refreshes for decaying or near-page-one articles."
+    ],
+    "proofPoints": [
+      "Seovyn reads from YouTube, Reddit, competitor sites, and Google Search Console.",
+      "Seovyn publishes to WordPress, Shopify, Webflow, Framer, Wix, Notion, Ghost, GitHub, Next.js, Webhooks, and IndexNow.",
+      "Seovyn syncs your sitemap every week so internal links point to existing pages.",
+      "Seovyn checks Google's top ten for a new keyword and skips it if one of your pages is already there or shares four results with an existing article.",
+      "When connected to Search Console, Seovyn measures each article at 30, 60, and 90 days.",
+      "Once 20 articles are live, Seovyn researches and republishes pages that are just off page one or losing clicks to the same URL.",
+      "Once eight articles have been live for 45 days, Seovyn leans toward the kinds of pages that earn impressions on your site.",
+      "Seovyn promotes a workspace to the next trust level after five approvals in a row scoring 70 or more.",
+      "On autopilot, drafts scoring 75 or higher with no SEO errors approve themselves after a 12-hour window.",
+      "Seovyn opens pull requests on GitHub for formats including Astro, Remix, SvelteKit, Nuxt, Eleventy, Jekyll, Hugo, Next.js, or plain HTML.",
+      "Connecting Seovyn to Wix requires a Wix API key with Blog, Rich Content, and Media Manager permissions.",
+      "Seovyn can publish articles directly live to a Wix blog or save them as drafts in the Wix blog dashboard.",
+      "Seovyn uses Google Search Console data in its keyword and content workflow.",
+      "OpenAI uses separate crawler controls for OAI-SearchBot, which is used for ChatGPT search results, and GPTBot, which is associated with training foundation models.",
+      "OpenAI identifies ChatGPT-User as an agent that visits a page in response to a user action rather than an automatic search crawler."
+    ],
+    "contentAngles": [
+      "Preventing keyword cannibalization before writing new content",
+      "Structuring topic clusters: supporting posts versus pillar pages",
+      "Using real-world sources like Reddit and YouTube transcripts for factual depth",
+      "Automating CMS publishing and instant indexing with IndexNow",
+      "Benchmarking SEO content performance at 30, 60, and 90 days",
+      "Automating internal linking using weekly sitemap syncs"
+    ],
+    "competitorsMentioned": [],
+    "confidence": "high"
+  },
+  "facts": [
+    {
+      "text": "Seovyn reads from YouTube, Reddit, competitor sites, and Google Search Console.",
+      "kind": "integration",
+      "sourceUrl": "https://seovyn.com/"
+    },
+    {
+      "text": "Seovyn publishes to WordPress, Shopify, Webflow, Framer, Wix, Notion, Ghost, GitHub, Next.js, Webhooks, and IndexNow.",
+      "kind": "integration",
+      "sourceUrl": "https://seovyn.com/"
+    },
+    {
+      "text": "Seovyn syncs your sitemap every week so internal links point to existing pages.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/"
+    },
+    {
+      "text": "Seovyn checks Google's top ten for a new keyword and skips it if one of your pages is already there or shares four results with an existing article.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/"
+    },
+    {
+      "text": "When connected to Search Console, Seovyn measures each article at 30, 60, and 90 days.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/"
+    },
+    {
+      "text": "Once 20 articles are live, Seovyn researches and republishes pages that are just off page one or losing clicks to the same URL.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/"
+    },
+    {
+      "text": "Once eight articles have been live for 45 days, Seovyn leans toward the kinds of pages that earn impressions on your site.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/"
+    },
+    {
+      "text": "Seovyn promotes a workspace to the next trust level after five approvals in a row scoring 70 or more.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/"
+    },
+    {
+      "text": "On autopilot, drafts scoring 75 or higher with no SEO errors approve themselves after a 12-hour window.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/"
+    },
+    {
+      "text": "Seovyn opens pull requests on GitHub for formats including Astro, Remix, SvelteKit, Nuxt, Eleventy, Jekyll, Hugo, Next.js, or plain HTML.",
+      "kind": "integration",
+      "sourceUrl": "https://seovyn.com/integrations"
+    },
+    {
+      "text": "Connecting Seovyn to Wix requires a Wix API key with Blog, Rich Content, and Media Manager permissions.",
+      "kind": "integration",
+      "sourceUrl": "https://seovyn.com/integrations/wix"
+    },
+    {
+      "text": "Seovyn can publish articles directly live to a Wix blog or save them as drafts in the Wix blog dashboard.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/integrations/wix"
+    },
+    {
+      "text": "Seovyn uses Google Search Console data in its keyword and content workflow.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/blog/ai-generated-content-seo"
+    },
+    {
+      "text": "OpenAI uses separate crawler controls for OAI-SearchBot, which is used for ChatGPT search results, and GPTBot, which is associated with training foundation models.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/blog/how-to-rank-in-chatgpt"
+    },
+    {
+      "text": "OpenAI identifies ChatGPT-User as an agent that visits a page in response to a user action rather than an automatic search crawler.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/blog/how-to-rank-in-chatgpt"
+    },
+    {
+      "text": "Seovyn uses search volume and difficulty alongside competitor terms to prioritize content opportunities.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/blog/how-to-rank-in-chatgpt"
+    },
+    {
+      "text": "Seovyn uses search volume and difficulty, Google Search Console data, and terms competitors rank for to help prioritize topics.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/blog/how-to-find-primary-sources"
+    },
+    {
+      "text": "Seovyn includes source-based drafting to support articles with original material.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/blog/how-to-find-primary-sources"
+    },
+    {
+      "text": "Google generates title links automatically and may draw on the HTML title, prominent headings, or other page text.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/blog/title-tag-seo"
+    },
+    {
+      "text": "The HTML title element has no length limit according to Google, though displayed title links may be truncated to fit device width.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/blog/title-tag-seo"
+    },
+    {
+      "text": "AI search visibility can be tracked across three separate outcomes: mentions, recommendations, and citations.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/blog/ai-search-visibility"
+    },
+    {
+      "text": "Google Analytics 4 can show measurable referrals and subsequent actions, but cannot establish what an AI answer said or cited.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/blog/ai-search-visibility"
+    },
+    {
+      "text": "Semrush Enterprise AIO is an AI search visibility tool that helps teams track prompts across platforms.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/blog/ai-search-visibility"
+    },
+    {
+      "text": "Default plans include 100 articles a month and a $20 monthly Browser Agent budget.",
+      "kind": "number",
+      "sourceUrl": "https://seovyn.com/docs/limits"
+    },
+    {
+      "text": "Usage resets on renewal for paid plans, and on the 1st of each month (UTC) for Free plans.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/docs/limits"
+    },
+    {
+      "text": "A draft that fails to write gives its article back.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/docs/limits"
+    },
+    {
+      "text": "Draft approvals under autopilot include a 12-hour hold window.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/docs/limits"
+    },
+    {
+      "text": "Article refreshes start once an organization reaches 20 live articles.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/docs/limits"
+    },
+    {
+      "text": "Seovyn-hosted sites generate and host a home page, about page, contact page, and blog on a free seovyn.site address.",
+      "kind": "feature",
+      "sourceUrl": "https://seovyn.com/docs/hosted-site"
+    }
+  ],
+  "readAt": "2026-10-04T15:32:31.686Z"
+}

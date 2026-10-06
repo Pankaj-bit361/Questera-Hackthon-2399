@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+// DEPRECATED: use POST /api/chat/agent (functions/AgentService.js). Kept for existing clients.
 const { GoogleGenAI } = require('@google/genai');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');
@@ -16,7 +17,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Routing agent — OpenRouter (higher limits, no 429s)
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
-const OPENROUTER_AGENT_MODEL = 'google/gemini-3-flash-preview';
+const OPENROUTER_AGENT_MODEL = process.env.AUTOPILOT_LLM_MODEL || 'google/gemini-3.7-flash';
 
 async function agentRoute(contents, config) {
     const messages = contents.map(turn => ({
@@ -49,6 +50,7 @@ async function agentRoute(contents, config) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'HTTP-Referer': 'https://velosapps.com',
+            'X-Title': 'Greta',
         },
         body: JSON.stringify(body),
     });

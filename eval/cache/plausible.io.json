@@ -1,0 +1,248 @@
+{
+  "host": "plausible.io",
+  "brand": {
+    "companyName": "Plausible Analytics",
+    "oneLiner": "Plausible is a lightweight, open-source, and privacy-friendly web analytics platform designed as an alternative to Google Analytics.",
+    "topicsAllowed": [
+      "Privacy-friendly web analytics",
+      "Google Analytics and GA4 alternatives",
+      "AI referral traffic tracking",
+      "Website conversion and funnel optimization",
+      "EU data sovereignty and cookie-free compliance",
+      "Search Console and SEO performance tracking",
+      "Bot filtering and clean traffic data"
+    ],
+    "targetAudience": "Website owners, SaaS founders, marketers, and product teams seeking a simple, privacy-compliant alternative to Google Analytics.",
+    "visualStyle": "Clean, minimal, dashboard-centric interface focused on clear data visualization without visual clutter.",
+    "tone": "bold",
+    "uniqueSellingPoints": [
+      "No cookies used and fully privacy-compliant, hosted in the EU on European-owned infrastructure",
+      "Lightweight and open-source platform with a single-page dashboard requiring no training",
+      "Automatic, codeless tracking for scroll depth, file downloads, form completions, and outbound links",
+      "Built-in tracking for AI tool traffic (ChatGPT, Perplexity, Claude) and native Google Search Console integration"
+    ],
+    "proofPoints": [
+      "Plausible is made and hosted in the EU, powered by European-owned infrastructure.",
+      "Plausible's script is 54 times smaller than Google Analytics, saving 135KB of JavaScript per visitor.",
+      "Plausible allows you to import your Google Analytics stats.",
+      "Plausible does not use cookies, persistent identifiers, or cross-site and cross-device tracking.",
+      "Plausible offers a 30-day free trial with no credit card required.",
+      "The Starter plan includes 1 site and 3 years of data retention.",
+      "The Business plan includes up to 10 sites, 10 team members, 5 years of data retention, custom properties, and a Stats API with 600 requests per hour.",
+      "Plausible is an independent, self-funded, bootstrapped, and profitable team of 10 running since 2018.",
+      "Plausible tracks and analyzes website visits from AI assistants such as ChatGPT, Claude, Perplexity, and Gemini.",
+      "Plausible provides real-time web analytics to track active traffic, viewed pages, and met goals.",
+      "Audience segmentation allows filtering analytics by source, page, location, device, and goals.",
+      "Basecamp, Ghost, Hugging Face, Home Assistant, MongoDB, the Python Software Foundation, and Harvard University use Plausible.",
+      "Plausible crossed $1 million in annual recurring revenue in 2022.",
+      "Plausible is open source under the GNU Affero General Public License Version 3 (AGPLv3).",
+      "Funnels support side-by-side comparison across time periods and show total revenue and revenue per visitor at relevant steps."
+    ],
+    "contentAngles": [
+      "How to monitor and measure referral traffic and conversions from AI tools like ChatGPT, Claude, and Perplexity",
+      "The operational and privacy downsides of GA4 versus lightweight analytics",
+      "Best practices for EU privacy compliance and operating without cookie banners",
+      "Setting up codeless conversion goals, user funnels, and revenue tracking",
+      "Improving data accuracy by automatically filtering bot, spam, and data center traffic",
+      "Unifying SEO search query data with on-site analytics via Search Console integration"
+    ],
+    "competitorsMentioned": [
+      "Google Analytics",
+      "GA4"
+    ],
+    "confidence": "high"
+  },
+  "facts": [
+    {
+      "text": "Plausible is made and hosted in the EU, powered by European-owned infrastructure.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/"
+    },
+    {
+      "text": "Plausible's script is 54 times smaller than Google Analytics, saving 135KB of JavaScript per visitor.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/"
+    },
+    {
+      "text": "Plausible allows you to import your Google Analytics stats.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/"
+    },
+    {
+      "text": "Plausible does not use cookies, persistent identifiers, or cross-site and cross-device tracking.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/"
+    },
+    {
+      "text": "Plausible offers a 30-day free trial with no credit card required.",
+      "kind": "pricing",
+      "sourceUrl": "https://plausible.io/"
+    },
+    {
+      "text": "The Starter plan includes 1 site and 3 years of data retention.",
+      "kind": "pricing",
+      "sourceUrl": "https://plausible.io/"
+    },
+    {
+      "text": "The Business plan includes up to 10 sites, 10 team members, 5 years of data retention, custom properties, and a Stats API with 600 requests per hour.",
+      "kind": "pricing",
+      "sourceUrl": "https://plausible.io/"
+    },
+    {
+      "text": "Plausible is an independent, self-funded, bootstrapped, and profitable team of 10 running since 2018.",
+      "kind": "other",
+      "sourceUrl": "https://plausible.io/"
+    },
+    {
+      "text": "Plausible tracks and analyzes website visits from AI assistants such as ChatGPT, Claude, Perplexity, and Gemini.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/features"
+    },
+    {
+      "text": "Plausible provides real-time web analytics to track active traffic, viewed pages, and met goals.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/features"
+    },
+    {
+      "text": "Audience segmentation allows filtering analytics by source, page, location, device, and goals.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/features"
+    },
+    {
+      "text": "Basecamp, Ghost, Hugging Face, Home Assistant, MongoDB, the Python Software Foundation, and Harvard University use Plausible.",
+      "kind": "customer",
+      "sourceUrl": "https://plausible.io/about"
+    },
+    {
+      "text": "Plausible crossed $1 million in annual recurring revenue in 2022.",
+      "kind": "number",
+      "sourceUrl": "https://plausible.io/about"
+    },
+    {
+      "text": "Plausible is open source under the GNU Affero General Public License Version 3 (AGPLv3).",
+      "kind": "other",
+      "sourceUrl": "https://plausible.io/about"
+    },
+    {
+      "text": "Funnels support side-by-side comparison across time periods and show total revenue and revenue per visitor at relevant steps.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/changelog"
+    },
+    {
+      "text": "Top Pages, Entry Pages, and Exit Pages reports can be broken down by full URL instead of just path.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/changelog"
+    },
+    {
+      "text": "A dedicated AI Assistants channel in the Channels report groups traffic from sources like ChatGPT, Claude, Google Gemini, and Perplexity.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/changelog"
+    },
+    {
+      "text": "Strict order funnels require visitors to complete every step in exact consecutive order with no other actions in between.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/changelog"
+    },
+    {
+      "text": "Squarespace Analytics shows visits, unique visitors over time, viewed pages, traffic sources, search terms, and depending on the plan, form and button conversions, sales, purchase-funnel activity, and abandoned carts.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/cms-built-in-analytics"
+    },
+    {
+      "text": "Squarespace currently states that analytics reports cannot be exported.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/cms-built-in-analytics"
+    },
+    {
+      "text": "When Squarespace analytics cookies are disabled, each pageview counts as its own visit.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/cms-built-in-analytics"
+    },
+    {
+      "text": "Wix Analytics allows downloading analytics reports as CSV files and scheduling report emails delivered as CSV attachments in table view.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/cms-built-in-analytics"
+    },
+    {
+      "text": "Downloading charts as CSV, PNG, or SVG files from Wix requires Analytics Pro.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/cms-built-in-analytics"
+    },
+    {
+      "text": "When the Wix cookie banner is active, Wix Analytics collects data only after a visitor accepts analytics cookies.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/cms-built-in-analytics"
+    },
+    {
+      "text": "Plausible displays visits with an unidentifiable source as Direct / None.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/direct-traffic"
+    },
+    {
+      "text": "Plausible recognizes some Android app referrals when that information is available.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/direct-traffic"
+    },
+    {
+      "text": "Plausible provides cookieless web analytics without creating persistent visitor profiles.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/web-analytics"
+    },
+    {
+      "text": "Plausible allows recording custom events beyond pageviews, including form submissions, downloads, signups, cart activity, and purchases.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/web-analytics"
+    },
+    {
+      "text": "Plausible covers SaaS use cases including signup funnels, marketing attribution through to conversions, custom events and properties, and A/B test result tracking.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/web-analytics-vs-product-analytics"
+    },
+    {
+      "text": "Plausible provides privacy-first web analytics without cookies, personal data, or the complexity of Google Analytics.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/shopify-analytics"
+    },
+    {
+      "text": "Plausible can track traffic, campaigns, and conversions across a separate blog or other domains outside of an ecommerce platform.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/shopify-analytics"
+    },
+    {
+      "text": "Shopify Analytics connects traffic to products, orders, and revenue directly inside Shopify.",
+      "kind": "integration",
+      "sourceUrl": "https://plausible.io/blog/shopify-analytics"
+    },
+    {
+      "text": "Shopify Analytics features are available on every Shopify subscription plan.",
+      "kind": "pricing",
+      "sourceUrl": "https://plausible.io/blog/shopify-analytics"
+    },
+    {
+      "text": "Shopify Analytics consists of an Overview dashboard, detailed reports, and a Live View.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/shopify-analytics"
+    },
+    {
+      "text": "Shopify Analytics includes default report categories for Acquisition, Behavior, Customers, Finance, Fraud, Inventory, Marketing, Orders, Profit, Retail sales, and Sales.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/shopify-analytics"
+    },
+    {
+      "text": "Shopify Live View displays real-time visitor counts, visitor locations, active actions, and live sales or checkouts.",
+      "kind": "feature",
+      "sourceUrl": "https://plausible.io/blog/shopify-analytics"
+    },
+    {
+      "text": "Shopify defines Total Sales as net sales plus taxes, shipping, and duties.",
+      "kind": "other",
+      "sourceUrl": "https://plausible.io/blog/shopify-analytics"
+    },
+    {
+      "text": "Shopify defines Net Sales as Gross Sales minus discounts and returns, excluding taxes and shipping fees.",
+      "kind": "other",
+      "sourceUrl": "https://plausible.io/blog/shopify-analytics"
+    }
+  ],
+  "readAt": "2026-10-04T15:34:12.605Z"
+}

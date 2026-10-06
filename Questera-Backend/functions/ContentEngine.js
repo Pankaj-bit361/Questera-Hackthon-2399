@@ -464,7 +464,7 @@ Provide a JSON response:
           'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': 'https://velosapps.com',
-          'X-Title': 'Velos Video Analysis'
+          'X-Title': 'Greta'
         },
         timeout: 120000 // 2 min timeout for AI processing
       });

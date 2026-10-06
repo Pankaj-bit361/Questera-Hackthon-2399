@@ -7,6 +7,8 @@ const scheduledPostSchema = new mongoose.Schema({
     unique: true,
     default: () => 'post-' + uuidv4(),
   },
+  // Set on posts an autopilot task produced, so its queue can be filtered.
+  autopilotId: { type: String, default: null, index: true },
   userId: {
     type: String,
     required: true,
@@ -26,6 +28,11 @@ const scheduledPostSchema = new mongoose.Schema({
   videoChatId: {
     type: String, // Reference to video chat
   },
+  // The Studio job that made this video (autopilot product videos), so the post can link back to it.
+  studioJobId: {
+    type: String,
+    default: null,
+  },
   caption: {
     type: String,
     default: '',
@@ -36,9 +43,17 @@ const scheduledPostSchema = new mongoose.Schema({
   },
   postType: {
     type: String,
-    enum: ['image', 'carousel', 'video', 'reel', 'story'],
+    // 'text'/'multi_image' are LinkedIn and X formats; 'story'/'reel' are
+    // Instagram-only; 'thread' is X-only.
+    enum: ['image', 'carousel', 'video', 'reel', 'story', 'text', 'multi_image', 'thread'],
     default: 'image',
   },
+  // X/Twitter threads: each entry becomes one post, chained as replies.
+  // threadParts[0] is the opening post; `caption` mirrors it so existing
+  // list/calendar views that read `caption` still show something sensible.
+  threadParts: [{
+    type: String,
+  }],
   // Buffer-like features
   music: {
     type: String,
@@ -100,9 +115,26 @@ const scheduledPostSchema = new mongoose.Schema({
   // Status
   status: {
     type: String,
-    enum: ['scheduled', 'published', 'failed', 'cancelled'],
+    // 'pending_approval' is held out of findDuePosts() until a human approves it.
+    // 'publishing' is the claim: one worker moved it there atomically and is publishing it now (Scheduler.js).
+    enum: ['pending_approval', 'scheduled', 'publishing', 'published', 'failed', 'cancelled'],
     default: 'scheduled',
     index: true,
+  },
+  // What created this post - lets the approval queue and analytics tell
+  // autopilot output apart from something the user scheduled by hand.
+  source: {
+    type: String,
+    enum: ['manual', 'autopilot', 'campaign', 'agent', 'live'],
+    default: 'manual',
+    index: true,
+  },
+  // What the autopilot meant the post to be, so results can be grouped by it (functions/Performance.js).
+  theme: { type: String, default: null },
+  hookStyle: { type: String, default: null },
+  // When a worker claimed it for publishing; a claim this old means the worker died mid-publish.
+  claimedAt: {
+    type: Date,
   },
   // Publishing results
   publishedAt: {
@@ -127,6 +159,30 @@ const scheduledPostSchema = new mongoose.Schema({
     type: String,
   },
   // Engagement tracking (updated after posting)
+  // The review agent's verdict before publishing. Posts scoring at or above
+  // the autopilot's threshold are scheduled straight away; the rest wait.
+  review: {
+    score: { type: Number, default: null },
+    verdict: { type: String, default: '' },
+    issues: [String],
+    strengths: [String],
+    reviewedAt: Date,
+    // Which model reviewed it (never the one that wrote it), and what the free rule check found first.
+    model: { type: String, default: null },
+    ruleIssues: [String],
+    ruleFailed: { type: Boolean, default: false },
+    // Claims the reviewer found no support for in the site's facts; such a post never publishes on its own.
+    unsupportedClaims: [String],
+    revised: { type: Boolean, default: false },
+  },
+  // The trust ladder (functions/TrustLadder.js). An autopilot post waiting out its hold has autoApproveAt set;
+  // it is approved by the scheduler then unless the user acted first.
+  autoApproveAt: { type: Date, default: null, index: true },
+  approvedAt: { type: Date, default: null },
+  approvedBy: { type: String, enum: ['user', 'autopilot', null], default: null },
+  rejectedAt: { type: Date, default: null },
+  rejectReason: { type: String, default: null },
+  rejectNote: { type: String, default: null },
   engagement: {
     likes: { type: Number, default: 0 },
     comments: { type: Number, default: 0 },
@@ -155,6 +211,21 @@ scheduledPostSchema.virtual('fullCaption').get(function () {
 });
 
 // Static method to find posts due for publishing
+/**
+ * Claim the oldest due post: move it from 'scheduled' to 'publishing' in one atomic update, so of any number of
+ * workers on any number of servers exactly one gets it. `exclude` is a list of {userId, platform} not to take
+ * (paused platforms, platforms that just posted).
+ */
+scheduledPostSchema.statics.claimNextDue = function (exclude = [], now = new Date()) {
+  const filter = { status: 'scheduled', scheduledAt: { $lte: now }, retryCount: { $lt: 3 } };
+  if (exclude.length) filter.$nor = exclude.map(({ userId, platform }) => ({ userId, platform }));
+  return this.findOneAndUpdate(
+    filter,
+    { $set: { status: 'publishing', claimedAt: now } },
+    { sort: { scheduledAt: 1 }, new: true },
+  );
+};
+
 scheduledPostSchema.statics.findDuePosts = function () {
   return this.find({
     status: 'scheduled',

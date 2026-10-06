@@ -1,4 +1,5 @@
 const Instagram = require('../models/instagram');
+const { resume } = require('./AccountHealth');
 const axios = require('axios');
 
 class InstagramController {
@@ -282,6 +283,7 @@ class InstagramController {
         await userDoc.save();
       }
 
+      await resume(userId, 'instagram'); // a fresh login ends a 'reconnect' pause
       console.log('✅ [INSTAGRAM] Instagram accounts connected for user:', userId);
       console.log('✅ [INSTAGRAM] Total accounts:', userDoc.accounts.length);
       console.log('✅ [INSTAGRAM] All usernames:', userDoc.accounts.map(a => a.instagramUsername).join(', '));

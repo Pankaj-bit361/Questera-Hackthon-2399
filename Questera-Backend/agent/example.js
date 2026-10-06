@@ -4,7 +4,7 @@ const { createImageAgent } = require('./index');
 async function runExample() {
    const agent = createImageAgent({
       provider: 'openrouter',
-      model: 'google/gemini-3-flash-preview'
+      model: process.env.AUTOPILOT_LLM_MODEL || 'google/gemini-3.7-flash'
    });
 
    const result = await agent.run({

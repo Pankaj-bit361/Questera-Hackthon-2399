@@ -1,0 +1,30 @@
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/motion/Dockerfile
+    command: npm run motion:api
+    env_file: ../../Questera-Backend/.env
+    environment:
+      MOTION_STORAGE: local
+      MOTION_DATA_DIR: /data
+      MOTION_PORT: 4701
+    ports:
+      - "127.0.0.1:4701:4701"
+    volumes:
+      - motion-data:/data
+    restart: unless-stopped
+  worker:
+    build:
+      context: ../..
+      dockerfile: deploy/motion/Dockerfile
+    command: npm run motion:worker
+    env_file: ../../Questera-Backend/.env
+    environment:
+      MOTION_STORAGE: local
+      MOTION_DATA_DIR: /data
+    volumes:
+      - motion-data:/data
+    restart: unless-stopped
+volumes:
+  motion-data:

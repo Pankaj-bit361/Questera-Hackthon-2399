@@ -1,13 +1,15 @@
 const Instagram = require('../../models/instagram');
+const SocialAccount = require('../../models/socialAccount');
 
 
 const getAccountsTool = {
-   name: 'get_instagram_accounts',
-   description: `Get list of connected Instagram accounts for the user.
+   name: 'get_social_accounts',
+   description: `Get list of connected social accounts (Instagram and LinkedIn) for the user.
 
 WHEN TO USE:
 - User asks "what accounts do I have?", "show my accounts"
 - User asks "which Instagram am I connected to?"
+- User asks "am I connected to LinkedIn?"
 - BEFORE scheduling when user has multiple accounts
 - User wants to switch between accounts
 - User says "post to my other account" (check which accounts exist)
@@ -52,40 +54,79 @@ IMPORTANT:
 - Business/Creator accounts only (personal accounts not supported)
 - Profile pictures may be cached/outdated`,
 
-   parameters: {},
+   parameters: {
+      platform: {
+         type: 'string',
+         required: false,
+         description: 'Filter to one platform: "instagram" or "linkedin". Omit to list every connected account.',
+         example: 'linkedin'
+      }
+   },
 
    execute: async (params, context) => {
       const { userId } = context;
+      const wanted = params?.platform?.toLowerCase();
 
       if (!userId) {
          return { success: false, error: 'userId is required' };
       }
 
       try {
-         const doc = await Instagram.findOne({ userId });
+         const accounts = [];
 
-         if (!doc || !doc.accounts || doc.accounts.length === 0) {
+         // Instagram lives in its own legacy model with an accounts[] subdoc.
+         if (!wanted || wanted === 'instagram') {
+            const doc = await Instagram.findOne({ userId });
+            for (const acc of doc?.accounts || []) {
+               accounts.push({
+                  platform: 'instagram',
+                  id: acc.instagramBusinessAccountId,
+                  username: acc.instagramUsername,
+                  name: acc.instagramName || acc.facebookPageName,
+                  profilePicture: acc.profilePictureUrl,
+               });
+            }
+         }
+
+         // Everything else uses the generic SocialAccount model.
+         if (!wanted || wanted !== 'instagram') {
+            const query = { userId, isActive: true };
+            if (wanted) query.platform = wanted;
+            else query.platform = { $ne: 'instagram' };
+
+            const socialAccounts = await SocialAccount.find(query);
+            for (const acc of socialAccounts) {
+               accounts.push({
+                  platform: acc.platform,
+                  id: acc.accountId,
+                  username: acc.platformUsername,
+                  name: acc.platformUsername,
+                  profilePicture: acc.profilePictureUrl,
+                  authorType: acc.authorType,
+               });
+            }
+         }
+
+         if (accounts.length === 0) {
             return {
                success: true,
                accounts: [],
-               message: 'No Instagram accounts connected'
+               count: 0,
+               message: wanted
+                  ? `No ${wanted} account connected. Connect one in Settings.`
+                  : 'No social accounts connected. Connect one in Settings.'
             };
          }
 
-         const accounts = doc.accounts.map(acc => ({
-            id: acc.instagramBusinessAccountId,
-            username: acc.instagramUsername,
-            name: acc.instagramName || acc.facebookPageName,
-            profilePicture: acc.profilePictureUrl
-         }));
-
-         const usernames = accounts.map(a => a.username).filter(Boolean).join(', ');
+         const summary = accounts
+            .map(a => `${a.username || a.id} (${a.platform})`)
+            .join(', ');
 
          return {
             success: true,
             accounts,
             count: accounts.length,
-            message: `You have ${accounts.length} connected account(s): ${usernames}`
+            message: `You have ${accounts.length} connected account(s): ${summary}`
          };
       } catch (error) {
          return { success: false, error: error.message };

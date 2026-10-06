@@ -1,9 +1,17 @@
 const express = require('express');
 const schedulerRouter = express.Router();
+const { selfParam, ownedParam } = require('../middlewares/auth');
+const ScheduledPost = require('../models/scheduledPost');
+const Campaign = require('../models/campaign');
 const SchedulerController = require('../functions/Scheduler');
 const SchedulerService = require('../functions/SchedulerService');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');
+
+// The caller's own records only (middlewares/auth.js).
+schedulerRouter.param('userId', selfParam);
+schedulerRouter.param('postId', ownedParam(ScheduledPost, 'postId'));
+schedulerRouter.param('campaignId', ownedParam(Campaign, 'campaignId'));
 const schedulerController = new SchedulerController();
 const schedulerService = new SchedulerService();
 
